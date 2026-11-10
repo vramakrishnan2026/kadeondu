@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import * as G from './game.js';
+import * as G from '../public/shared/game.js';
 
 const IDLE_CLEANUP_MS = 24 * 60 * 60 * 1000; // forget a room 24 h after its last activity
 const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it hasn't reported for 6 h
@@ -38,6 +38,7 @@ export class GameRoom extends DurableObject {
     this.room = null;
     this.code = null;
     this.lastSummary = '';
+    this.botTimer = null;
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || G.newRoom();
       this.code = (await ctx.storage.get('code')) || null;
@@ -96,6 +97,28 @@ export class GameRoom extends DurableObject {
     try { await this.env.LOBBY.get(this.env.LOBBY.idFromName('main')).update(sum); } catch {}
   }
 
+  // Computer players: play their turn after a short, human-like pause.
+  // Only runs while at least one person is connected.
+  kickBots() {
+    if (this.botTimer || this.online().size === 0) return;
+    const a = G.nextBotAction(this.room);
+    if (!a) return;
+    this.botTimer = setTimeout(() => this.botTick(), a.delay);
+  }
+
+  async botTick() {
+    this.botTimer = null;
+    const a = G.nextBotAction(this.room);
+    if (!a) return;
+    const res = G.handle(this.room, a.pid, a.msg);
+    if (!res.error) {
+      await this.save();
+      this.broadcast();
+      await this.report();
+    }
+    this.kickBots();
+  }
+
   async save() {
     await this.ctx.storage.put('room', this.room);
     await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
@@ -133,7 +156,8 @@ export class GameRoom extends DurableObject {
       this.send(ws, { t: 'welcome', playerId: p.id, token: p.token, name: p.name });
       await this.save();
       this.broadcast();
-      return this.report();
+      await this.report();
+      return this.kickBots();
     }
 
     if (!att.pid) return this.send(ws, { t: 'error', msg: 'Join first' });
@@ -152,6 +176,7 @@ export class GameRoom extends DurableObject {
     await this.save();
     this.broadcast();
     await this.report();
+    this.kickBots();
   }
 
   async webSocketClose(ws) {

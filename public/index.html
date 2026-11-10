@@ -28,6 +28,7 @@
         <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="e.g. Arun">
       </label>
       <button id="createBtn" class="primary big">Create a room</button>
+      <button id="soloBtn" class="secondary big">🤖 Play vs computer</button>
       <div class="or"><span>or join one</span></div>
       <div class="join-row">
         <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
@@ -59,6 +60,10 @@
         <label class="field inline">Cards per hand
           <select id="handSizeInput"><option>5</option><option selected>7</option><option>10</option></select>
         </label>
+        <label class="field inline">Computer players
+          <select id="botLevelInput"><option value="easy">Easy</option><option value="normal" selected>Normal</option></select>
+        </label>
+        <button id="addBotBtn" class="secondary">🤖 Add computer player</button>
       </div>
       <p id="guestSettings" class="muted small-text"></p>
       <button id="startBtn" class="primary big hidden">Start game</button>
@@ -100,6 +105,7 @@
       <p id="endPoints" class="muted"></p>
       <ol id="scoreList" class="scores"></ol>
       <button id="nextRoundBtn" class="primary big hidden">Next round</button>
+      <button id="addBotEndBtn" class="ghost hidden">🤖 Add computer player</button>
       <p id="endWait" class="muted hidden">Waiting for the host…</p>
     </div>
   </div>
@@ -115,6 +121,26 @@
         <button data-color="b" class="pick c-b">Blue</button>
       </div>
       <button id="cancelPick" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Play vs computer setup -->
+  <div id="soloModal" class="overlay hidden">
+    <div class="modal">
+      <h3>🤖 Play vs computer</h3>
+      <label class="field inline">Computer players
+        <select id="soloCount"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option></select>
+      </label>
+      <label class="field inline">Level
+        <select id="soloLevel"><option value="easy">Easy</option><option value="normal" selected>Normal</option></select>
+      </label>
+      <label class="field inline">Cards per hand
+        <select id="soloHand"><option>5</option><option selected>7</option><option>10</option></select>
+      </label>
+      <label class="toggle"><input type="checkbox" id="soloStacking"> Allow stacking +2 / +4</label>
+      <p class="muted small-text">Just you and the computer. No room, nobody else can see it.</p>
+      <button id="soloStart" class="primary big">Start</button>
+      <button id="soloCancel" class="ghost">Cancel</button>
     </div>
   </div>
 

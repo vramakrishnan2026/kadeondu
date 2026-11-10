@@ -140,10 +140,12 @@
     };
   }
   function send(obj) {
+    if (solo) return soloSend(obj);
     if (ws?.readyState === 1) ws.send(JSON.stringify(obj));
     else toast('Reconnecting…');
   }
   function goHome(msg) {
+    if (solo) { clearTimeout(solo.timer); solo = null; }
     wantOpen = false;
     try { ws?.close(); } catch {}
     ws = null; S = null; room = null; lastSeq = 0;
@@ -218,7 +220,8 @@
       ul.replaceChildren();
       for (const p of s.players) {
         const li = el('li');
-        li.append(el('span', 'dot' + (p.online ? '' : ' away')), el('span', 'name', p.name));
+        li.append(el('span', 'dot' + (p.online ? '' : ' away')), el('span', 'name', (p.bot ? '🤖 ' : '') + p.name));
+        if (p.bot) li.append(el('span', 'tag you', 'COMPUTER'));
         if (p.id === s.hostId) li.append(el('span', 'tag', 'HOST'));
         if (p.id === s.you) li.append(el('span', 'tag you', 'YOU'));
         if (isHost && p.id !== s.you) {
@@ -230,9 +233,11 @@
       }
       $('hostSettings').classList.toggle('hidden', !isHost);
       $('stackingInput').checked = s.settings.stacking;
+      $('botLevelInput').value = s.settings.botLevel || 'normal';
       $('handSizeInput').value = String(s.settings.handSize);
       $('guestSettings').textContent = isHost ? '' :
-        `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}`;
+        `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
+        (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -252,7 +257,7 @@
     for (const p of s.players) {
       const d = el('div', 'opp' + (p.id === s.turnId ? ' turn' : '') + (p.id === s.you ? ' me' : '') + (p.online ? '' : ' away'));
       const nm = el('div', 'oname');
-      nm.append(el('span', 'dot' + (p.online ? '' : ' away')), el('span', '', p.id === s.you ? `${p.name} (you)` : p.name));
+      nm.append(el('span', 'dot' + (p.online ? '' : ' away')), el('span', '', (p.bot ? '🤖 ' : '') + (p.id === s.you ? `${p.name} (you)` : p.name)));
       const ct = el('div', 'ocount');
       ct.append(el('span', 'mini-back'), el('span', '', `${p.count} · ${p.score} pts`));
       d.append(nm, ct);
@@ -337,6 +342,7 @@
         ol.append(li);
       }
       $('nextRoundBtn').classList.toggle('hidden', !isHost);
+      $('addBotEndBtn').classList.toggle('hidden', !isHost);
       $('nextRoundBtn').disabled = s.players.length < 2;
       $('endWait').classList.toggle('hidden', isHost);
     } else {
@@ -471,7 +477,7 @@
   }
 
   function showInvite(m) {
-    if (inRoom()) return; // already playing somewhere
+    if (inRoom() || solo) return; // already playing somewhere
     currentInvite = m;
     $('inviteTitle').textContent = `${m.from} invited you to play ${CFG.name}`;
     $('inviteSub').textContent = m.phase === 'playing'
@@ -543,6 +549,9 @@
   $('stackingInput').onchange = e => send({ t: 'settings', stacking: e.target.checked });
   $('handSizeInput').onchange = e => send({ t: 'settings', handSize: Number(e.target.value) });
   $('startBtn').onclick = () => send({ t: 'start' });
+  $('botLevelInput').onchange = e => send({ t: 'settings', botLevel: e.target.value });
+  $('addBotBtn').onclick = () => send({ t: 'addbot' });
+  $('addBotEndBtn').onclick = () => send({ t: 'addbot' });
   $('nextRoundBtn').onclick = () => send({ t: 'start' });
   $('drawPile').onclick = () => send({ t: 'draw' });
   $('drawBtn').onclick = () => send({ t: 'draw' });
@@ -550,6 +559,7 @@
   $('callBtn').onclick = () => send({ t: 'ondu' });
   $('skipTurnBtn').onclick = () => send({ t: 'skipturn' });
   $('leaveBtn').onclick = () => {
+    if (solo) { if (confirm('Quit this game?')) goHome(); return; }
     if (!confirm('Leave this room? Your cards go back in the deck.')) return;
     leaving = true;
     if (ws?.readyState === 1) send({ t: 'leave' }); else goHome();
@@ -568,6 +578,57 @@
 
   myName = $('nameInput').value.trim();
   openLobby();
+
+  // ── Play vs computer: the whole game runs here on the phone ──
+  let solo = null; // { G, s, me, timer }
+  function soloRender() {
+    render(solo.G.viewFor(solo.s, solo.me, new Set([solo.me])));
+  }
+  function soloKick() {
+    if (!solo || solo.timer) return;
+    const a = solo.G.nextBotAction(solo.s);
+    if (!a) return;
+    solo.timer = setTimeout(() => {
+      if (!solo) return;
+      solo.timer = null;
+      const b = solo.G.nextBotAction(solo.s);
+      if (b) { solo.G.handle(solo.s, b.pid, b.msg); soloRender(); }
+      soloKick();
+    }, a.delay);
+  }
+  function soloSend(obj) {
+    if (obj.t === 'leave') return goHome();
+    const res = solo.G.handle(solo.s, solo.me, obj);
+    if (res.error) toast(res.error);
+    soloRender();
+    soloKick();
+  }
+  async function startSolo() {
+    let G;
+    try { G = await import('./shared/game.js'); }
+    catch { return toast("Couldn't load the game. Check your connection and try again"); }
+    const s = G.newRoom();
+    s.settings.stacking = $('soloStacking').checked;
+    s.settings.handSize = Number($('soloHand').value);
+    s.settings.botLevel = $('soloLevel').value;
+    const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
+    for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
+    G.handle(s, me.id, { t: 'start' });
+    solo = { G, s, me: me.id, timer: null };
+    S = null; lastSeq = 0; prevTurn = null;
+    $('roomChip').textContent = 'VS COMPUTER';
+    $('roomChip').classList.remove('hidden');
+    $('leaveBtn').classList.remove('hidden');
+    $('inviteTopBtn').classList.add('hidden');
+    soloRender();
+    soloKick();
+  }
+  $('soloBtn').onclick = () => {
+    if (needName()) return;
+    $('soloModal').classList.remove('hidden');
+  };
+  $('soloCancel').onclick = () => $('soloModal').classList.add('hidden');
+  $('soloStart').onclick = () => { $('soloModal').classList.add('hidden'); startSolo(); };
 
   // ── Start: rejoin a saved game or prefill a shared link ──
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();

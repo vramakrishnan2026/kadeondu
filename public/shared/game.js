@@ -1,4 +1,5 @@
-// Game rules engine. Pure logic, no Cloudflare APIs, so it can be tested anywhere.
+// Game rules engine and computer players. Pure logic, no Cloudflare APIs:
+// the room server uses it, and the browser uses it for Play vs computer.
 // Card: { id, c: 'r'|'y'|'g'|'b'|'w', v: '0'..'9' | 'skip' | 'rev' | 'd2' | 'wild' | 'wd4' }
 
 export const COLORS = ['r', 'y', 'g', 'b'];
@@ -51,7 +52,7 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7 },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal' },
     round: 0,
     deck: [],
     discard: [],
@@ -77,6 +78,7 @@ function log(s, entry) {
 }
 
 const playerById = (s, id) => s.players.find(p => p.id === id);
+const firstHuman = s => [...s.players, ...(s.spectators || [])].find(p => !p.bot)?.id ?? null;
 const spectatorById = (s, id) => (s.spectators || []).find(p => p.id === id);
 
 // Watchers become players when a round ends (they're dealt in next round)
@@ -139,7 +141,7 @@ export function canPlay(s, card) {
   return card.c === s.color || card.v === top(s).v;
 }
 
-export function addPlayer(s, name) {
+export function addPlayer(s, name, opts = {}) {
   const p = {
     id: randomId(10),
     token: randomId(24),
@@ -148,6 +150,7 @@ export function addPlayer(s, name) {
     score: 0,
     saidOndu: false,
   };
+  if (opts.bot) { p.bot = true; p.level = opts.level === 'easy' ? 'easy' : 'normal'; }
   if (s.phase === 'playing') {
     s.spectators ||= [];
     s.spectators.push(p); // watches until this round ends
@@ -156,7 +159,7 @@ export function addPlayer(s, name) {
     s.players.push(p);
     log(s, { k: 'join', p: p.name });
   }
-  if (!s.hostId) s.hostId = p.id;
+  if (!s.hostId && !p.bot) s.hostId = p.id;
   return p;
 }
 
@@ -173,12 +176,12 @@ export function removePlayer(s, id, kind = 'leave') {
   s.deck.unshift(...p.hand); // their cards go to the bottom of the draw pile
   log(s, { k: kind, p: p.name });
   if (s.vulnerable === id) s.vulnerable = null;
-  if (s.hostId === id) s.hostId = s.players[0]?.id ?? null;
+  if (s.hostId === id) s.hostId = firstHuman(s);
   if (s.phase === 'playing') {
     if (s.players.length < 2) {
       s.phase = 'lobby';
       mergeSpectators(s);
-      if (!playerById(s, s.hostId)) s.hostId = s.players[0]?.id ?? null;
+      if (!playerById(s, s.hostId)) s.hostId = firstHuman(s);
       log(s, { k: 'toofew' });
       return;
     }
@@ -309,6 +312,7 @@ export function handle(s, pid, msg) {
     if (!isHost) return { error: 'Only the host can change settings' };
     if (s.phase === 'playing') return { error: 'Change settings between rounds' };
     if (typeof msg.stacking === 'boolean') s.settings.stacking = msg.stacking;
+    if (['easy', 'normal'].includes(msg.botLevel)) s.settings.botLevel = msg.botLevel;
     if ([5, 7, 10].includes(msg.handSize)) s.settings.handSize = msg.handSize;
     return {};
   }
@@ -317,6 +321,13 @@ export function handle(s, pid, msg) {
     if (s.phase === 'playing') return { error: 'Round already running' };
     const e = startRound(s);
     return e ? { error: e } : {};
+  }
+  if (t === 'addbot') {
+    if (!isHost) return { error: 'Only the host can add computer players' };
+    if (s.phase === 'playing') return { error: 'Add computer players between rounds' };
+    if (s.players.filter(x => x.bot).length >= MAX_BOTS) return { error: `Up to ${MAX_BOTS} computer players` };
+    addPlayer(s, botName(s), { bot: true, level: s.settings.botLevel });
+    return {};
   }
   if (t === 'rename') {
     const name = cleanName(msg.name);
@@ -405,7 +416,8 @@ export function viewFor(s, pid, online) {
       name: p.name,
       count: p.hand.length,
       score: p.score,
-      online: online.has(p.id),
+      online: !!p.bot || online.has(p.id),
+      bot: !!p.bot,
     })),
     hand: me ? me.hand : [],
     playable: myTurn ? me.hand.filter(c => canPlay(s, c)).map(c => c.id) : [],
@@ -438,4 +450,80 @@ export function summary(s, code, onlineCount) {
     phase: s.phase,
     online: onlineCount,
   };
+}
+
+// ───────────────────────────────────────────────────────────
+// Computer players
+// ───────────────────────────────────────────────────────────
+export const MAX_BOTS = 20;
+const BOT_NAMES = ['Chintu', 'Pinky', 'Bunty', 'Golu', 'Munna', 'Tinku', 'Sonu', 'Babloo', 'Dolly',
+  'Raju', 'Guddu', 'Chiku', 'Laddu', 'Motu', 'Bittu', 'Rinku', 'Pappu', 'Gattu', 'Jaggu', 'Kittu'];
+
+export function botName(s) {
+  const used = new Set([...s.players, ...(s.spectators || [])].map(p => p.name.toLowerCase()));
+  const free = BOT_NAMES.filter(n => !used.has(n.toLowerCase()));
+  return free.length ? free[randInt(free.length)] : 'Computer';
+}
+
+const chance = p => randInt(1000) < p * 1000;
+
+function favouriteColor(hand) {
+  const n = { r: 0, y: 0, g: 0, b: 0 };
+  for (const c of hand) if (c.c !== 'w') n[c.c]++;
+  const best = Math.max(...Object.values(n));
+  const top = COLORS.filter(c => n[c] === best);
+  return top[randInt(top.length)];
+}
+
+// Pick the next action for a computer player whose turn it is
+export function botMove(s, bot) {
+  const hand = bot.hand;
+  const playable = hand.filter(c => canPlay(s, c));
+  if (!playable.length) return s.drawnCardId !== null ? { t: 'pass' } : { t: 'draw' };
+
+  // Second-last card: Normal always calls, Easy sometimes forgets
+  if (hand.length === 2 && !bot.saidOndu && chance(bot.level === 'easy' ? 0.55 : 1)) return { t: 'ondu' };
+
+  let card;
+  if (bot.level === 'easy') {
+    card = playable[randInt(playable.length)];
+  } else {
+    const n = s.players.length;
+    const next = s.players[mod(s.turn + s.dir, n)];
+    const threat = next && next.hand.length <= 2;   // next player is close to winning
+    const mine = favouriteColor(hand.filter(c => c.c !== 'w')) || s.color;
+    const score = c => {
+      let v = 0;
+      if (c.c === 'w') v -= 30;                       // save wilds for when they're needed
+      if (c.v === 'wd4') v -= 10;
+      if (c.c === mine) v += 8;                       // keep playing my strongest colour
+      if (/^\d$/.test(c.v)) v += Number(c.v);         // dump high points first
+      else if (c.c !== 'w') v += threat ? 40 : 12;    // actions hurt more when someone is close
+      if (threat && c.c === 'w' && c.v === 'wd4') v += 60;
+      if (s.pendingDraw > 0) v += 100;                // stacking beats picking up
+      return v;
+    };
+    playable.sort((a, b) => score(b) - score(a));
+    card = playable[0];
+  }
+  const rest = hand.filter(c => c !== card);
+  const color = card.c === 'w'
+    ? (bot.level === 'easy' ? COLORS[randInt(4)] : favouriteColor(rest) || COLORS[randInt(4)])
+    : undefined;
+  return { t: 'play', cardId: card.id, color };
+}
+
+// What should happen next on the computer players' side, if anything.
+// Returns { pid, msg, delay } or null. Call again after every change.
+export function nextBotAction(s) {
+  if (s.phase !== 'playing') return null;
+  const cur = current(s);
+  if (!cur?.bot) return null;
+  const someoneExposed = s.vulnerable && s.vulnerable !== cur.id;
+  // Give people a moment to call or catch before the computer moves on
+  const delay = (someoneExposed ? 1800 : 750) + randInt(600);
+  if (someoneExposed && !playerById(s, s.vulnerable)?.bot && chance(cur.level === 'easy' ? 0.3 : 0.75)) {
+    return { pid: cur.id, msg: { t: 'catch', target: s.vulnerable }, delay };
+  }
+  return { pid: cur.id, msg: botMove(s, cur), delay };
 }

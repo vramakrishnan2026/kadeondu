@@ -9,7 +9,7 @@ No player limit: an extra deck is added automatically for every 10 players.
 |---|---|
 | `public/config.js` | **Game name, call word and colours. Edit this to rename the game.** |
 | `public/index.html`, `app.js`, `style.css` | The game page players see |
-| `src/game.js` | The rules (deck, turns, +2/+4, skip, reverse, wild, calling, scoring) |
+| `public/shared/game.js` | The rules and the computer players (used by the server and by Play vs computer) |
 | `src/worker.js` | The Cloudflare part: one small "room server" per room code |
 | `wrangler.jsonc` | Cloudflare settings. `"name"` decides your web address |
 
@@ -58,6 +58,10 @@ No player limit: an extra deck is added automatically for every 10 players.
 - **Online now** shows everyone who has the site open and has typed a name. Tap **Invite** next to anyone not already in a room:
   they get a pop-up to join. Inviting from the home screen creates a room for you first.
   Inside a room, use **👥 Invite** at the top.
+- **🤖 Play vs computer** on the home screen: a solo game against 1–9 computer players (Easy or Normal), entirely on your phone.
+- In a room, the host can tap **🤖 Add computer player** (before a round or between rounds) to fill empty seats.
+  Easy plays any card that fits and sometimes forgets to call; Normal saves wilds, picks its strongest colour,
+  targets whoever is about to win, and catches people who forget to call.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.
