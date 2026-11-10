@@ -250,26 +250,33 @@
     if (myTurn && prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
     prevTurn = s.turnId;
 
-    // players strip (everyone, in turn order)
-    const opp = $('opponents');
-    opp.replaceChildren();
-    let turnEl = null;
-    for (const p of s.players) {
-      const d = el('div', 'opp' + (p.id === s.turnId ? ' turn' : '') + (p.id === s.you ? ' me' : '') + (p.online ? '' : ' away'));
-      const nm = el('div', 'oname');
-      nm.append(el('span', 'dot' + (p.online ? '' : ' away')), el('span', '', (p.bot ? '🤖 ' : '') + (p.id === s.you ? `${p.name} (you)` : p.name)));
-      const ct = el('div', 'ocount');
-      ct.append(el('span', 'mini-back'), el('span', '', `${p.count} · ${p.score} pts`));
-      d.append(nm, ct);
-      if (s.vulnerable === p.id && p.id !== s.you) {
+    // seats around the table: you at the bottom, others clockwise in turn order
+    const seats = $('seats');
+    seats.replaceChildren();
+    const n = s.players.length;
+    const meIdx = Math.max(0, s.players.findIndex(p => p.id === s.you));
+    const ring = $('ring').getBoundingClientRect();
+    const rx = 50 - Math.min(14, 5600 / Math.max(ring.width, 1));   // keep seats inside the edges
+    const ry = 50 - Math.min(16, 4400 / Math.max(ring.height, 1));
+    $('ring').classList.toggle('crowded', n > 8);
+    $('ring').classList.toggle('packed', n > 14);
+    s.players.forEach((p, i) => {
+      const k = (i - meIdx + n) % n;
+      const ang = Math.PI / 2 + (k * 2 * Math.PI) / n;   // 90° = bottom, increasing = clockwise
+      const d = el('div', 'seat' + (p.id === s.turnId ? ' turn' : '') + (p.id === s.you ? ' me' : '') + (p.online ? '' : ' away'));
+      d.style.left = `${50 + rx * Math.cos(ang)}%`;
+      d.style.top = `${50 + ry * Math.sin(ang)}%`;
+      d.dataset.name = p.name;
+      const av = el('div', 'avatar', p.bot ? '🤖' : (p.name.trim()[0] || '?').toUpperCase());
+      av.append(el('span', 'count', String(p.count)));
+      d.append(av, el('div', 'sname', p.id === s.you ? 'You' : p.name), el('div', 'sscore', `${p.score} pts`));
+      if (s.vulnerable === p.id && p.id !== s.you && !s.spectating) {
         const c = el('button', 'catch', 'Catch!');
         c.onclick = () => send({ t: 'catch', target: p.id });
         d.append(c);
       }
-      opp.append(d);
-      if (p.id === s.turnId) turnEl = d;
-    }
-    turnEl?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      seats.append(d);
+    });
 
     // watchers
     const w = $('watchers');
@@ -321,12 +328,14 @@
       if (myTurn) d.classList.add(playable.has(c.id) ? 'playable' : 'dim');
       if (playable.has(c.id)) {
         d.setAttribute('role', 'button');
-        d.onclick = () => playCard(c);
+        d.onclick = () => playCard(c, d);
       }
       hand.append(d);
     }
     const cw = hand.firstChild ? hand.firstChild.getBoundingClientRect().width : 80;
     hand.classList.toggle('roomy', s.hand.length * (cw + 6) < hand.clientWidth - 20);
+
+    if (!firstState) animateEvents(fresh, s);
 
     // round over
     if (s.phase === 'ended' && s.lastRound) {
@@ -351,7 +360,68 @@
     if (s.phase !== 'playing') $('colorPicker').classList.add('hidden');
   }
 
-  function playCard(c) {
+  // ── Card flight animations (built-in Web Animations, no library) ──
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  function centerOf(r) { return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function seatRect(name) {
+    const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === name);
+    return seat ? seat.querySelector('.avatar').getBoundingClientRect() : null;
+  }
+  function fly(node, fromRect, toRect, { delay = 0, duration = 480, fromScale = 0.55, toScale = 1, spin = 0 } = {}) {
+    if (!fromRect || !toRect) return Promise.resolve();
+    const a = centerOf(fromRect), b = centerOf(toRect);
+    node.classList.add('flying');
+    node.style.left = `${b.x}px`;
+    node.style.top = `${b.y}px`;
+    document.body.append(node);
+    const lift = Math.min(90, Math.hypot(b.x - a.x, b.y - a.y) * 0.25);
+    const anim = node.animate([
+      { transform: `translate(-50%,-50%) translate(${a.x - b.x}px, ${a.y - b.y}px) scale(${fromScale}) rotate(${spin}deg)`, opacity: 0.9 },
+      { transform: `translate(-50%,-50%) translate(${(a.x - b.x) / 2}px, ${(a.y - b.y) / 2 - lift}px) scale(${(fromScale + toScale) / 2 + 0.1}) rotate(${spin / 2}deg)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(-50%,-50%) scale(${toScale}) rotate(0deg)`, opacity: 1 },
+    ], { duration, delay, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'backwards' });
+    return anim.finished.then(() => node.remove(), () => node.remove());
+  }
+  function animateEvents(events, s) {
+    if (reduceMotion || !events.length) return;
+    const myName = s.players.find(p => p.id === s.you)?.name;
+    let drawDelay = 0;
+    for (const e of events.slice(-6)) {
+      if (e.k === 'play') {
+        const target = $('discard').querySelector('.card');
+        if (!target) continue;
+        const toRect = target.getBoundingClientRect();
+        const mine = e.p === myName && lastPlayFrom && Date.now() - lastPlayFrom.at < 4000;
+        const fromRect = mine ? lastPlayFrom.rect : seatRect(e.p);
+        if (mine) lastPlayFrom = null;
+        target.style.visibility = 'hidden';
+        const card = makeCard({ c: e.card.c, v: e.card.v });
+        card.style.width = `${toRect.width}px`;
+        fly(card, fromRect, toRect, { fromScale: mine ? 1 : 0.45, spin: (Math.random() * 50 - 25) }).then(() => {
+          target.style.visibility = '';
+          target.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 160 });
+        });
+      } else if (e.k === 'draw') {
+        const to = e.p === myName ? $('hand').getBoundingClientRect() : seatRect(e.p);
+        const from = $('drawPile').getBoundingClientRect();
+        if (!to) continue;
+        const toRect = e.p === myName
+          ? { left: to.left + to.width / 2 - 30, top: to.top + 10, width: 60, height: 80 }
+          : to;
+        for (let i = 0; i < Math.min(e.x || 1, 6); i++) {
+          const back = el('div', 'card back');
+          back.append(el('span', '', CFG.name));
+          back.style.width = `${from.width}px`;
+          fly(back, from, toRect, { delay: drawDelay + i * 110, duration: 420, fromScale: 1, toScale: 0.4, spin: 10 });
+        }
+        drawDelay += 120;
+      }
+    }
+  }
+
+  let lastPlayFrom = null; // where my card was when I tapped it
+  function playCard(c, node) {
+    if (node) lastPlayFrom = { rect: node.getBoundingClientRect(), at: Date.now() };
     if (c.c === 'w') {
       pendingWild = c.id;
       $('colorPicker').classList.remove('hidden');

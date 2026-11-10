@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#17171c">
   <title>Card game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap">
   <link rel="stylesheet" href="style.css">
   <script src="config.js"></script>
 </head>
@@ -73,19 +76,22 @@
 
   <!-- Game table -->
   <main id="game" class="screen hidden">
-    <div id="opponents" class="opponents"></div>
-    <div id="watchers" class="watchers hidden"></div>
-    <div class="table">
-      <div class="pile-wrap">
-        <button id="drawPile" class="card back" aria-label="Draw a card"><span>DRAW</span></button>
-        <div id="deckCount" class="muted small-text"></div>
+    <!-- Players sit around the piles; you are always at the bottom -->
+    <div id="ring" class="ring">
+      <div id="seats" class="seats"></div>
+      <div class="table">
+        <div class="pile-wrap">
+          <button id="drawPile" class="card back" aria-label="Draw a card"><span data-name>Game</span></button>
+          <div id="deckCount" class="muted small-text"></div>
+        </div>
+        <div class="center-info">
+          <div id="dirArrow" class="dir">↻</div>
+          <div id="colorDot" class="color-dot"></div>
+        </div>
+        <div class="pile-wrap"><div id="discard"></div><div class="muted small-text">&nbsp;</div></div>
       </div>
-      <div class="center-info">
-        <div id="dirArrow" class="dir">↻</div>
-        <div id="colorDot" class="color-dot"></div>
-      </div>
-      <div class="pile-wrap"><div id="discard"></div><div class="muted small-text">Top card</div></div>
     </div>
+    <div id="watchers" class="watchers hidden"></div>
     <div id="status" class="status"></div>
     <div class="actions">
       <button id="passBtn" class="secondary hidden">Keep card &amp; pass</button>

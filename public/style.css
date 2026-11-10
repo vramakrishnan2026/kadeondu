@@ -122,9 +122,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .card { width: var(--cw); aspect-ratio: 5 / 7.4; border-radius: calc(var(--cw) * .12); position: relative;
   color: #fff; font-weight: 900; user-select: none; padding: 0;
   box-shadow: 0 4px 12px rgba(0,0,0,.45); border: calc(var(--cw) * .045) solid #fff; overflow: hidden; }
-.card::before { content: ""; position: absolute; inset: 9%; border-radius: calc(var(--cw) * .08);
-  background: rgba(255,255,255,.14); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--cw) * .42); text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.card { box-shadow: 0 4px 12px rgba(0,0,0,.45), inset 0 0 0 calc(var(--cw) * .035) rgba(0,0,0,.12); }
+.card .mid, .card .corner { font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif; font-weight: 800; }
+.card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--cw) * .5); line-height: 1;
+  padding-top: calc(var(--cw) * .06); text-shadow: 0 calc(var(--cw) * .025) 0 rgba(0,0,0,.28); }
 .card .mid.word { font-size: calc(var(--cw) * .3); }
 .card .corner { position: absolute; font-size: calc(var(--cw) * .17); line-height: 1; }
 .card .tl { top: 6%; left: 8%; } .card .br { bottom: 6%; right: 8%; transform: rotate(180deg); }
@@ -132,8 +133,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .c-r { background: var(--red); } .c-y { background: var(--yellow); } .c-g { background: var(--green); } .c-b { background: var(--blue); }
 .c-w { background: conic-gradient(var(--red) 0 25%, var(--yellow) 0 50%, var(--green) 0 75%, var(--blue) 0); }
 .c-w .mid { text-shadow: 0 2px 6px rgba(0,0,0,.6); }
-.card.back { background: linear-gradient(135deg, var(--accent), #8a2be2); display: grid; place-items: center; }
-.card.back span { position: relative; font-size: calc(var(--cw) * .16); letter-spacing: .12em; }
+.card.back { background: #24242c; display: grid; place-items: center; border-color: #f4f4f6;
+  box-shadow: 0 4px 12px rgba(0,0,0,.45), inset 0 0 0 calc(var(--cw) * .06) var(--accent); }
+.card.back span { position: relative; font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif; font-weight: 800;
+  font-size: calc(var(--cw) * .17); line-height: 1; color: var(--accent); text-align: center; padding: 0 8%; transform: rotate(-12deg); }
 #drawPile.can { box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(255,255,255,.4); animation: pulse .8s infinite alternate; }
 
 /* Overlays */
@@ -150,3 +153,36 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .big-toast { font-size: 1.6rem; font-weight: 900; color: var(--accent); }
 
 @media (min-width: 900px) { :root { --cw: 96px; } }
+
+/* ── Round table: seats in a circle around the piles ───────── */
+.ring { position: relative; width: 100%; flex: 1; min-height: 330px; max-width: 760px; }
+.ring::before { content: ""; position: absolute; inset: 15% 13%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #2b3a32 0%, #1d2621 75%); border: 2px solid rgba(255,255,255,.07);
+  box-shadow: inset 0 0 40px rgba(0,0,0,.45); }
+.ring .table { position: absolute; inset: 0; min-height: 0; gap: clamp(.7rem, 4vw, 2rem); pointer-events: none; }
+.ring .table > * { pointer-events: auto; }
+.ring #discard .card, .ring #drawPile { --cw: clamp(54px, 15vw, 96px); }
+.seats { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.seat { position: absolute; transform: translate(-50%, -50%); width: 78px; display: flex; flex-direction: column;
+  align-items: center; gap: 1px; text-align: center; pointer-events: auto; transition: left .4s, top .4s; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: #3a3a46; display: grid; place-items: center;
+  font-weight: 800; font-size: 1.2rem; border: 3px solid rgba(255,255,255,.15); position: relative; }
+.seat.me .avatar { background: #4a3328; }
+.seat.turn .avatar { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,106,43,.25), 0 0 18px rgba(255,106,43,.7); animation: pulse .8s infinite alternate; }
+.seat.away { opacity: .5; }
+.avatar .count { position: absolute; right: -8px; bottom: -5px; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 99px;
+  background: #fff; color: #111; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
+.sname { font-size: .78rem; font-weight: 600; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sscore { font-size: .66rem; color: var(--muted); }
+.seat .catch { margin-top: 2px; padding: .25em .6em; font-size: .75rem; font-weight: 800; background: var(--red); color: #fff;
+  border-radius: 99px; animation: pulse .7s infinite alternate; }
+.ring.crowded .avatar { width: 36px; height: 36px; font-size: .95rem; }
+.ring.crowded .sscore { display: none; }
+.ring.crowded .seat { width: 62px; }
+.ring.crowded .sname { font-size: .68rem; max-width: 62px; }
+.ring.packed .avatar { width: 28px; height: 28px; font-size: .8rem; border-width: 2px; }
+.ring.packed .seat { width: 50px; }
+.ring.packed .sname { font-size: .6rem; max-width: 50px; }
+.ring.packed .avatar .count { min-width: 17px; height: 15px; font-size: .6rem; right: -7px; }
+.flying { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -50%); margin: 0; }
+@media (min-width: 900px) { .ring { min-height: 440px; } .avatar { width: 56px; height: 56px; } }
