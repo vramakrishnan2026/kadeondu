@@ -17,8 +17,8 @@
     <div class="topbar-right">
       <span id="roomChip" class="chip hidden"></span>
       <span id="netDot" class="net-dot" title="Connection"></span>
-      <button id="shareTopBtn" class="ghost small icon-btn" title="Share or copy the link" aria-label="Share">📤</button>
-      <button id="inviteTopBtn" class="ghost small hidden" aria-label="Invite">👥<span class="lbl"> Invite</span></button>
+      <button id="shareTopBtn" class="ghost small icon-btn" title="Share or copy the link" aria-label="Share"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button>
+      <button id="inviteTopBtn" class="ghost small hidden" aria-label="Invite"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M19 8v6M16 11h6"/></svg><span class="lbl"> Invite</span></button>
       <button id="leaveBtn" class="ghost small hidden">Leave</button>
     </div>
   </header>
@@ -44,6 +44,7 @@
       <div class="rooms-head"><h3>Online now</h3><span id="peopleCount" class="muted small-text"></span></div>
       <ul id="peopleHome" class="room-list"></ul>
       <p id="noPeople" class="muted small-text center">Nobody else is online yet.</p>
+      <footer class="credits"><span data-credits></span></footer>
     </div>
   </main>
 
@@ -162,7 +163,7 @@
     <div class="modal">
       <h3 id="shareTitle">Share</h3>
       <div id="shareUrl" class="share-url"></div>
-      <button id="shareNative" class="primary big">📤 Share to apps</button>
+      <button id="shareNative" class="primary big with-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg> Share to apps</button>
       <div class="share-row">
         <a id="shareWa" class="btn wa" target="_blank" rel="noopener">WhatsApp</a>
         <button id="shareCopy" class="secondary">📋 Copy link</button>

@@ -13,6 +13,7 @@
   document.querySelectorAll('[data-name]').forEach(el => (el.textContent = CFG.name));
   document.querySelectorAll('[data-tagline]').forEach(el => (el.textContent = CFG.tagline || ''));
   document.querySelectorAll('[data-call]').forEach(el => (el.textContent = CFG.callWord));
+  document.querySelectorAll('[data-credits]').forEach(el => (el.textContent = CFG.credits || ''));
   const th = CFG.theme || {};
   const rootStyle = document.documentElement.style;
   for (const [k, v] of Object.entries({ red: th.red, yellow: th.yellow, green: th.green, blue: th.blue, accent: th.accent, bg: th.background })) {

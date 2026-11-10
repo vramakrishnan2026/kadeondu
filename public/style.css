@@ -269,3 +269,11 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .topbar .small { padding: .3em .55em; }
   .chip { letter-spacing: .06em; padding: .2em .5em; }
 }
+
+/* line icons */
+.ico { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.2em; }
+.icon-btn .ico, #inviteTopBtn .ico { width: 18px; height: 18px; }
+.with-ico { display: inline-flex; align-items: center; justify-content: center; gap: .5em; }
+.credits { text-align: center; margin: 1.6rem 0 .6rem; font-size: .8rem; color: var(--muted); letter-spacing: .02em; }
+.credits span::before { content: "✦ "; color: var(--accent); }
+.credits span::after { content: " ✦"; color: var(--accent); }

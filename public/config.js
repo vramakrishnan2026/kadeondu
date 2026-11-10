@@ -6,6 +6,7 @@ window.GAME_CONFIG = {
   name: 'Kade Ondu',             // shown in the header, browser tab and share message
   callWord: 'Ondu!',             // what you shout on your last card (button text)
   tagline: 'Race to your last card. Anyone with the link can play.',
+  credits: 'Created by Vinay Ramakrishnan',   // shown at the bottom of the home screen
 
   // Shown over the table whenever someone plays a Wild +4.
   // Swap the picture by replacing public/fx/mani.webp (or point to another file).

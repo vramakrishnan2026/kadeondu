@@ -101,5 +101,7 @@ Reverse with 2 players acts as Skip. Wild +4 can be played anytime (no challenge
 Round winner scores everyone's leftover cards: numbers face value, action cards 20, wilds 50.
 
 ## Credits
+Created by **Vinay Ramakrishnan**.
+
 Card numbers use **Inter Black Italic** (© The Inter Project Authors, SIL Open Font License 1.1; see `public/fonts/LICENSE-Inter.txt`).
 Card artwork, table and rangoli pattern are original to this project.
