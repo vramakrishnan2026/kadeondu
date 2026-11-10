@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voice test</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { padding: 1rem; padding-top: max(1rem, env(safe-area-inset-top)); }
+  .wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: .9rem; }
+  h1 { margin: 0; font-size: 1.5rem; }
+  .card-box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: .9rem; display: flex; flex-direction: column; gap: .6rem; }
+  .card-box h2 { margin: 0; font-size: 1.05rem; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .row button { flex: 1; min-width: 130px; }
+  .res { font-size: .85rem; padding: .45rem .6rem; border-radius: 8px; background: rgba(0,0,0,.3); white-space: pre-wrap; word-break: break-word; }
+  .ok { color: #6fe39a; } .bad { color: #ff8a8a; } .warn { color: #ffd166; }
+  .meter { height: 14px; border-radius: 7px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .meter > div { height: 100%; width: 0; background: linear-gradient(90deg, #2f9e5b, #f2b705, #e5484d); transition: width .08s; }
+  #log { font-family: ui-monospace, Menlo, monospace; font-size: .72rem; max-height: 260px; overflow: auto; }
+  select { width: auto; }
+  .step-n { display: inline-grid; place-items: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--accent); color: #fff; font-size: .8rem; margin-right: .35em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row" style="justify-content:space-between">
+    <h1>🎙 Voice test</h1>
+    <a href="/" class="btn ghost small" style="flex:0">← Back to game</a>
+  </div>
+  <p class="muted small-text" style="margin:0">Temporary page for fixing voice notes. Do the steps in order. At the end, tap <b>Copy report</b> and send it.</p>
+
+  <div class="card-box">
+    <h2><span class="step-n">1</span>This phone & browser</h2>
+    <div id="env" class="res"></div>
+  </div>
+
+  <div class="card-box">
+    <h2><span class="step-n">2</span>Microphone permission</h2>
+    <div class="row">
+      <label class="field inline" style="flex:1">Audio mode
+        <select id="sessionType"><option value="">leave as is</option><option>auto</option><option>play-and-record</option><option>playback</option></select>
+      </label>
+    </div>
+    <div class="row"><button id="askMic" class="primary">Ask for microphone</button><button id="stopMic" class="ghost">Turn mic off</button></div>
+    <div id="micRes" class="res muted">Not tried yet</div>
+    <div class="muted small-text">Speak now: the bar should move.</div>
+    <div class="meter"><div id="level"></div></div>
+  </div>
+
+  <div class="card-box">
+    <h2><span class="step-n">3</span>Record 3 seconds</h2>
+    <div class="row">
+      <label class="field inline" style="flex:1">Format
+        <select id="mime"></select>
+      </label>
+    </div>
+    <div class="row"><button id="rec3" class="primary">Record 3 s</button></div>
+    <div id="recRes" class="res muted">Not tried yet</div>
+  </div>
+
+  <div class="card-box">
+    <h2><span class="step-n">4</span>Play it back on this phone</h2>
+    <div class="row"><button id="playEl" class="secondary">Play (audio player)</button><button id="playWa" class="secondary">Play (Web Audio)</button></div>
+    <div id="playRes" class="res muted">Record first</div>
+  </div>
+
+  <div class="card-box">
+    <h2><span class="step-n">5</span>Send between two phones</h2>
+    <div class="muted small-text">Both phones open this page and join the same test room.</div>
+    <div class="row">
+      <input id="pairCode" value="VTEST" maxlength="8" style="flex:1;text-transform:uppercase">
+      <button id="pairJoin" class="primary" style="flex:0">Join</button>
+    </div>
+    <div class="row"><button id="pairSend" class="secondary" disabled>Send my 3 s recording</button></div>
+    <div id="pairRes" class="res muted">Not joined</div>
+  </div>
+
+  <div class="card-box">
+    <h2>Report</h2>
+    <div class="row"><button id="copy" class="primary">📋 Copy report</button><button id="share" class="secondary">Share report</button></div>
+    <div id="log" class="res"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const lines = [];
+  function log(msg, cls = '') {
+    const t = new Date().toTimeString().slice(0, 8);
+    lines.push(`${t} ${msg}`);
+    const d = document.createElement('div'); d.textContent = `${t} ${msg}`; if (cls) d.className = cls;
+    $('log').append(d); $('log').scrollTop = 1e9;
+  }
+  function set(id, text, cls) { const e = $(id); e.textContent = text; e.className = 'res ' + (cls || ''); log(`[${id}] ${text}`, cls); }
+  const errText = e => `${e?.name || 'Error'}: ${e?.message || e}`;
+
+  // 1. environment
+  const ua = navigator.userAgent;
+  const isBrave = !!navigator.brave;
+  const env = {
+    browser: isBrave ? 'Brave' : /CriOS/.test(ua) ? 'Chrome (iOS)' : /FxiOS/.test(ua) ? 'Firefox (iOS)' : /EdgiOS/.test(ua) ? 'Edge (iOS)' : /Safari/.test(ua) && /iPhone|iPad/.test(ua) ? 'Safari' : 'other',
+    iOS: (ua.match(/OS (\d+[_\d]*) like Mac/) || [])[1]?.replace(/_/g, '.') || 'no',
+    secure: window.isSecureContext,
+    getUserMedia: !!navigator.mediaDevices?.getUserMedia,
+    MediaRecorder: !!window.MediaRecorder,
+    audioSession: navigator.audioSession ? `yes (now: ${navigator.audioSession.type})` : 'no',
+    installedApp: window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+  };
+  const types = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+  const supported = window.MediaRecorder ? types.filter(t => MediaRecorder.isTypeSupported?.(t)) : [];
+  const a = document.createElement('audio');
+  const canPlay = { mp4aac: a.canPlayType('audio/mp4; codecs="mp4a.40.2"'), webmOpus: a.canPlayType('audio/webm; codecs="opus"'), mp4opus: a.canPlayType('audio/mp4; codecs="opus"') };
+  $('env').textContent =
+    `Browser: ${env.browser}\niOS version: ${env.iOS}\nSecure page: ${env.secure}\nMic API: ${env.getUserMedia}\nRecorder: ${env.MediaRecorder}\n` +
+    `Audio session: ${env.audioSession}\nOpened as installed app: ${env.installedApp}\nCan record: ${supported.join(', ') || 'none'}\n` +
+    `Can play mp4/AAC: ${canPlay.mp4aac || 'no'} · webm/Opus: ${canPlay.webmOpus || 'no'} · mp4/Opus: ${canPlay.mp4opus || 'no'}`;
+  log('UA ' + ua);
+  log('ENV ' + $('env').textContent.replace(/\n/g, ' | '));
+  navigator.permissions?.query({ name: 'microphone' }).then(p => log(`Mic permission state: ${p.state}`)).catch(() => log('Mic permission state: unknown'));
+  for (const t of supported.length ? supported : ['(browser default)']) {
+    const o = document.createElement('option'); o.value = t === '(browser default)' ? '' : t; o.textContent = t; $('mime').append(o);
+  }
+  if (supported.length) { const o = document.createElement('option'); o.value = ''; o.textContent = '(browser default)'; $('mime').append(o); }
+
+  // 2. mic
+  let stream = null, ctx = null, raf = 0;
+  $('askMic').onclick = async () => {
+    const st = $('sessionType').value;
+    if (st && navigator.audioSession) { try { navigator.audioSession.type = st; log(`audioSession.type set to ${st}`); } catch (e) { log('audioSession set failed ' + errText(e), 'bad'); } }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const tr = stream.getAudioTracks()[0];
+      set('micRes', `✅ Mic allowed: "${tr?.label || 'microphone'}", state ${tr?.readyState}, muted ${tr?.muted}`, 'ok');
+      tr.onmute = () => log('track muted', 'warn'); tr.onunmute = () => log('track unmuted'); tr.onended = () => log('track ended', 'warn');
+      try {
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+        const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(stream).connect(an);
+        const buf = new Uint8Array(an.fftSize); let peak = 0, t0 = Date.now();
+        cancelAnimationFrame(raf);
+        const tick = () => { an.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v - 128)); peak = Math.max(peak, m);
+          $('level').style.width = Math.min(100, m / 1.28) + '%';
+          if (Date.now() - t0 > 4000 && t0) { log(`Mic level peak in first 4 s: ${peak}/128 ${peak < 3 ? '(SILENT: mic gives no sound)' : '(sound OK)'}`, peak < 3 ? 'bad' : 'ok'); t0 = 0; }
+          raf = requestAnimationFrame(tick); };
+        tick();
+      } catch (e) { log('Level meter failed ' + errText(e), 'warn'); }
+    } catch (e) {
+      set('micRes', `❌ ${errText(e)}`, 'bad');
+    }
+  };
+  $('stopMic').onclick = () => { stream?.getTracks().forEach(t => t.stop()); stream = null; cancelAnimationFrame(raf); $('level').style.width = 0; set('micRes', 'Mic turned off', 'muted'); };
+
+  // 3. record
+  let blob = null, dataUrl = null;
+  $('rec3').onclick = async () => {
+    if (!stream) return set('recRes', 'Do step 2 first', 'warn');
+    const mime = $('mime').value;
+    let rec;
+    try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : {}); }
+    catch (e) { return set('recRes', `❌ Recorder could not start with "${mime || 'default'}": ${errText(e)}`, 'bad'); }
+    const chunks = [];
+    rec.ondataavailable = e => { chunks.push(e.data); log(`chunk ${e.data.size} bytes (${e.data.type})`); };
+    rec.onerror = e => set('recRes', `❌ Recorder error: ${errText(e.error)}`, 'bad');
+    rec.onstop = () => {
+      blob = new Blob(chunks, { type: (rec.mimeType || chunks[0]?.type || 'audio/mp4').split(';')[0] });
+      const fr = new FileReader(); fr.onload = () => { dataUrl = fr.result; $('pairSend').disabled = !pairWs; };
+      fr.readAsDataURL(blob);
+      set('recRes', blob.size ? `✅ Recorded ${blob.size} bytes as ${rec.mimeType || blob.type || 'unknown'}` : '❌ Recording is empty (0 bytes)', blob.size ? 'ok' : 'bad');
+    };
+    try { rec.start(); set('recRes', `Recording… (${rec.mimeType || 'default format'})`, 'warn'); }
+    catch (e) { return set('recRes', `❌ start(): ${errText(e)}`, 'bad'); }
+    setTimeout(() => rec.state !== 'inactive' && rec.stop(), 3000);
+  };
+
+  // 4. play back
+  $('playEl').onclick = () => {
+    if (!blob) return set('playRes', 'Record first', 'warn');
+    const el = new Audio(URL.createObjectURL(blob));
+    el.onended = () => set('playRes', '✅ Played to the end with the audio player. Did you hear it?', 'ok');
+    el.onerror = () => set('playRes', `❌ Audio player error code ${el.error?.code}`, 'bad');
+    el.play().then(() => log('audio player started')).catch(e => set('playRes', `❌ play(): ${errText(e)}`, 'bad'));
+  };
+  $('playWa').onclick = async () => {
+    if (!blob) return set('playRes', 'Record first', 'warn');
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+      const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const s = ctx.createBufferSource(); s.buffer = buf; s.connect(ctx.destination); s.start();
+      s.onended = () => set('playRes', `✅ Web Audio played ${buf.duration.toFixed(1)} s. Did you hear it?`, 'ok');
+    } catch (e) { set('playRes', `❌ Web Audio decode/play: ${errText(e)}`, 'bad'); }
+  };
+
+  // 5. two phones
+  let pairWs = null;
+  $('pairJoin').onclick = () => {
+    const code = $('pairCode').value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) return set('pairRes', 'Code must be 4–8 letters/numbers', 'warn');
+    pairWs?.close();
+    pairWs = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${code}`);
+    pairWs.onopen = () => pairWs.send(JSON.stringify({ t: 'join', name: `Test ${env.browser}` }));
+    pairWs.onmessage = ev => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.t === 'welcome') { set('pairRes', `✅ Joined test room ${code} as ${m.name}. Waiting for the other phone…`, 'ok'); $('pairSend').disabled = !dataUrl; }
+      if (m.t === 'state') log(`room has ${m.players.length} people: ${m.players.map(p => p.name).join(', ')}`);
+      if (m.t === 'error') set('pairRes', `Server: ${m.msg}`, 'warn');
+      if (m.t === 'voice') {
+        const type = (m.data.match(/^data:([^;,]+)/) || [])[1];
+        log(`received voice from ${m.name}: ${type}, ${m.data.length} chars`);
+        const el = new Audio(m.data);
+        el.onended = () => set('pairRes', `✅ Played ${m.name}'s note (${type}). Did you hear it?`, 'ok');
+        el.onerror = () => set('pairRes', `❌ Got ${m.name}'s note (${type}) but this phone can't play it (error ${el.error?.code})`, 'bad');
+        el.play().catch(e => set('pairRes', `❌ Got ${m.name}'s note but play() was blocked: ${errText(e)}. Tap anywhere and try again`, 'bad'));
+      }
+    };
+    pairWs.onclose = () => log('test room connection closed');
+  };
+  $('pairSend').onclick = () => {
+    if (!dataUrl) return set('pairRes', 'Record in step 3 first', 'warn');
+    if (pairWs?.readyState !== 1) return set('pairRes', 'Join the test room first', 'warn');
+    pairWs.send(JSON.stringify({ t: 'voice', data: dataUrl }));
+    set('pairRes', `Sent ${blob.size} bytes (${blob.type}). Ask the other phone if it played.`, 'ok');
+  };
+
+  // report
+  const report = () => ['Kade Ondu voice test report', ...lines].join('\n');
+  $('copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(report()); $('copy').textContent = '✅ Copied'; }
+    catch { const t = document.createElement('textarea'); t.value = report(); document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); $('copy').textContent = '✅ Copied'; }
+    setTimeout(() => ($('copy').textContent = '📋 Copy report'), 2000);
+  };
+  $('share').onclick = () => navigator.share ? navigator.share({ title: 'Voice test report', text: report() }).catch(() => {}) : $('copy').click();
+})();
+</script>
+</body>
+</html>

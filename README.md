@@ -110,3 +110,7 @@ Created by **Vinay Ramakrishnan**.
 Card numbers use **Inter Black Italic** (© The Inter Project Authors, SIL Open Font License 1.1; see `public/fonts/LICENSE-Inter.txt`).
 Card artwork, table and rangoli pattern are original to this project.
 Wild +4 laugh sound: "evil laugh" by freesound_community (supplied by the project owner; the file name indicates Pixabay, whose licence allows use in games).
+
+## Temporary: voice test page
+`public/voicetest.html` (linked as "🎙 Voice test (temporary)" on the home screen) checks mic permission, mic level, recording, playback and sending between two phones, and builds a report.
+To remove it: delete `public/voicetest.html`, the `<!-- TEMPORARY: voice test link -->` lines in `public/index.html`, and the `.voicetest-link` rule in `public/style.css`.

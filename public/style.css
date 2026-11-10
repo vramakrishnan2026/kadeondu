@@ -326,3 +326,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .tile .t-sub { font-size: .78rem; color: var(--muted); }
 .primary-tile { background: linear-gradient(140deg, #ff7a3d, #e2501a); border-color: transparent; }
 .primary-tile .t-sub { color: rgba(255,255,255,.85); }
+
+/* TEMPORARY voice test link */
+.voicetest-link { display: block; text-align: center; margin-top: 1rem; color: var(--muted); font-size: .85rem; }
