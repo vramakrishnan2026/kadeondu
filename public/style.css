@@ -384,3 +384,11 @@ body.lefty .act-main { flex-direction: row-reverse; margin-left: 0; margin-right
   .draw-btn, .pass-btn { min-width: 92px; height: 58px; font-size: 1.05rem; }
   .call, body.in-game .call { padding: 0 .9em; }
 }
+
+/* Draw: compact (still a 48px+ target) */
+.draw-btn { height: 52px; min-width: 84px; padding: 0 .8rem 0 2.3rem; border-radius: 14px; font-size: 1rem; }
+.draw-btn .mini-deck { left: .55rem; width: 20px; height: 28px; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--accent), 2px 2px 0 #fdfbf6, 3px 3px 0 #15151b; }
+.pass-btn { height: 52px; min-width: 84px; padding: 0 .7rem; border-radius: 14px; font-size: .9rem; }
+.call, body.in-game .call { min-height: 52px; }
+.mic, body.in-game .mic { width: 52px; height: 52px; }
+@media (max-width: 380px) { .draw-btn, .pass-btn { min-width: 80px; height: 50px; font-size: .95rem; } }
