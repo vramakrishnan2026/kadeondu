@@ -57,7 +57,7 @@
   function makeCard(c) {
     const d = el('div', `card c-${c.c}`);
     const lab = cardLabel(c.v);
-    d.append(el('span', 'corner tl', lab), el('span', 'mid', lab), el('span', 'corner br', lab));
+    d.append(el('span', 'burst'), el('span', 'corner tl', lab), el('span', 'mid', lab), el('span', 'corner br', lab));
     if (c.v === '6' || c.v === '9') d.classList.add('ul'); // tell 6 from 9 upside down
     d.setAttribute('aria-label', cardName(c));
     return d;

@@ -97,3 +97,7 @@ Standard 108-card deck per 10 players: numbers 0–9, Skip, Reverse, Draw 2, Wil
 Match colour or symbol. If you can't (or don't want to) play, draw one; if it fits you may play it or keep it.
 Reverse with 2 players acts as Skip. Wild +4 can be played anytime (no challenge rule).
 Round winner scores everyone's leftover cards: numbers face value, action cards 20, wilds 50.
+
+## Credits
+Card numbers use **Inter Black Italic** (© The Inter Project Authors, SIL Open Font License 1.1; see `public/fonts/LICENSE-Inter.txt`).
+Card artwork, table and rangoli pattern are original to this project.
