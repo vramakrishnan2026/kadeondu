@@ -65,6 +65,8 @@ No player limit: an extra deck is added automatically for every 10 players.
 - **Time per turn** (host setting, default 15 s; Off, 10, 15, 20, 30, 45 or 60 s). A ring around the player's
   avatar counts down. When time runs out the game moves for them: it plays the first card that fits,
   otherwise draws and plays that card if it fits, or passes. It never calls for them.
+- **Wild +4 effect**: whenever someone plays a Wild +4, Mani rises over the deck with an evil laugh for 3 seconds.
+  Change or switch it off under `drawFourEffect` in `public/config.js` (picture: `public/fx/mani.webp`).
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.

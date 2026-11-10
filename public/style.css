@@ -193,5 +193,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .status .secs { display: inline-block; min-width: 2.6em; margin-left: .4em; padding: .05em .45em; border-radius: 99px;
   background: rgba(255,255,255,.1); font-variant-numeric: tabular-nums; }
 .status .secs.hurry { background: var(--red); color: #fff; }
+/* Wild +4 effect */
+.fx-laugh { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
+.fx-flash { position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(ellipse at 50% 45%, rgba(255,40,0,.35) 0%, rgba(120,0,0,.55) 55%, rgba(20,0,0,.8) 100%); }
+.fx-who { position: absolute; width: min(86vw, 560px); transform: translate(-50%, -50%); }
+.fx-bob { display: flex; flex-direction: column; align-items: center; }
+.fx-who img { width: 100%; display: block; filter: drop-shadow(0 0 28px rgba(255,60,0,.75)); }
+.fx-text { margin-top: -8%; font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif; font-weight: 800;
+  font-size: clamp(1.6rem, 8.5vw, 3.4rem); color: #ff3b1f; letter-spacing: .03em; line-height: 1; white-space: nowrap;
+  text-shadow: 0 0 12px rgba(255,80,0,.9), 0 3px 0 #300; transform: rotate(-6deg); }
 .flying { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -50%); margin: 0; }
 @media (min-width: 900px) { .ring { min-height: 440px; } .avatar { width: 56px; height: 56px; } }

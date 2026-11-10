@@ -204,6 +204,7 @@
     const fresh = s.log.filter(e => e.n > lastSeq);
     if (!firstState) {
       for (const e of fresh) {
+        if (e.k === 'play' && e.card?.v === 'wd4') showDrawFour();
         if (e.k === 'call') toast(logText(e), true);
         else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
@@ -368,6 +369,65 @@
       $('endOverlay').classList.add('hidden');
     }
     if (s.phase !== 'playing') $('colorPicker').classList.add('hidden');
+  }
+
+  // ── Wild +4 effect: Mani grows over the deck with an evil laugh ──
+  const FX = CFG.drawFourEffect || {};
+  if (FX.enabled && FX.image) { const pre = new Image(); pre.src = FX.image; }
+  let fxNode = null;
+  function evilLaugh() {
+    if (!FX.sound) return;
+    try {
+      if (typeof FX.sound === 'string') { const a = new Audio(FX.sound); a.volume = 0.9; a.play().catch(() => {}); return; }
+      if (!window.speechSynthesis) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('Mwa ha ha ha haaa!');
+      u.pitch = 0.1; u.rate = 0.85; u.volume = 1;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+  function showDrawFour() {
+    if (!FX.enabled || !FX.image) return;
+    const dur = FX.durationMs || 3000;
+    fxNode?.remove();
+    const pile = $('discard').getBoundingClientRect();
+    const cx = pile.width ? pile.left + pile.width / 2 : innerWidth / 2;
+    const cy = pile.height ? pile.top + pile.height / 2 : innerHeight / 2;
+    const wrap = el('div', 'fx-laugh');
+    const flash = el('div', 'fx-flash');
+    const who = el('div', 'fx-who');
+    who.style.left = `${cx}px`;
+    who.style.top = `${cy}px`;
+    const bob = el('div', 'fx-bob');
+    const img = el('img');
+    img.src = FX.image;
+    img.alt = '';
+    bob.append(img);
+    if (FX.text) bob.append(el('div', 'fx-text', FX.text));
+    who.append(bob);
+    wrap.append(flash, who);
+    document.body.append(wrap);
+    fxNode = wrap;
+    // grow from the deck, hold big while laughing, fade away
+    who.animate([
+      { transform: 'translate(-50%,-50%) scale(.12) rotate(-8deg)', opacity: 0, filter: 'brightness(2)' },
+      { transform: 'translate(-50%,-50%) scale(.75) rotate(3deg)', opacity: 1, filter: 'brightness(1.3)', offset: .14 },
+      { transform: 'translate(-50%,-50%) scale(1.15) rotate(-1deg)', opacity: 1, filter: 'brightness(1)', offset: .8 },
+      { transform: 'translate(-50%,-50%) scale(1.45) rotate(0deg)', opacity: 0, filter: 'brightness(1.6)' },
+    ], { duration: dur, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
+    // laughing: quick head-bob and shake
+    if (!reduceMotion) bob.animate([
+      { transform: 'translateY(0) rotate(0deg)' },
+      { transform: 'translateY(-10px) rotate(-3deg)' },
+      { transform: 'translateY(4px) rotate(2.5deg)' },
+      { transform: 'translateY(-6px) rotate(-1.5deg)' },
+      { transform: 'translateY(0) rotate(0deg)' },
+    ], { duration: 260, iterations: Math.ceil(dur / 260) - 1, delay: dur * 0.1 });
+    flash.animate([{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: .6, offset: .7 }, { opacity: 0 }],
+      { duration: dur, fill: 'forwards' });
+    try { navigator.vibrate?.([120, 80, 120, 80, 200]); } catch {}
+    evilLaugh();
+    setTimeout(() => { if (fxNode === wrap) { wrap.remove(); fxNode = null; } }, dur + 50);
   }
 
   // ── Turn clock ─────────────────────────────────────────
