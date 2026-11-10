@@ -416,9 +416,9 @@
     if (!FX.enabled || !FX.image) return;
     const dur = FX.durationMs || 3000;
     fxNode?.remove();
-    const pile = $('discard').getBoundingClientRect();
-    const cx = pile.width ? pile.left + pile.width / 2 : innerWidth / 2;
-    const cy = pile.height ? pile.top + pile.height / 2 : innerHeight / 2;
+    // centre of the screen, both ways
+    const cx = innerWidth / 2;
+    const cy = innerHeight / 2;
     const wrap = el('div', 'fx-laugh');
     const flash = el('div', 'fx-flash');
     const who = el('div', 'fx-who');
