@@ -277,7 +277,7 @@ export class Lobby extends DurableObject {
       if (now - r.at > LIST_STALE_MS) delete this.rooms[code];
     }
     return Object.values(this.rooms)
-      .filter(r => r.online > 0)
+      .filter(r => r.online > 0 && !r.private)   // private rooms never appear in the list
       .sort((a, b) => (a.phase === 'playing') - (b.phase === 'playing') || b.at - a.at)
       .slice(0, 100)
       .map(({ at, ...r }) => r);
@@ -294,7 +294,11 @@ export class Lobby extends DurableObject {
       if (!prev || (!prev.room && a.room)) byId.set(a.cid, { id: a.cid, name: a.name, room: a.room || null });
     }
     return [...byId.values()]
-      .map(p => ({ ...p, roomHost: p.room ? this.rooms[p.room]?.host || '' : '' }))
+      .map(p => {
+        const r = p.room ? this.rooms[p.room] : null;
+        // don't reveal who hosts a private room or its code
+        return r?.private ? { ...p, room: 'PRIVATE', roomHost: '', private: true } : { ...p, roomHost: r?.host || '' };
+      })
       .sort((a, b) => a.name.localeCompare(b.name))
       .slice(0, 200);
   }

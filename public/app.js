@@ -207,6 +207,7 @@
   // ── Rendering ─────────────────────────────────────────────
   function render(s) {
     const firstState = !S;
+    if (room && !solo) $('roomChip').textContent = (s.settings?.private ? '🔒 ' : '') + room;
     S = s;
     const me = s.players.find(p => p.id === s.you);
     const isHost = s.hostId === s.you;
@@ -249,6 +250,7 @@
       $('hostSettings').classList.toggle('hidden', !isHost);
       $('stackingInput').checked = s.settings.stacking;
       $('wd4FxInput').checked = !!s.settings.wd4Fx;
+      $('privateInput').checked = !!s.settings.private;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
       $('turnTimeInput').value = String(s.settings.turnTime || 0);
       $('handSizeInput').value = String(s.settings.handSize);
@@ -256,7 +258,7 @@
         `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
         (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
         ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
-        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '');
+        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -342,9 +344,14 @@
     tickClock();
 
     // actions
-    $('drawBtn').classList.toggle('hidden', !canDraw);
-    $('drawBtn').textContent = s.pendingDraw > 0 ? `Pick up ${s.pendingDraw}` : 'Draw';
-    $('passBtn').classList.toggle('hidden', !(myTurn && s.drawnCardId !== null));
+    // Draw stays in the same spot (greyed out when it isn't your turn); "Keep & pass" takes its place after drawing
+    const keeping = myTurn && s.drawnCardId !== null;
+    $('drawBtn').classList.toggle('hidden', s.phase !== 'playing' || s.spectating || keeping);
+    $('drawBtn').disabled = !canDraw;
+    $('drawBtn').classList.toggle('penalty', myTurn && s.pendingDraw > 0);
+    $('drawBtn').querySelector('.draw-lbl').textContent = myTurn && s.pendingDraw > 0 ? `Pick up ${s.pendingDraw}` : 'Draw';
+    $('drawBtn').setAttribute('aria-label', myTurn && s.pendingDraw > 0 ? `Pick up ${s.pendingDraw} cards` : 'Draw a card');
+    $('passBtn').classList.toggle('hidden', !keeping);
     $('callBtn').disabled = !s.canCall;
     const turnPlayer = s.players.find(p => p.id === s.turnId);
     $('skipTurnBtn').classList.toggle('hidden', !(isHost && s.phase === 'playing' && turnPlayer && !turnPlayer.online && turnPlayer.id !== s.you));
@@ -880,7 +887,7 @@
     const here = !free && inRoom() && p.room === room;
     info.append(
       el('div', 'rname', p.name),
-      el('div', 'status-txt' + (free ? ' free' : ''), free ? '● Online' : here ? 'In this room' : `In ${p.roomHost ? p.roomHost + "'s" : 'a'} room`),
+      el('div', 'status-txt' + (free ? ' free' : ''), free ? '● Online' : p.private ? 'In a private room' : here ? 'In this room' : `In ${p.roomHost ? p.roomHost + "'s" : 'a'} room`),
     );
     li.append(info);
     if (free) {
@@ -1065,6 +1072,12 @@
   $('copyBtn').onclick = copyLink;
   $('stackingInput').onchange = e => send({ t: 'settings', stacking: e.target.checked });
   $('wd4FxInput').onchange = e => send({ t: 'settings', wd4Fx: e.target.checked });
+  $('privateInput').onchange = e => send({ t: 'settings', private: e.target.checked });
+  // left-handed layout (saved on this phone)
+  const applyLefty = on => document.body.classList.toggle('lefty', on);
+  $('leftyInput').checked = !!store.get('cardgame-lefty');
+  applyLefty($('leftyInput').checked);
+  $('leftyInput').onchange = e => { store.set('cardgame-lefty', e.target.checked); applyLefty(e.target.checked); };
   $('handSizeInput').onchange = e => send({ t: 'settings', handSize: Number(e.target.value) });
   $('startBtn').onclick = () => send({ t: 'start' });
   $('botLevelInput').onchange = e => send({ t: 'settings', botLevel: e.target.value });

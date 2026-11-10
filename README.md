@@ -57,6 +57,8 @@ No player limit: an extra deck is added automatically for every 10 players.
 - Others open the link (or pick the room from **Open rooms** on the home screen), type their name, tap **Join**.
 - Anyone joining a game already in progress **watches** (no one's cards are shown) and is dealt in when the round ends.
 - The home screen lists every room that has someone in it, live. Empty rooms drop off the list.
+- **🔒 Private room** (host setting): hidden from Open rooms; others can only join with the link or code. Online now shows people in it as "In a private room".
+- **Controls** sit in the thumb's easy reach: Draw (big, right), Ondu! and the mic next to it; mute and skip on the far side. **✋ Left-handed controls** on the home screen mirrors them.
 - **Online now** shows everyone who has the site open and has typed a name. Tap **Invite** next to anyone not already in a room:
   they get a pop-up to join. Inviting from the home screen creates a room for you first.
   Inside a room, use **👥 Invite** at the top.

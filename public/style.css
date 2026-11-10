@@ -355,3 +355,32 @@ body.in-game .watch-note { flex: none; padding: .6rem; margin-bottom: .2rem; }
 @media (min-width: 900px) { body.in-game .ring { min-height: 0; } }
 
 .chip { white-space: nowrap; }
+
+/* ── Controls laid out for the thumb (research: right thumb most common; 48 px targets) ── */
+.actions { width: 100%; max-width: 560px; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: nowrap; }
+.act-side, .act-main { display: flex; align-items: center; gap: .5rem; }
+.act-main { margin-left: auto; }
+body.lefty .actions { flex-direction: row-reverse; }
+body.lefty .act-main { flex-direction: row-reverse; margin-left: 0; margin-right: auto; }
+.actions button { min-height: 48px; min-width: 48px; }
+.act-side .icon-btn, .act-side .mute { width: 48px; height: 48px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
+.act-side #skipTurnBtn { font-size: .78rem; padding: .3em .7em; border-radius: 14px; }
+.mic, body.in-game .mic { width: 56px; height: 56px; }
+.call, body.in-game .call { min-height: 56px; padding: 0 1.25em; font-size: 1.1rem; }
+/* Draw: a big card-shaped button */
+.draw-btn { position: relative; height: 64px; min-width: 104px; padding: 0 1rem 0 2.9rem; border-radius: 16px; display: grid; place-items: center;
+  background: linear-gradient(160deg, #3a3a48, #23232c); border: 2px solid rgba(255,255,255,.22); color: #fff;
+  font-family: "KO Numbers", system-ui, sans-serif; font-style: italic; font-weight: 900; font-size: 1.15rem; letter-spacing: .02em;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.draw-btn .mini-deck { position: absolute; left: .7rem; top: 50%; width: 26px; height: 36px; transform: translateY(-50%) rotate(-8deg); border-radius: 5px;
+  background: #24242c; border: 2px solid #fdfbf6; box-shadow: inset 0 0 0 3px var(--accent), 3px 3px 0 #fdfbf6, 4px 4px 0 #15151b; }
+.draw-btn:not(:disabled) { background: linear-gradient(160deg, #ff7a3d, #d9480f); border-color: #fff; animation: pulse .8s infinite alternate; }
+.draw-btn.penalty:not(:disabled) { background: linear-gradient(160deg, #ff5a5f, #b3141c); }
+.draw-btn:disabled { opacity: .45; animation: none; }
+.pass-btn { height: 64px; min-width: 104px; padding: 0 1rem; border-radius: 16px; font-weight: 800; background: #2f9e5b; color: #fff;
+  border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.hand-pref { justify-content: center; color: var(--muted); font-size: .9rem; }
+@media (max-width: 380px) {
+  .draw-btn, .pass-btn { min-width: 92px; height: 58px; font-size: 1.05rem; }
+  .call, body.in-game .call { padding: 0 .9em; }
+}
