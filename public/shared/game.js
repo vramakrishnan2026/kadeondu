@@ -52,7 +52,10 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7, botLevel: 'normal' },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15 },
+    turnNo: 0,       // goes up every time the turn moves on
+    deadline: null,  // ms timestamp when the current person's time runs out
+    deadlineFor: -1,
     round: 0,
     deck: [],
     discard: [],
@@ -129,6 +132,46 @@ function give(s, p, n) {
 
 function advance(s, k) {
   s.turn = mod(s.turn + s.dir * k, s.players.length);
+  s.turnNo = (s.turnNo || 0) + 1;
+}
+
+export const TURN_TIMES = [0, 10, 15, 20, 30, 45, 60];
+
+// Start the clock whenever a new person's turn begins (computer players don't need one)
+export function refreshDeadline(s, now = Date.now()) {
+  if (s.phase !== 'playing' || !s.settings.turnTime) { s.deadline = null; return; }
+  if (s.deadlineFor === s.turnNo) return;
+  s.deadlineFor = s.turnNo;
+  s.deadline = current(s)?.bot ? null : now + s.settings.turnTime * 1000;
+}
+
+// Time's up: the simplest possible move. Play the first card that fits,
+// otherwise draw, then play that card if it fits or pass. No calling.
+function autoMove(s, p) {
+  if (s.pendingDraw > 0) return { t: 'draw' };
+  if (s.drawnCardId !== null) {
+    const c = p.hand.find(x => x.id === s.drawnCardId);
+    return c && canPlay(s, c) ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c) } : { t: 'pass' };
+  }
+  const c = p.hand.find(x => canPlay(s, x));
+  return c ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c) } : { t: 'draw' };
+}
+function firstColor(hand, played) {
+  if (played.c !== 'w') return undefined;
+  return hand.find(x => x !== played && x.c !== 'w')?.c || COLORS[randInt(4)];
+}
+
+export function timeoutMove(s, now = Date.now()) {
+  if (s.phase !== 'playing' || !s.deadline || now < s.deadline) return false;
+  const p = current(s);
+  if (!p || p.bot) return false;
+  log(s, { k: 'timeout', p: p.name });
+  const turnNo = s.turnNo;
+  for (let i = 0; i < 3 && s.phase === 'playing' && s.turnNo === turnNo; i++) {
+    const r = handle(s, p.id, autoMove(s, p));
+    if (r.error) break;
+  }
+  return true;
 }
 
 export function canPlay(s, card) {
@@ -188,6 +231,7 @@ export function removePlayer(s, id, kind = 'leave') {
     if (i < s.turn) s.turn--;
     else if (i === s.turn) {
       s.drawnCardId = null;
+      s.turnNo = (s.turnNo || 0) + 1;
       if (s.dir === -1) s.turn--;
     }
     s.turn = mod(s.turn, s.players.length);
@@ -222,6 +266,7 @@ export function startRound(s) {
   s.vulnerable = null;
   s.winnerId = null;
   s.phase = 'playing';
+  s.turnNo = (s.turnNo || 0) + 1;
   log(s, { k: 'start', r: s.round, decks });
   return null;
 }
@@ -302,6 +347,12 @@ function draw(s, p) {
 
 // Returns { error } or { kick: playerId } or {}
 export function handle(s, pid, msg) {
+  const res = handleInner(s, pid, msg);
+  refreshDeadline(s);
+  return res;
+}
+
+function handleInner(s, pid, msg) {
   const p = playerById(s, pid) || spectatorById(s, pid);
   if (!p) return { error: 'You are not in this room' };
   const watching = !playerById(s, pid);
@@ -313,6 +364,7 @@ export function handle(s, pid, msg) {
     if (s.phase === 'playing') return { error: 'Change settings between rounds' };
     if (typeof msg.stacking === 'boolean') s.settings.stacking = msg.stacking;
     if (['easy', 'normal'].includes(msg.botLevel)) s.settings.botLevel = msg.botLevel;
+    if (TURN_TIMES.includes(msg.turnTime)) s.settings.turnTime = msg.turnTime;
     if ([5, 7, 10].includes(msg.handSize)) s.settings.handSize = msg.handSize;
     return {};
   }
@@ -434,6 +486,7 @@ export function viewFor(s, pid, online) {
     spectating,
     spectators: (s.spectators || []).map(p => ({ id: p.id, name: p.name, online: online.has(p.id) })),
     deckCount: s.deck.length,
+    deadlineIn: s.deadline ? Math.max(0, s.deadline - Date.now()) : null,
     lastRound: s.lastRound,
     log: s.log.slice(-15),
   };

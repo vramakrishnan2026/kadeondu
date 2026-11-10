@@ -83,6 +83,7 @@
       case 'newdeck': return 'A fresh deck was opened';
       case 'skipped': return `${e.p}'s turn was skipped`;
       case 'toofew': return 'Not enough players, back to the lobby';
+      case 'timeout': return `Time's up for ${e.p}. Auto-move`;
       default: return '';
     }
   }
@@ -145,7 +146,7 @@
     else toast('Reconnecting…');
   }
   function goHome(msg) {
-    if (solo) { clearTimeout(solo.timer); solo = null; }
+    if (solo) { clearTimeout(solo.timer); clearTimeout(solo.tt); solo = null; }
     wantOpen = false;
     try { ws?.close(); } catch {}
     ws = null; S = null; room = null; lastSeq = 0;
@@ -204,6 +205,7 @@
     if (!firstState) {
       for (const e of fresh) {
         if (e.k === 'call') toast(logText(e), true);
+        else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
       }
     }
@@ -234,10 +236,12 @@
       $('hostSettings').classList.toggle('hidden', !isHost);
       $('stackingInput').checked = s.settings.stacking;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
+      $('turnTimeInput').value = String(s.settings.turnTime || 0);
       $('handSizeInput').value = String(s.settings.handSize);
       $('guestSettings').textContent = isHost ? '' :
         `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
-        (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '');
+        (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
+        ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}`;
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -311,6 +315,12 @@
       st.textContent = `${name(s.turnId)}'s turn` + (s.pendingDraw > 0 ? ` (+${s.pendingDraw} waiting)` : '');
     }
 
+    st.dataset.base = st.textContent;
+    deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? Date.now() + s.deadlineIn : null;
+    turnLength = (s.settings.turnTime || 0) * 1000;
+    buzzed = false;
+    tickClock();
+
     // actions
     $('drawBtn').classList.toggle('hidden', !canDraw);
     $('drawBtn').textContent = s.pendingDraw > 0 ? `Pick up ${s.pendingDraw}` : 'Draw';
@@ -359,6 +369,28 @@
     }
     if (s.phase !== 'playing') $('colorPicker').classList.add('hidden');
   }
+
+  // ── Turn clock ─────────────────────────────────────────
+  let deadlineAt = null, turnLength = 0, buzzed = false;
+  function tickClock() {
+    const st = $('status');
+    st.querySelector('.secs')?.remove();
+    document.querySelectorAll('#seats .clock').forEach(x => x.remove());
+    if (!deadlineAt || !S || S.phase !== 'playing') return;
+    const left = Math.max(0, deadlineAt - Date.now());
+    const secs = Math.ceil(left / 1000);
+    const hurry = secs <= 5;
+    const turnName = S.players.find(p => p.id === S.turnId)?.name;
+    const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === turnName);
+    if (seat) {
+      const ring = el('span', 'clock' + (hurry ? ' hurry' : ''));
+      ring.style.setProperty('--left', turnLength ? (left / turnLength).toFixed(3) : 1);
+      seat.querySelector('.avatar').append(ring);
+    }
+    st.append(el('span', 'secs' + (hurry ? ' hurry' : ''), `${secs}s`));
+    if (hurry && !buzzed && S.turnId === S.you) { buzzed = true; try { navigator.vibrate?.([60, 60, 60]); } catch {} }
+  }
+  setInterval(tickClock, 250);
 
   // ── Card flight animations (built-in Web Animations, no library) ──
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -620,6 +652,7 @@
   $('handSizeInput').onchange = e => send({ t: 'settings', handSize: Number(e.target.value) });
   $('startBtn').onclick = () => send({ t: 'start' });
   $('botLevelInput').onchange = e => send({ t: 'settings', botLevel: e.target.value });
+  $('turnTimeInput').onchange = e => send({ t: 'settings', turnTime: Number(e.target.value) });
   $('addBotBtn').onclick = () => send({ t: 'addbot' });
   $('addBotEndBtn').onclick = () => send({ t: 'addbot' });
   $('nextRoundBtn').onclick = () => send({ t: 'start' });
@@ -653,6 +686,12 @@
   let solo = null; // { G, s, me, timer }
   function soloRender() {
     render(solo.G.viewFor(solo.s, solo.me, new Set([solo.me])));
+    // my turn clock
+    clearTimeout(solo.tt);
+    const d = solo.s.deadline;
+    if (d) solo.tt = setTimeout(() => {
+      if (solo && solo.G.timeoutMove(solo.s)) { soloRender(); soloKick(); }
+    }, Math.max(0, d - Date.now()) + 30);
   }
   function soloKick() {
     if (!solo || solo.timer) return;
@@ -681,6 +720,7 @@
     s.settings.stacking = $('soloStacking').checked;
     s.settings.handSize = Number($('soloHand').value);
     s.settings.botLevel = $('soloLevel').value;
+    s.settings.turnTime = Number($('soloTime').value);
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
     for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
     G.handle(s, me.id, { t: 'start' });

@@ -62,6 +62,9 @@ No player limit: an extra deck is added automatically for every 10 players.
 - In a room, the host can tap **🤖 Add computer player** (before a round or between rounds) to fill empty seats.
   Easy plays any card that fits and sometimes forgets to call; Normal saves wilds, picks its strongest colour,
   targets whoever is about to win, and catches people who forget to call.
+- **Time per turn** (host setting, default 15 s; Off, 10, 15, 20, 30, 45 or 60 s). A ring around the player's
+  avatar counts down. When time runs out the game moves for them: it plays the first card that fits,
+  otherwise draws and plays that card if it fits, or passes. It never calls for them.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.

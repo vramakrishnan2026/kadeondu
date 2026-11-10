@@ -184,5 +184,14 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .ring.packed .seat { width: 50px; }
 .ring.packed .sname { font-size: .6rem; max-width: 50px; }
 .ring.packed .avatar .count { min-width: 17px; height: 15px; font-size: .6rem; right: -7px; }
+/* Turn clock: a ring around the avatar that empties as time runs out */
+.avatar .clock { position: absolute; inset: -8px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--left, 1) * 360deg), rgba(255,255,255,.08) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); }
+.avatar .clock.hurry { background: conic-gradient(var(--red) calc(var(--left, 1) * 360deg), rgba(255,255,255,.08) 0); }
+.status .secs { display: inline-block; min-width: 2.6em; margin-left: .4em; padding: .05em .45em; border-radius: 99px;
+  background: rgba(255,255,255,.1); font-variant-numeric: tabular-nums; }
+.status .secs.hurry { background: var(--red); color: #fff; }
 .flying { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -50%); margin: 0; }
 @media (min-width: 900px) { .ring { min-height: 440px; } .avatar { width: 56px; height: 56px; } }

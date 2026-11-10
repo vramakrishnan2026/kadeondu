@@ -39,6 +39,7 @@ export class GameRoom extends DurableObject {
     this.code = null;
     this.lastSummary = '';
     this.botTimer = null;
+    this.turnTimer = null;
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || G.newRoom();
       this.code = (await ctx.storage.get('code')) || null;
@@ -106,6 +107,30 @@ export class GameRoom extends DurableObject {
     this.botTimer = setTimeout(() => this.botTick(), a.delay);
   }
 
+  // Turn timer: when someone's time runs out, make the simple move for them
+  armTurnTimer() {
+    clearTimeout(this.turnTimer);
+    this.turnTimer = null;
+    const d = this.room.deadline;
+    if (!d || this.online().size === 0) return;
+    this.turnTimer = setTimeout(() => this.onTurnTimeout(), Math.max(0, d - Date.now()) + 60);
+  }
+
+  async onTurnTimeout() {
+    this.turnTimer = null;
+    if (G.timeoutMove(this.room)) {
+      await this.save();
+      this.broadcast();
+      await this.report();
+    }
+    this.afterChange();
+  }
+
+  afterChange() {
+    this.armTurnTimer();
+    this.kickBots();
+  }
+
   async botTick() {
     this.botTimer = null;
     const a = G.nextBotAction(this.room);
@@ -116,7 +141,7 @@ export class GameRoom extends DurableObject {
       this.broadcast();
       await this.report();
     }
-    this.kickBots();
+    this.afterChange();
   }
 
   async save() {
@@ -130,6 +155,7 @@ export class GameRoom extends DurableObject {
     try { msg = JSON.parse(raw); } catch { return; }
     if (!msg || typeof msg.t !== 'string') return;
     const att = ws.deserializeAttachment() || {};
+    if (this.room.deadline && Date.now() >= this.room.deadline) await this.onTurnTimeout();
 
     if (msg.t === 'join') {
       const s = this.room;
@@ -157,7 +183,7 @@ export class GameRoom extends DurableObject {
       await this.save();
       this.broadcast();
       await this.report();
-      return this.kickBots();
+      return this.afterChange();
     }
 
     if (!att.pid) return this.send(ws, { t: 'error', msg: 'Join first' });
@@ -176,7 +202,7 @@ export class GameRoom extends DurableObject {
     await this.save();
     this.broadcast();
     await this.report();
-    this.kickBots();
+    this.afterChange();
   }
 
   async webSocketClose(ws) {
