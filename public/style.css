@@ -277,3 +277,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .credits { text-align: center; margin: 1.6rem 0 .6rem; font-size: .8rem; color: var(--muted); letter-spacing: .02em; }
 .credits span::before { content: "✦ "; color: var(--accent); }
 .credits span::after { content: " ✦"; color: var(--accent); }
+
+/* colour picker buttons (the card rules only set colour variables, so paint them here) */
+.pick { background: linear-gradient(150deg, var(--cl) 0%, var(--cc) 45%, var(--cd) 100%); color: #fff;
+  font-family: "KO Numbers", system-ui, sans-serif; font-style: italic; font-weight: 900; font-size: 1.15rem;
+  -webkit-text-stroke: 4px #15151b; paint-order: stroke fill; border: 3px solid #fdfbf6;
+  box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.pick:active { transform: scale(.96); }
