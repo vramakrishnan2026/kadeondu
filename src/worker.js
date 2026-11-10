@@ -4,6 +4,8 @@ import * as G from '../public/shared/game.js';
 const IDLE_CLEANUP_MS = 24 * 60 * 60 * 1000; // forget a room 24 h after its last activity
 const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it hasn't reported for 6 h
 const MAX_SOCKETS = 300;
+const MAX_VOICE_CHARS = 120000; // about 5 s of compressed speech
+const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
 
 // Front door: the game page is served from /public automatically.
 // /ws?room=CODE  → that room's server
@@ -150,11 +152,13 @@ export class GameRoom extends DurableObject {
   }
 
   async webSocketMessage(ws, raw) {
-    if (typeof raw !== 'string' || raw.length > 2000) return;
+    if (typeof raw !== 'string' || raw.length > MAX_VOICE_CHARS) return;
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     if (!msg || typeof msg.t !== 'string') return;
     const att = ws.deserializeAttachment() || {};
+    if (msg.t === 'voice') return this.relayVoice(ws, att, msg);
+    if (raw.length > 2000) return;
     if (this.room.deadline && Date.now() >= this.room.deadline) await this.onTurnTimeout();
 
     if (msg.t === 'join') {
@@ -209,6 +213,25 @@ export class GameRoom extends DurableObject {
     try { ws.close(1000, 'bye'); } catch {}
     this.broadcast(ws);
     await this.report(ws);
+  }
+
+  // Voice notes are passed straight to the other phones in the room.
+  // They are never written to storage.
+  relayVoice(ws, att, msg) {
+    if (!att.pid || typeof msg.data !== 'string' || !/^data:audio\/[\w.+-]+(;[\w=.+-]+)*;base64,/.test(msg.data)) return;
+    const s = this.room;
+    const p = [...s.players, ...(s.spectators || [])].find(x => x.id === att.pid);
+    if (!p) return;
+    this.voiceAt ||= new Map();
+    const now = Date.now();
+    if (now - (this.voiceAt.get(att.pid) || 0) < VOICE_GAP_MS) return this.send(ws, { t: 'error', msg: 'Wait a moment before the next voice note' });
+    this.voiceAt.set(att.pid, now);
+    const out = JSON.stringify({ t: 'voice', from: att.pid, name: p.name, data: msg.data });
+    for (const other of this.ctx.getWebSockets()) {
+      if (other === ws) continue;
+      const a = other.deserializeAttachment();
+      if (a?.pid) { try { other.send(out); } catch {} }
+    }
   }
 
   async webSocketError(ws) {

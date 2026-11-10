@@ -187,6 +187,8 @@
     } else if (m.t === 'kicked') {
       goHome(leaving ? 'You left the room' : 'You were removed');
       leaving = false;
+    } else if (m.t === 'voice') {
+      playVoice(m);
     } else if (m.t === 'replaced') {
       wantOpen = false;
       toast('This game is open in another tab');
@@ -291,6 +293,8 @@
     $('watchNote').classList.toggle('hidden', !s.spectating);
     $('hand').classList.toggle('hidden', s.spectating);
     $('callBtn').classList.toggle('hidden', s.spectating);
+    $('micBtn').classList.toggle('hidden', !!solo);
+    $('muteBtn').classList.toggle('hidden', !!solo);
 
     // table
     const disc = $('discard');
@@ -519,6 +523,83 @@
   }
 
   let lastPlayFrom = null; // where my card was when I tapped it
+  // ── Voice notes: hold the mic, release to send (max 5 s). Never stored. ──
+  const VOICE_MAX_MS = 5000;
+  let voiceMuted = !!store.get('cardgame-voice-muted');
+  let rec = null, recStream = null, recChunks = [], recStartAt = 0, recTimer = null, recWanted = false;
+  function setMuteIcon() {
+    $('muteBtn').classList.toggle('muted', voiceMuted);
+    $('muteBtn').setAttribute('aria-label', voiceMuted ? 'Unmute voice notes' : 'Mute voice notes');
+  }
+  setMuteIcon();
+  $('muteBtn').onclick = () => {
+    voiceMuted = !voiceMuted;
+    store.set('cardgame-voice-muted', voiceMuted);
+    setMuteIcon();
+    toast(voiceMuted ? 'Voice notes muted' : 'Voice notes on');
+  };
+  function pickMime() {
+    for (const t of ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']) {
+      if (window.MediaRecorder?.isTypeSupported?.(t)) return t;
+    }
+    return '';
+  }
+  async function startRec() {
+    if (solo || rec) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Voice notes are not supported on this browser');
+    recWanted = true;
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch { recWanted = false; return toast('Allow the microphone to send voice notes'); }
+    if (!recWanted) { recStream.getTracks().forEach(t => t.stop()); recStream = null; return; } // let go before it started
+    const mime = pickMime();
+    rec = new MediaRecorder(recStream, mime ? { mimeType: mime, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 });
+    recChunks = [];
+    rec.ondataavailable = e => e.data.size && recChunks.push(e.data);
+    rec.onstop = finishRec;
+    rec.start();
+    recStartAt = Date.now();
+    $('micBtn').classList.add('rec');
+    $('micBtn').style.setProperty('--rec', `${VOICE_MAX_MS}ms`);
+    recTimer = setTimeout(stopRec, VOICE_MAX_MS);
+  }
+  function stopRec() {
+    recWanted = false;
+    clearTimeout(recTimer);
+    if (rec && rec.state !== 'inactive') rec.stop();
+  }
+  function finishRec() {
+    const r = rec, took = Date.now() - recStartAt;
+    rec = null;
+    $('micBtn').classList.remove('rec');
+    recStream?.getTracks().forEach(t => t.stop());
+    recStream = null;
+    if (took < 400) return toast('Hold the mic to talk');
+    const blob = new Blob(recChunks, { type: r?.mimeType || 'audio/webm' });
+    if (blob.size > 85000) return toast('Voice note too long');
+    const fr = new FileReader();
+    fr.onload = () => { send({ t: 'voice', data: fr.result }); toast('Voice note sent'); };
+    fr.readAsDataURL(blob);
+  }
+  const mic = $('micBtn');
+  mic.addEventListener('pointerdown', e => { e.preventDefault(); mic.setPointerCapture?.(e.pointerId); startRec(); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) mic.addEventListener(ev, stopRec);
+  mic.addEventListener('contextmenu', e => e.preventDefault());
+
+  function playVoice(m) {
+    if (voiceMuted || solo) return;
+    const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === m.name);
+    const bubble = el('div', 'voice-bubble', '🔊');
+    seat?.append(bubble);
+    const done = () => bubble.remove();
+    try {
+      const a = new Audio(m.data);
+      a.onended = done; a.onerror = done;
+      a.play().catch(() => { done(); toast(`${m.name} sent a voice note (tap the screen to allow sound)`); });
+      setTimeout(done, VOICE_MAX_MS + 1500);
+    } catch { done(); }
+  }
+
   let endClosedRound = null; // round whose result pop-up this player closed
   function playCard(c, node) {
     if (node) lastPlayFrom = { rect: node.getBoundingClientRect(), at: Date.now() };

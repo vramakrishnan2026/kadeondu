@@ -69,6 +69,8 @@ No player limit: an extra deck is added automatically for every 10 players.
   otherwise draws and plays that card if it fits, or passes. It never calls for them.
 - **Wild +4 effect**: whenever someone plays a Wild +4, Mani rises over the deck with an evil laugh for 3 seconds.
   Change or switch it off under `drawFourEffect` in `public/config.js` (picture: `public/fx/mani.webp`).
+- **Voice notes**: in a room, hold the mic button to talk (up to 5 s), let go to send. Everyone else in the room hears it
+  straight away. Voice notes are passed through and never saved. The speaker button mutes incoming voice notes.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.
