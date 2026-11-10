@@ -52,7 +52,7 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15 },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, wd4Fx: false },
     turnNo: 0,       // goes up every time the turn moves on
     deadline: null,  // ms timestamp when the current person's time runs out
     deadlineFor: -1,
@@ -366,6 +366,7 @@ function handleInner(s, pid, msg) {
     if (typeof msg.stacking === 'boolean') s.settings.stacking = msg.stacking;
     if (['easy', 'normal'].includes(msg.botLevel)) s.settings.botLevel = msg.botLevel;
     if (TURN_TIMES.includes(msg.turnTime)) s.settings.turnTime = msg.turnTime;
+    if (typeof msg.wd4Fx === 'boolean') s.settings.wd4Fx = msg.wd4Fx;
     if ([5, 7, 10].includes(msg.handSize)) s.settings.handSize = msg.handSize;
     return {};
   }
@@ -575,7 +576,7 @@ export function nextBotAction(s) {
   if (!cur?.bot) return null;
   const someoneExposed = s.vulnerable && s.vulnerable !== cur.id;
   // Give people a moment to call or catch before the computer moves on
-  const afterWd4 = s.wd4Turn === s.turnNo ? 3300 : 0; // let the Wild +4 effect finish first
+  const afterWd4 = s.settings.wd4Fx && s.wd4Turn === s.turnNo ? 3300 : 0; // let the Wild +4 effect finish first
   const delay = (someoneExposed ? 1800 : 750) + randInt(600) + afterWd4;
   if (someoneExposed && !playerById(s, s.vulnerable)?.bot && chance(cur.level === 'easy' ? 0.3 : 0.75)) {
     return { pid: cur.id, msg: { t: 'catch', target: s.vulnerable }, delay };

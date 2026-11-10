@@ -67,7 +67,7 @@ No player limit: an extra deck is added automatically for every 10 players.
 - **Time per turn** (host setting, default 15 s; Off, 10, 15, 20, 30, 45 or 60 s). A ring around the player's
   avatar counts down. When time runs out the game moves for them: it plays the first card that fits,
   otherwise draws and plays that card if it fits, or passes. It never calls for them.
-- **Wild +4 effect**: whenever someone plays a Wild +4, Mani rises over the deck with an evil laugh for 3 seconds.
+- **Wild +4 effect** (off by default; host turns it on in room settings, or tick it in Play vs computer): Mani rises in the middle of the screen with an evil laugh for 3 seconds.
   Change or switch it off under `drawFourEffect` in `public/config.js` (picture: `public/fx/mani.webp`).
 - **Voice notes**: in a room, hold the mic button to talk (up to 5 s), let go to send. Everyone else in the room hears it
   straight away. Voice notes are passed through and never saved. The speaker button mutes incoming voice notes.

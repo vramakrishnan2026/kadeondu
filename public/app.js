@@ -208,7 +208,7 @@
     const fresh = s.log.filter(e => e.n > lastSeq);
     if (!firstState) {
       for (const e of fresh) {
-        if (e.k === 'play' && e.card?.v === 'wd4') setTimeout(showDrawFour, 550); // let the +4 land first
+        if (e.k === 'play' && e.card?.v === 'wd4' && s.settings.wd4Fx) setTimeout(showDrawFour, 550); // let the +4 land first
         if (e.k === 'call') toast(logText(e), true);
         else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
@@ -240,13 +240,15 @@
       }
       $('hostSettings').classList.toggle('hidden', !isHost);
       $('stackingInput').checked = s.settings.stacking;
+      $('wd4FxInput').checked = !!s.settings.wd4Fx;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
       $('turnTimeInput').value = String(s.settings.turnTime || 0);
       $('handSizeInput').value = String(s.settings.handSize);
       $('guestSettings').textContent = isHost ? '' :
         `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
         (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
-        ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}`;
+        ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
+        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -914,6 +916,7 @@
   $('shareBtn').onclick = async () => { if (!(await nativeShare())) openShare(); };
   $('copyBtn').onclick = copyLink;
   $('stackingInput').onchange = e => send({ t: 'settings', stacking: e.target.checked });
+  $('wd4FxInput').onchange = e => send({ t: 'settings', wd4Fx: e.target.checked });
   $('handSizeInput').onchange = e => send({ t: 'settings', handSize: Number(e.target.value) });
   $('startBtn').onclick = () => send({ t: 'start' });
   $('botLevelInput').onchange = e => send({ t: 'settings', botLevel: e.target.value });
@@ -989,6 +992,7 @@
     s.settings.handSize = Number($('soloHand').value);
     s.settings.botLevel = $('soloLevel').value;
     s.settings.turnTime = Number($('soloTime').value);
+    s.settings.wd4Fx = $('soloWd4Fx').checked;
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
     for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
     G.handle(s, me.id, { t: 'start' });
