@@ -48,7 +48,8 @@ export function cardPoints(card) {
 export function newRoom() {
   return {
     phase: 'lobby', // lobby | playing | ended
-    players: [],    // { id, token, name, hand, score, saidOndu }
+    players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
+    spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
     settings: { stacking: false, handSize: 7 },
     round: 0,
@@ -76,6 +77,14 @@ function log(s, entry) {
 }
 
 const playerById = (s, id) => s.players.find(p => p.id === id);
+const spectatorById = (s, id) => (s.spectators || []).find(p => p.id === id);
+
+// Watchers become players when a round ends (they're dealt in next round)
+function mergeSpectators(s) {
+  if (!s.spectators?.length) return;
+  for (const sp of s.spectators) { sp.hand = []; sp.saidOndu = false; s.players.push(sp); }
+  s.spectators = [];
+}
 const mod = (a, n) => ((a % n) + n) % n;
 const top = s => s.discard[s.discard.length - 1];
 const current = s => s.players[s.turn];
@@ -87,7 +96,8 @@ function cleanName(name) {
 
 function uniqueName(s, name) {
   let n = name, i = 2;
-  while (s.players.some(p => p.name.toLowerCase() === n.toLowerCase())) n = `${name} ${i++}`;
+  const all = [...s.players, ...(s.spectators || [])];
+  while (all.some(p => p.name.toLowerCase() === n.toLowerCase())) n = `${name} ${i++}`;
   return n;
 }
 
@@ -138,14 +148,25 @@ export function addPlayer(s, name) {
     score: 0,
     saidOndu: false,
   };
-  s.players.push(p); // appended at the end, so the current turn index is unchanged
+  if (s.phase === 'playing') {
+    s.spectators ||= [];
+    s.spectators.push(p); // watches until this round ends
+    log(s, { k: 'watch', p: p.name });
+  } else {
+    s.players.push(p);
+    log(s, { k: 'join', p: p.name });
+  }
   if (!s.hostId) s.hostId = p.id;
-  if (s.phase === 'playing') give(s, p, s.settings.handSize);
-  log(s, { k: 'join', p: p.name });
   return p;
 }
 
 export function removePlayer(s, id, kind = 'leave') {
+  const si = (s.spectators || []).findIndex(p => p.id === id);
+  if (si >= 0) {
+    const [sp] = s.spectators.splice(si, 1);
+    log(s, { k: kind, p: sp.name });
+    return;
+  }
   const i = s.players.findIndex(p => p.id === id);
   if (i < 0) return;
   const [p] = s.players.splice(i, 1);
@@ -156,6 +177,8 @@ export function removePlayer(s, id, kind = 'leave') {
   if (s.phase === 'playing') {
     if (s.players.length < 2) {
       s.phase = 'lobby';
+      mergeSpectators(s);
+      if (!playerById(s, s.hostId)) s.hostId = s.players[0]?.id ?? null;
       log(s, { k: 'toofew' });
       return;
     }
@@ -169,6 +192,7 @@ export function removePlayer(s, id, kind = 'leave') {
 }
 
 export function startRound(s) {
+  mergeSpectators(s);
   const n = s.players.length;
   if (n < 2) return 'Need at least 2 players';
   s.nextCardId = 0;
@@ -208,6 +232,7 @@ function endRound(s, winner) {
   s.vulnerable = null;
   s.lastRound = { winnerId: winner.id, points };
   log(s, { k: 'win', p: winner.name, x: points });
+  mergeSpectators(s);
 }
 
 function play(s, p, cardId, chosen) {
@@ -274,8 +299,9 @@ function draw(s, p) {
 
 // Returns { error } or { kick: playerId } or {}
 export function handle(s, pid, msg) {
-  const p = playerById(s, pid);
+  const p = playerById(s, pid) || spectatorById(s, pid);
   if (!p) return { error: 'You are not in this room' };
+  const watching = !playerById(s, pid);
   const isHost = s.hostId === pid;
   const t = msg.t;
 
@@ -302,7 +328,7 @@ export function handle(s, pid, msg) {
   if (t === 'kick') {
     if (!isHost) return { error: 'Only the host can remove players' };
     if (msg.target === pid) return { error: 'Use Leave instead' };
-    if (!playerById(s, msg.target)) return { error: 'No such player' };
+    if (!playerById(s, msg.target) && !spectatorById(s, msg.target)) return { error: 'No such player' };
     removePlayer(s, msg.target, 'kick');
     return { kick: msg.target };
   }
@@ -312,6 +338,7 @@ export function handle(s, pid, msg) {
   }
 
   if (s.phase !== 'playing') return { error: 'No round in progress' };
+  if (watching) return { error: "You're watching this round. You'll be dealt in next round" };
 
   if (t === 'catch') {
     if (s.vulnerable && s.vulnerable === msg.target && msg.target !== pid) {
@@ -363,6 +390,7 @@ export function handle(s, pid, msg) {
 export function viewFor(s, pid, online) {
   const me = playerById(s, pid);
   const playing = s.phase === 'playing';
+  const spectating = !me && !!spectatorById(s, pid);
   const turnId = playing ? current(s)?.id : null;
   const myTurn = playing && turnId === pid;
   return {
@@ -391,8 +419,23 @@ export function viewFor(s, pid, online) {
     canCall: !!me && playing && ((me.hand.length === 1 && s.vulnerable === pid) ||
       (me.hand.length === 2 && myTurn && !me.saidOndu)),
     saidOndu: !!me?.saidOndu,
+    spectating,
+    spectators: (s.spectators || []).map(p => ({ id: p.id, name: p.name, online: online.has(p.id) })),
     deckCount: s.deck.length,
     lastRound: s.lastRound,
     log: s.log.slice(-15),
+  };
+}
+
+// One-line public summary for the room list
+export function summary(s, code, onlineCount) {
+  const host = playerById(s, s.hostId);
+  return {
+    code,
+    host: host ? host.name : '',
+    players: s.players.length,
+    watching: (s.spectators || []).length,
+    phase: s.phase,
+    online: onlineCount,
   };
 }

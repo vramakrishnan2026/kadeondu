@@ -10,8 +10,15 @@
 
   // Each room code gets its own little server that holds the game
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+    "bindings": [
+      { "name": "ROOMS", "class_name": "GameRoom" },
+      { "name": "LOBBY", "class_name": "Lobby" }
+    ]
   },
-  // Free plan needs SQLite-backed Durable Objects. Never edit this block after the first deploy.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }]
+  // Free plan needs SQLite-backed Durable Objects.
+  // Never edit or remove an existing entry: only add new ones at the end.
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["GameRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["Lobby"] }
+  ]
 }

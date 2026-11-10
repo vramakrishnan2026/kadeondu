@@ -36,6 +36,7 @@
   }
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
+    if (screen === 'home') openRoomList(); else closeRoomList();
   }
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -68,6 +69,7 @@
   function logText(e) {
     switch (e.k) {
       case 'join': return `${e.p} joined`;
+      case 'watch': return `${e.p} is watching (joins next round)`;
       case 'leave': return `${e.p} left`;
       case 'kick': return `${e.p} was removed`;
       case 'start': return `Round ${e.r} started` + (e.decks > 1 ? ` (${e.decks} decks)` : '');
@@ -248,6 +250,14 @@
     }
     turnEl?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
 
+    // watchers
+    const w = $('watchers');
+    w.classList.toggle('hidden', !s.spectators.length);
+    w.textContent = s.spectators.length ? `👀 Watching: ${s.spectators.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
+    $('watchNote').classList.toggle('hidden', !s.spectating);
+    $('hand').classList.toggle('hidden', s.spectating);
+    $('callBtn').classList.toggle('hidden', s.spectating);
+
     // table
     const disc = $('discard');
     disc.replaceChildren();
@@ -264,6 +274,7 @@
     const st = $('status');
     st.classList.toggle('mine', myTurn);
     if (s.phase === 'ended') st.textContent = 'Round over';
+    else if (s.spectating) st.textContent = `Watching · ${name(s.turnId)}'s turn`;
     else if (myTurn) {
       st.textContent = s.pendingDraw > 0 ? `Stack a card or pick up ${s.pendingDraw}`
         : s.drawnCardId !== null ? 'Play the card you drew, or keep it'
@@ -324,6 +335,57 @@
       $('colorPicker').classList.remove('hidden');
     } else {
       send({ t: 'play', cardId: c.id });
+    }
+  }
+
+  // ── Live list of open rooms (home screen) ────────────────
+  let listWs = null, listWanted = false, listRetry = 0, listPing = null;
+  function openRoomList() {
+    listWanted = true;
+    if (listWs && listWs.readyState <= 1) return;
+    listWs = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/lobby`);
+    listWs.onopen = () => {
+      listRetry = 0;
+      $('roomsNet').className = 'net-dot on';
+      clearInterval(listPing);
+      listPing = setInterval(() => listWs?.readyState === 1 && listWs.send('ping'), 25000);
+    };
+    listWs.onmessage = ev => {
+      if (ev.data === 'pong') return;
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.t === 'rooms') renderRooms(m.rooms);
+    };
+    listWs.onclose = () => {
+      clearInterval(listPing);
+      $('roomsNet').className = 'net-dot off';
+      if (listWanted) setTimeout(() => listWanted && openRoomList(), Math.min(10000, 1000 * 2 ** listRetry++));
+    };
+  }
+  function closeRoomList() {
+    listWanted = false;
+    clearInterval(listPing);
+    if (listWs) { listWs.onclose = null; try { listWs.close(); } catch {} listWs = null; }
+  }
+  function renderRooms(rooms) {
+    const ul = $('roomList');
+    ul.replaceChildren();
+    $('noRooms').classList.toggle('hidden', rooms.length > 0);
+    for (const r of rooms) {
+      const li = el('li');
+      const info = el('div', 'rinfo');
+      info.append(
+        el('div', 'rname', r.host ? `${r.host}'s room` : `Room ${r.code}`),
+        el('div', 'rmeta', `${r.code} · ${r.players} playing` + (r.watching ? ` · ${r.watching} watching` : '')),
+      );
+      const live = r.phase === 'playing';
+      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? 'Between rounds' : 'Waiting');
+      const btn = el('button', live ? 'ghost small' : 'primary small', live ? 'Watch' : 'Join');
+      btn.onclick = () => {
+        if (needName()) return;
+        connect(r.code, { create: false });
+      };
+      li.append(info, badge, btn);
+      ul.append(li);
     }
   }
 

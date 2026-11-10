@@ -32,6 +32,9 @@
         <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
         <button id="joinBtn" class="secondary">Join</button>
       </div>
+      <div class="rooms-head"><h3>Open rooms</h3><span id="roomsNet" class="net-dot" title="Live"></span></div>
+      <ul id="roomList" class="room-list"></ul>
+      <p id="noRooms" class="muted small-text center">No open rooms right now. Create one!</p>
     </div>
   </main>
 
@@ -61,6 +64,7 @@
   <!-- Game table -->
   <main id="game" class="screen hidden">
     <div id="opponents" class="opponents"></div>
+    <div id="watchers" class="watchers hidden"></div>
     <div class="table">
       <div class="pile-wrap">
         <button id="drawPile" class="card back" aria-label="Draw a card"><span>DRAW</span></button>
@@ -80,6 +84,7 @@
       <button id="skipTurnBtn" class="ghost small hidden" title="Skip a player who has stepped away">Skip their turn</button>
     </div>
     <div id="hand" class="hand"></div>
+    <div id="watchNote" class="watch-note hidden">👀 You're watching this round. You'll be dealt in when it ends.</div>
     <div id="logLine" class="log-line"></div>
   </main>
 

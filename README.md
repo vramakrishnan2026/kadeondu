@@ -52,7 +52,9 @@ No player limit: an extra deck is added automatically for every 10 players.
 
 ## Playing
 - One person taps **Create a room** and then **Share link** (WhatsApp works well).
-- Others open the link, type their name, tap **Join**. People can join mid-game too; they get dealt in.
+- Others open the link (or pick the room from **Open rooms** on the home screen), type their name, tap **Join**.
+- Anyone joining a game already in progress **watches** (no one's cards are shown) and is dealt in when the round ends.
+- The home screen lists every room that has someone in it, live. Empty rooms drop off the list.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.
