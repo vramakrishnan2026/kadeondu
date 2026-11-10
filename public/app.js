@@ -36,6 +36,11 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.add('hidden'), big ? 1800 : 2600);
   }
+  function toastLong(text) {
+    toast(text);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 7000);
+  }
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
   }
@@ -567,12 +572,27 @@
   // Keep the microphone open once allowed, so Safari doesn't ask (and cancel) on every hold.
   async function getMic() {
     if (recStream && recStream.getAudioTracks().some(t => t.readyState === 'live')) return recStream;
+    // iPhone: a "playback only" audio session blocks the microphone, so switch it for recording
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch {}
     recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     return recStream;
+  }
+  const isBrave = !!navigator.brave || /Brave/i.test(navigator.userAgent);
+  function micErrorText(err) {
+    const name = err?.name || '';
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      if (isBrave) return 'Brave blocked the mic. Tap the Brave lion icon → turn Shields off for this site, and check iPhone Settings → Brave → Microphone';
+      if (isiOS) return 'Mic blocked. Tap "aA" in the address bar → Website Settings → Microphone → Allow, and check iPhone Settings → Safari → Microphone';
+      return 'Mic blocked. Allow the microphone for this site in your browser settings';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No microphone found on this device';
+    if (name === 'NotReadableError' || name === 'AbortError') return 'The mic is busy (another app or call is using it). Close it and try again';
+    return `Couldn't start the mic (${name || 'unknown error'})`;
   }
   function releaseMic() {
     recStream?.getTracks().forEach(t => t.stop());
     recStream = null;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch {}
   }
   async function startRec() {
     if (solo || rec) return;
@@ -581,7 +601,7 @@
     const hadMic = !!recStream;
     let stream;
     try { stream = await getMic(); }
-    catch { recWanted = false; return toast('Allow the microphone to send voice notes'); }
+    catch (err) { recWanted = false; return toastLong(micErrorText(err)); }
     if (!recWanted) { if (!hadMic) toast('Mic ready. Now hold the button to talk'); return; } // let go while the permission pop-up was open
     const mime = pickMime();
     try {
@@ -592,7 +612,7 @@
     recChunks = [];
     rec.ondataavailable = e => e.data.size && recChunks.push(e.data);
     rec.onstop = finishRec;
-    rec.onerror = () => toast('Recording failed, try again');
+    rec.onerror = ev => toastLong(`Recording failed (${ev?.error?.name || 'error'}), try again`);
     rec.start();
     recStartAt = Date.now();
     $('micBtn').classList.add('rec');
@@ -645,7 +665,7 @@
   }
   function unlockAudio() {
     if (voiceEl) return;
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    try { if (navigator.audioSession && !recStream) navigator.audioSession.type = 'playback'; } catch {}
     voiceEl = new Audio();
     voiceEl.setAttribute('playsinline', '');
     voiceEl.src = silentWav();
