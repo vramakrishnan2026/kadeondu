@@ -10,12 +10,12 @@ window.GAME_CONFIG = {
 
   // Shown over the table whenever someone plays a Wild +4.
   // Swap the picture by replacing public/fx/mani.webp (or point to another file).
-  // sound: true = spoken evil laugh, false = silent, or a file path like 'fx/laugh.mp3'
+  // sound: a sound file to play, false = silent, true = the phone speaks "mwa ha ha"
   drawFourEffect: {
     enabled: true,
     image: 'fx/mani.webp',
     text: 'MWA-HA-HA!',
-    sound: true,
+    sound: 'fx/evil-laugh.mp3',   // your own recording works too, e.g. 'fx/mani-laugh.mp3'
     durationMs: 3000,
   },
 

@@ -387,10 +387,24 @@
   const FX = CFG.drawFourEffect || {};
   if (FX.enabled && FX.image) { const pre = new Image(); pre.src = FX.image; }
   let fxNode = null;
+  let laughBuf = null;
+  async function loadLaugh() { // decoded once after the first tap, so it plays instantly (and on iPhone)
+    if (laughBuf || typeof FX.sound !== 'string' || !audioCtx) return;
+    try { laughBuf = await audioCtx.decodeAudioData(await (await fetch(FX.sound)).arrayBuffer()); } catch {}
+  }
   function evilLaugh() {
     if (!FX.sound) return;
     try {
-      if (typeof FX.sound === 'string') { const a = new Audio(FX.sound); a.volume = 0.9; a.play().catch(() => {}); return; }
+      if (typeof FX.sound === 'string') {
+        if (audioCtx && laughBuf) {
+          audioCtx.resume?.();
+          const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+          g.gain.value = 0.9; src.buffer = laughBuf; src.connect(g).connect(audioCtx.destination); src.start();
+          return;
+        }
+        const a = new Audio(FX.sound); a.volume = 0.9; a.play().catch(() => {});
+        return;
+      }
       if (!window.speechSynthesis) return;
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance('Mwa ha ha ha haaa!');
@@ -634,7 +648,7 @@
     voiceEl.play().then(() => voiceEl.pause()).catch(() => {});
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) { audioCtx = new AC(); audioCtx.resume?.(); }
+      if (AC) { audioCtx = new AC(); audioCtx.resume?.(); loadLaugh(); }
     } catch {}
     for (const ev of ['pointerdown', 'touchend', 'keydown']) document.removeEventListener(ev, unlockAudio, true);
     if (voiceQueue.length) nextVoice();
