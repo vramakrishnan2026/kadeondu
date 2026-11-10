@@ -61,7 +61,12 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 .big-code { font-size: clamp(2.8rem, 16vw, 4rem); font-weight: 800; letter-spacing: .18em; text-align: center; color: var(--accent); margin-top: -.6rem; }
 .lobby-card > .muted:first-child { text-align: center; margin: 0; }
-.share-row { display: flex; gap: .5rem; } .share-row button { flex: 1; }
+.share-row { display: flex; gap: .5rem; } .share-row button, .share-row .btn { flex: 1; }
+.icon-btn { font-size: 1rem; padding: .3em .55em; line-height: 1; }
+.share-url { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; background: rgba(0,0,0,.35); border: 1px solid var(--line);
+  border-radius: 10px; padding: .6em .7em; word-break: break-all; user-select: all; }
+.btn { display: inline-grid; place-items: center; text-decoration: none; border-radius: 12px; padding: .7em 1.1em; font-weight: 700; }
+.btn.wa { background: #25d366; color: #0b2e17; }
 .lobby-card h3 { margin: .4rem 0 0; }
 .lobby-players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; max-height: 40vh; overflow: auto; }
 .lobby-players li { display: flex; align-items: center; gap: .6rem; background: var(--panel); border-radius: 12px; padding: .55rem .8rem; }
@@ -254,3 +259,13 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   text-shadow: 0 0 12px rgba(255,80,0,.9), 0 3px 0 #300; transform: rotate(-6deg); }
 .flying { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -50%); margin: 0; }
 @media (min-width: 900px) { .ring { min-height: 440px; } .avatar { width: 56px; height: 56px; } }
+
+/* keep the top bar on one line on phones */
+.brand { white-space: nowrap; }
+.topbar-right { gap: .4rem; }
+@media (max-width: 480px) {
+  .brand { font-size: 1.05rem; }
+  .topbar .lbl { display: none; }
+  .topbar .small { padding: .3em .55em; }
+  .chip { letter-spacing: .06em; padding: .2em .5em; }
+}

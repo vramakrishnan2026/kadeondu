@@ -17,7 +17,8 @@
     <div class="topbar-right">
       <span id="roomChip" class="chip hidden"></span>
       <span id="netDot" class="net-dot" title="Connection"></span>
-      <button id="inviteTopBtn" class="ghost small hidden">👥 Invite</button>
+      <button id="shareTopBtn" class="ghost small icon-btn" title="Share or copy the link" aria-label="Share">📤</button>
+      <button id="inviteTopBtn" class="ghost small hidden" aria-label="Invite">👥<span class="lbl"> Invite</span></button>
       <button id="leaveBtn" class="ghost small hidden">Leave</button>
     </div>
   </header>
@@ -153,6 +154,20 @@
       <p class="muted small-text">Just you and the computer. No room, nobody else can see it.</p>
       <button id="soloStart" class="primary big">Start</button>
       <button id="soloCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Share / copy the link -->
+  <div id="shareModal" class="overlay hidden">
+    <div class="modal">
+      <h3 id="shareTitle">Share</h3>
+      <div id="shareUrl" class="share-url"></div>
+      <button id="shareNative" class="primary big">📤 Share to apps</button>
+      <div class="share-row">
+        <a id="shareWa" class="btn wa" target="_blank" rel="noopener">WhatsApp</a>
+        <button id="shareCopy" class="secondary">📋 Copy link</button>
+      </div>
+      <button id="closeShare" class="ghost">Close</button>
     </div>
   </div>
 

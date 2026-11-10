@@ -696,18 +696,44 @@
   $('codeInput').addEventListener('keydown', e => e.key === 'Enter' && joinFromInput());
   $('nameInput').addEventListener('keydown', e => e.key === 'Enter' && ($('codeInput').value ? joinFromInput() : $('createBtn').click()));
 
-  $('shareBtn').onclick = async () => {
-    const url = roomLink(room);
-    if (navigator.share) {
-      try { await navigator.share({ title: CFG.name, text: `Join my ${CFG.name} game, room ${room}`, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  // ── Share / copy the link ──────────────────────────────
+  function shareInfo() {
+    if (room && (inRoom() || wantOpen)) {
+      return { url: roomLink(room), title: `Join my ${CFG.name} game`, text: `Join my ${CFG.name} game! Room ${room}` };
     }
-    $('copyBtn').click();
-  };
-  $('copyBtn').onclick = async () => {
-    const url = roomLink(room);
-    try { await navigator.clipboard.writeText(url); toast('Link copied'); }
-    catch { prompt('Copy this link', url); }
-  };
+    return { url: `${location.origin}/`, title: CFG.name, text: `Come play ${CFG.name} with me!` };
+  }
+  async function copyLink() {
+    const { url } = shareInfo();
+    try { await navigator.clipboard.writeText(url); toast('Link copied'); return; } catch {}
+    try { // older browsers
+      const t = document.createElement('textarea');
+      t.value = url; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+      toast('Link copied');
+    } catch { prompt('Copy this link', url); }
+  }
+  async function nativeShare() {
+    const info = shareInfo();
+    if (!navigator.share) return false;
+    try { await navigator.share(info); } catch (e) { if (e.name !== 'AbortError') return false; }
+    return true;
+  }
+  function openShare() {
+    const info = shareInfo();
+    $('shareTitle').textContent = info.title;
+    $('shareUrl').textContent = info.url;
+    $('shareNative').classList.toggle('hidden', !navigator.share);
+    $('shareWa').href = `https://wa.me/?text=${encodeURIComponent(`${info.text} ${info.url}`)}`;
+    $('shareModal').classList.remove('hidden');
+  }
+  $('shareTopBtn').onclick = openShare;
+  $('shareNative').onclick = async () => { if (await nativeShare()) $('shareModal').classList.add('hidden'); };
+  $('shareCopy').onclick = async () => { await copyLink(); $('shareModal').classList.add('hidden'); };
+  $('shareWa').onclick = () => $('shareModal').classList.add('hidden');
+  $('closeShare').onclick = () => $('shareModal').classList.add('hidden');
+  $('shareBtn').onclick = async () => { if (!(await nativeShare())) openShare(); };
+  $('copyBtn').onclick = copyLink;
   $('stackingInput').onchange = e => send({ t: 'settings', stacking: e.target.checked });
   $('handSizeInput').onchange = e => send({ t: 'settings', handSize: Number(e.target.value) });
   $('startBtn').onclick = () => send({ t: 'start' });
