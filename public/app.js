@@ -204,7 +204,7 @@
     const fresh = s.log.filter(e => e.n > lastSeq);
     if (!firstState) {
       for (const e of fresh) {
-        if (e.k === 'play' && e.card?.v === 'wd4') showDrawFour();
+        if (e.k === 'play' && e.card?.v === 'wd4') setTimeout(showDrawFour, 550); // let the +4 land first
         if (e.k === 'call') toast(logText(e), true);
         else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');

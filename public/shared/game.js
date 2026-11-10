@@ -322,6 +322,7 @@ function play(s, p, cardId, chosen) {
     advance(s, 1);
   }
 
+  if (card.v === 'wd4') s.wd4Turn = s.turnNo; // the table shows a 3 s effect: computer players wait for it
   if (p.hand.length === 0) endRound(s, p);
   return null;
 }
@@ -574,7 +575,8 @@ export function nextBotAction(s) {
   if (!cur?.bot) return null;
   const someoneExposed = s.vulnerable && s.vulnerable !== cur.id;
   // Give people a moment to call or catch before the computer moves on
-  const delay = (someoneExposed ? 1800 : 750) + randInt(600);
+  const afterWd4 = s.wd4Turn === s.turnNo ? 3300 : 0; // let the Wild +4 effect finish first
+  const delay = (someoneExposed ? 1800 : 750) + randInt(600) + afterWd4;
   if (someoneExposed && !playerById(s, s.vulnerable)?.bot && chance(cur.level === 'easy' ? 0.3 : 0.75)) {
     return { pid: cur.id, msg: { t: 'catch', target: s.vulnerable }, delay };
   }
