@@ -43,6 +43,7 @@
   }
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
+    document.body.classList.toggle('in-game', screen === 'game'); // game screen fits the phone, no scrolling
   }
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -274,8 +275,10 @@
     const n = s.players.length;
     const meIdx = Math.max(0, s.players.findIndex(p => p.id === s.you));
     const ring = $('ring').getBoundingClientRect();
-    const rx = 50 - Math.min(14, 5600 / Math.max(ring.width, 1));   // keep seats inside the edges
-    const ry = 50 - Math.min(16, 4400 / Math.max(ring.height, 1));
+    // keep every seat fully inside the table area (half a seat from each edge)
+    const half = n > 14 ? { x: 27, y: 30 } : n > 8 ? { x: 33, y: 36 } : { x: 41, y: 44 };
+    const rx = 50 - ((half.x + 4) / Math.max(ring.width, 1)) * 100;
+    const ry = 50 - ((half.y + 2) / Math.max(ring.height, 1)) * 100;
     $('ring').classList.toggle('crowded', n > 8);
     $('ring').classList.toggle('packed', n > 14);
     s.players.forEach((p, i) => {
@@ -465,6 +468,13 @@
     evilLaugh();
     setTimeout(() => { if (fxNode === wrap) { wrap.remove(); fxNode = null; } }, dur + 50);
   }
+
+  // re-seat players when the screen size changes (rotation, address bar)
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => { if (S && !$('game').classList.contains('hidden')) render(S); });
+  });
 
   // ── Turn clock ─────────────────────────────────────────
   let deadlineAt = null, turnLength = 0, buzzed = false;

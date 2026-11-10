@@ -334,3 +334,24 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .mic-enable { align-self: center; margin: .2rem 0 -.2rem; padding: .55em 1.1em; border-radius: 99px; font-weight: 700; font-size: .9rem;
   background: rgba(255,255,255,.12); border: 1px dashed rgba(255,255,255,.35); }
 .mic-enable.blocked { background: rgba(229,72,77,.2); border-color: var(--red); color: #ffb3b3; }
+
+/* ── Game screen fits the phone exactly: no page scrolling ── */
+body.in-game { height: 100dvh; overflow: hidden; }
+body.in-game #game { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: .35rem .5rem calc(.2rem + env(safe-area-inset-bottom)); gap: .3rem; }
+body.in-game .ring { flex: 1 1 auto; min-height: 0; max-height: none; }
+body.in-game .status { font-size: 1rem; min-height: 1.3em; }
+body.in-game .actions { gap: .4rem; }
+body.in-game .call { padding: .55em 1.4em; font-size: 1.05rem; }
+body.in-game .mic { width: 46px; height: 46px; }
+body.in-game .hand { padding: .9rem .6rem .3rem; flex: none; }
+body.in-game .log-line { font-size: .78rem; min-height: 1.1em; padding-bottom: 0; }
+body.in-game .watchers { flex: none; }
+body.in-game .watch-note { flex: none; padding: .6rem; margin-bottom: .2rem; }
+@media (max-height: 720px) {
+  body.in-game { --cw: clamp(50px, 13.5vw, 80px); }
+  body.in-game .ring #discard .card, body.in-game .ring #drawPile { --cw: clamp(48px, 13vw, 84px); }
+  body.in-game .sscore { display: none; }
+}
+@media (min-width: 900px) { body.in-game .ring { min-height: 0; } }
+
+.chip { white-space: nowrap; }
