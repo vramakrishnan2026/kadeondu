@@ -35,23 +35,65 @@
     <div class="home-card">
       <h1 data-name>Game</h1>
       <p class="tagline" data-tagline></p>
-      <label class="field">Your name
-        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="e.g. Arun">
-      </label>
-      <button id="createBtn" class="primary big">Create a room</button>
-      <button id="soloBtn" class="secondary big">🤖 Play vs computer</button>
-      <button id="installBtn" class="ghost big hidden">📲 Install app</button>
-      <div class="or"><span>or join one</span></div>
-      <div class="join-row">
-        <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
-        <button id="joinBtn" class="secondary">Join</button>
-      </div>
-      <div class="rooms-head"><h3>Open rooms</h3></div>
-      <ul id="roomList" class="room-list"></ul>
-      <p id="noRooms" class="muted small-text center">No open rooms right now. Create one!</p>
-      <div class="rooms-head"><h3>Online now</h3><span id="peopleCount" class="muted small-text"></span></div>
-      <ul id="peopleHome" class="room-list"></ul>
-      <p id="noPeople" class="muted small-text center">Nobody else is online yet.</p>
+
+      <!-- Step 1: just the name (first visit, or when changing it) -->
+      <section id="nameStep" class="step">
+        <div id="nameInvite" class="invite-card hidden"></div>
+        <label class="field big-label">What should we call you?
+          <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="Your name" enterkeyhint="go">
+        </label>
+        <button id="nameGo" class="primary big">Let's play</button>
+        <ol class="how">
+          <li><b>Join</b> a friend's game, or start your own room</li>
+          <li><b>Share</b> the link so others can join</li>
+          <li><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
+        </ol>
+      </section>
+
+      <!-- Step 2: what to do -->
+      <section id="menu" class="step hidden">
+        <div class="hello">Hi <b id="helloName"></b> 👋 <button id="editName" class="link-btn">change name</button></div>
+
+        <div id="inviteCard" class="invite-card hidden">
+          <div class="inv-title">You're invited!</div>
+          <div id="inviteInfo" class="inv-meta"></div>
+          <button id="inviteJoin" class="primary big">Join this game</button>
+        </div>
+
+        <div class="block">
+          <div class="rooms-head"><h3>Join a game</h3><span id="roomsCount" class="muted small-text"></span></div>
+          <ul id="roomList" class="room-list"></ul>
+          <p id="noRooms" class="empty-note">Nobody is playing right now. Start a room below and send the link to your friends.</p>
+          <details class="code-box">
+            <summary>Got a room code?</summary>
+            <div class="join-row">
+              <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
+              <button id="joinBtn" class="secondary">Join</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h3>Or start your own</h3>
+          <div class="tiles">
+            <button id="createBtn" class="tile primary-tile">
+              <span class="t-ico">🎉</span><span class="t-title">New room</span><span class="t-sub">Play with friends</span>
+            </button>
+            <button id="soloBtn" class="tile">
+              <span class="t-ico">🤖</span><span class="t-title">Vs computer</span><span class="t-sub">Practise on your own</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="rooms-head"><h3>Online now</h3><span id="peopleCount" class="muted small-text"></span></div>
+          <ul id="peopleHome" class="room-list"></ul>
+          <p id="noPeople" class="empty-note">Nobody else is online yet.</p>
+        </div>
+
+        <button id="installBtn" class="ghost big hidden">📲 Install app</button>
+      </section>
+
       <footer class="credits"><span data-credits></span></footer>
     </div>
   </main>

@@ -162,7 +162,9 @@
     $('colorPicker').classList.add('hidden');
     setNet();
     myName = $('nameInput').value.trim();
+    inviteRoom = '';
     show('home');
+    if (myName) showMenu(); else showNameStep();
     hello();
     if (msg) toast(msg);
   }
@@ -747,6 +749,9 @@
   }
 
   function renderRooms(rooms) {
+    lastRooms = rooms;
+    $('roomsCount').textContent = rooms.length ? `${rooms.length} open` : '';
+    updateInviteCard();
     const ul = $('roomList');
     ul.replaceChildren();
     $('noRooms').classList.toggle('hidden', rooms.length > 0);
@@ -855,9 +860,54 @@
     clearTimeout(nameTimer);
     nameTimer = setTimeout(() => { if (!inRoom()) { myName = $('nameInput').value.trim(); hello(); } }, 400);
   });
+  // ── Home flow: step 1 name, step 2 menu ──────────────────
+  let inviteRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+  if (!/^[A-Z0-9]{4,8}$/.test(inviteRoom)) inviteRoom = '';
+  let lastRooms = [];
+  function showNameStep(editing = false) {
+    $('nameStep').classList.remove('hidden');
+    $('menu').classList.add('hidden');
+    const inv = !!inviteRoom && !editing;
+    $('nameInvite').classList.toggle('hidden', !inv);
+    if (inv) $('nameInvite').innerHTML = `<div class="inv-title">You're invited!</div><div class="inv-meta">Room <b>${inviteRoom}</b>. Enter your name to join.</div>`;
+    $('nameGo').textContent = editing ? 'Save' : inv ? 'Join the game' : "Let's play";
+    document.querySelector('#nameStep .how').classList.toggle('hidden', editing);
+    setTimeout(() => $('nameInput').focus(), 50);
+  }
+  function showMenu() {
+    $('nameStep').classList.add('hidden');
+    $('menu').classList.remove('hidden');
+    $('helloName').textContent = $('nameInput').value.trim();
+    updateInviteCard();
+  }
+  function updateInviteCard() {
+    const card = $('inviteCard');
+    card.classList.toggle('hidden', !inviteRoom);
+    if (!inviteRoom) return;
+    const r = lastRooms.find(x => x.code === inviteRoom);
+    $('inviteInfo').textContent = r
+      ? `${r.host ? r.host + "'s room" : 'Room ' + r.code} · ${r.players} playing` + (r.phase === 'playing' ? ' · in a round (you’ll watch, then get dealt in)' : '')
+      : `Room ${inviteRoom}`;
+  }
+  function saveName() {
+    const n = $('nameInput').value.trim();
+    if (!n) { $('nameInput').focus(); toast('Type your name first'); return false; }
+    store.set(NAME_KEY, n);
+    myName = n;
+    hello();
+    return true;
+  }
+  $('nameGo').onclick = () => {
+    if (!saveName()) return;
+    if ($('nameGo').textContent === 'Join the game' && inviteRoom) return connect(inviteRoom, { create: false });
+    showMenu();
+  };
+  $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('nameGo').click(); });
+  $('editName').onclick = () => showNameStep(true);
+  $('inviteJoin').onclick = () => { if (!needName()) connect(inviteRoom, { create: false }); };
   function needName() {
     const n = $('nameInput').value.trim();
-    if (!n) { $('nameInput').focus(); toast('Enter your name first'); return true; }
+    if (!n) { showNameStep(); toast('Type your name first'); return true; }
     store.set(NAME_KEY, n);
     return false;
   }
@@ -875,7 +925,6 @@
   }
   $('joinBtn').onclick = joinFromInput;
   $('codeInput').addEventListener('keydown', e => e.key === 'Enter' && joinFromInput());
-  $('nameInput').addEventListener('keydown', e => e.key === 'Enter' && ($('codeInput').value ? joinFromInput() : $('createBtn').click()));
 
   // ── Share / copy the link ──────────────────────────────
   function shareInfo() {
@@ -1042,10 +1091,11 @@
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
   if (urlRoom) $('codeInput').value = urlRoom;
   if (session && (!urlRoom || urlRoom === session.room)) {
+    inviteRoom = '';
     connect(session.room, { create: false });
   } else {
     if (session) { session = null; store.del(SESSION_KEY); }
     show('home');
-    if (urlRoom && !$('nameInput').value) $('nameInput').focus();
+    if ($('nameInput').value.trim()) showMenu(); else showNameStep();
   }
 })();
