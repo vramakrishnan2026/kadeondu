@@ -3,7 +3,7 @@
 //  Save, then run:  npx wrangler deploy
 // ─────────────────────────────────────────────────────────────
 window.GAME_CONFIG = {
-  name: 'Ondu!',                 // shown in the header and browser tab
+  name: 'Kade Ondu',             // shown in the header, browser tab and share message
   callWord: 'Ondu!',             // what you shout on your last card (button text)
   tagline: 'Race to your last card. Anyone with the link can play.',
 

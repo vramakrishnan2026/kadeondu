@@ -1,4 +1,4 @@
-# Ondu! — multiplayer last-card game on Cloudflare
+# Kade Ondu — multiplayer last-card game on Cloudflare
 
 Everyone opens one link on their phone, one person creates a room, the rest join with the 4-letter code.
 No player limit: an extra deck is added automatically for every 10 players.
