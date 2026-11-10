@@ -539,7 +539,8 @@
     toast(voiceMuted ? 'Voice notes muted' : 'Voice notes on');
   };
   function pickMime() {
-    for (const t of ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']) {
+    // MP4/AAC first: iPhones play it, and so does everything else
+    for (const t of ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm']) {
       if (window.MediaRecorder?.isTypeSupported?.(t)) return t;
     }
     return '';
@@ -586,18 +587,67 @@
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) mic.addEventListener(ev, stopRec);
   mic.addEventListener('contextmenu', e => e.preventDefault());
 
+  // iPhones only play sound that a tap started. On the first tap anywhere we "unlock"
+  // one audio player and reuse it for every voice note after that.
+  let voiceEl = null, audioCtx = null, voiceQueue = [], voicePlaying = false, unlockHinted = false;
+  function silentWav() {
+    const n = 800, sr = 8000, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  function unlockAudio() {
+    if (voiceEl) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    voiceEl = new Audio();
+    voiceEl.setAttribute('playsinline', '');
+    voiceEl.src = silentWav();
+    voiceEl.play().then(() => voiceEl.pause()).catch(() => {});
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) { audioCtx = new AC(); audioCtx.resume?.(); }
+    } catch {}
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) document.removeEventListener(ev, unlockAudio, true);
+    if (voiceQueue.length) nextVoice();
+  }
+  for (const ev of ['pointerdown', 'touchend', 'keydown']) document.addEventListener(ev, unlockAudio, true);
+
   function playVoice(m) {
     if (voiceMuted || solo) return;
+    voiceQueue.push(m);
+    if (voiceQueue.length > 3) voiceQueue.shift(); // don't pile up a backlog
+    if (!voiceEl) {
+      if (!unlockHinted) { unlockHinted = true; toast('Tap anywhere to hear voice notes'); }
+      return;
+    }
+    if (!voicePlaying) nextVoice();
+  }
+  function nextVoice() {
+    const m = voiceQueue.shift();
+    if (!m) { voicePlaying = false; return; }
+    voicePlaying = true;
     const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === m.name);
     const bubble = el('div', 'voice-bubble', '🔊');
     seat?.append(bubble);
-    const done = () => bubble.remove();
-    try {
-      const a = new Audio(m.data);
-      a.onended = done; a.onerror = done;
-      a.play().catch(() => { done(); toast(`${m.name} sent a voice note (tap the screen to allow sound)`); });
-      setTimeout(done, VOICE_MAX_MS + 1500);
-    } catch { done(); }
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; bubble.remove(); setTimeout(nextVoice, 150); };
+    const safety = setTimeout(done, VOICE_MAX_MS + 2500);
+    const end = () => { clearTimeout(safety); done(); };
+    const viaWebAudio = async () => {
+      // second route: decode the clip ourselves (handles formats the player refuses)
+      if (!audioCtx) throw new Error('no audio');
+      const bytes = await (await fetch(m.data)).arrayBuffer();
+      const buf = await new Promise((ok, bad) => audioCtx.decodeAudioData(bytes, ok, bad));
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf; src.connect(audioCtx.destination); src.onended = end; src.start();
+    };
+    voiceEl.onended = end;
+    voiceEl.onerror = () => viaWebAudio().catch(() => { toast(`Couldn't play ${m.name}'s voice note on this phone`); end(); });
+    voiceEl.src = m.data;
+    voiceEl.play().catch(() => viaWebAudio().catch(() => { toast(`Couldn't play ${m.name}'s voice note on this phone`); end(); }));
   }
 
   let endClosedRound = null; // round whose result pop-up this player closed
