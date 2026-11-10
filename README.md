@@ -109,3 +109,4 @@ Created by **Vinay Ramakrishnan**.
 
 Card numbers use **Inter Black Italic** (© The Inter Project Authors, SIL Open Font License 1.1; see `public/fonts/LICENSE-Inter.txt`).
 Card artwork, table and rangoli pattern are original to this project.
+Wild +4 laugh sound: "evil laugh" by freesound_community (supplied by the project owner; the file name indicates Pixabay, whose licence allows use in games).

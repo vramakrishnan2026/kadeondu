@@ -1,6 +1,6 @@
 // Offline helper: always tries the network first (so updates show up straight away)
 // and falls back to the last copy only when there's no connection.
-const CACHE = 'kade-ondu-v2';
+const CACHE = 'kade-ondu-v3';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js',
   '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/mani.webp', '/fx/rangoli.svg', '/fx/evil-laugh.mp3'];
 
