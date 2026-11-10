@@ -994,6 +994,32 @@
   $('soloCancel').onclick = () => $('soloModal').classList.add('hidden');
   $('soloStart').onclick = () => { $('soloModal').classList.add('hidden'); startSolo(); };
 
+  // ── Install as an app ────────────────────────────────────
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installEvt = e;
+    if (!standalone) $('installBtn').classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', () => { $('installBtn').classList.add('hidden'); toast('Installed! Open it from your home screen'); });
+  if (isiOS && !standalone) $('installBtn').classList.remove('hidden');
+  $('installBtn').onclick = async () => {
+    if (installEvt) {
+      installEvt.prompt();
+      const r = await installEvt.userChoice.catch(() => null);
+      if (r?.outcome === 'accepted') $('installBtn').classList.add('hidden');
+      installEvt = null;
+    } else if (isiOS) {
+      $('iosInstall').classList.remove('hidden');
+    } else {
+      toast("Use your browser menu (⋮) and choose 'Install app' or 'Add to Home screen'");
+    }
+  };
+  $('closeIos').onclick = () => $('iosInstall').classList.add('hidden');
+
   // ── Start: rejoin a saved game or prefill a shared link ──
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
   if (urlRoom) $('codeInput').value = urlRoom;

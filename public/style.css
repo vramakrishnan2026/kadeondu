@@ -296,3 +296,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .mute .off { display: none; } .mute.muted .on { display: none; } .mute.muted .off { display: inline; } .mute.muted { color: var(--red); }
 .voice-bubble { position: absolute; top: -14px; right: 2px; background: #fff; color: #111; border-radius: 12px 12px 12px 3px;
   padding: 1px 6px; font-size: .8rem; box-shadow: 0 2px 8px rgba(0,0,0,.4); animation: pulse .5s infinite alternate; }
+
+.steps { text-align: left; margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .5rem; line-height: 1.4; }
+.ios-share { display: inline-block; padding: 0 .35em; border: 1px solid var(--line); border-radius: 6px; }

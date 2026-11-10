@@ -74,12 +74,14 @@ No player limit: an extra deck is added automatically for every 10 players.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.
 - On your second-last card, tap the call button before or right after playing it. If you forget,
   anyone can tap **Catch!** on your name and you pick up 2.
+- **Install as an app:** tap **📲 Install app** on the home screen (Android/Chrome), or on iPhone use Safari's Share → Add to Home Screen.
 - If a phone locks or drops off Wi-Fi, just reopen the page: you're put back in your seat with your cards.
 - If someone walks away on their turn, the host gets a **Skip their turn** button.
 - Rooms clean themselves up 24 hours after the last player leaves.
 
 ## Renaming the game later
 1. Open `public/config.js` and change `name` and `callWord` (and colours if you like).
+   Also change `name` and `short_name` in `public/manifest.webmanifest` (the installed app's name).
 2. Run `npx wrangler deploy`. Players see the new name on their next refresh. Rooms keep working.
 
 **Optional, changes the web address:** edit `"name"` in `wrangler.jsonc` (e.g. `"kade-ondu"`) and deploy.

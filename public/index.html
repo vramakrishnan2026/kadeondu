@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#17171c">
   <title>Card game</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kade Ondu">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap">
@@ -33,6 +40,7 @@
       </label>
       <button id="createBtn" class="primary big">Create a room</button>
       <button id="soloBtn" class="secondary big">🤖 Play vs computer</button>
+      <button id="installBtn" class="ghost big hidden">📲 Install app</button>
       <div class="or"><span>or join one</span></div>
       <div class="join-row">
         <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
@@ -160,6 +168,20 @@
       <p class="muted small-text">Just you and the computer. No room, nobody else can see it.</p>
       <button id="soloStart" class="primary big">Start</button>
       <button id="soloCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- How to install on iPhone -->
+  <div id="iosInstall" class="overlay hidden">
+    <div class="modal">
+      <h3>Install on iPhone</h3>
+      <ol class="steps">
+        <li>Open this page in <b>Safari</b>.</li>
+        <li>Tap the <b>Share</b> button <span class="ios-share">⬆︎</span> (bottom of the screen, or top right on iPad).</li>
+        <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+      </ol>
+      <p class="muted small-text">The game then opens full screen from its own icon, like an app.</p>
+      <button id="closeIos" class="primary">Got it</button>
     </div>
   </div>
 
