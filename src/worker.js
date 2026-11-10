@@ -177,13 +177,20 @@ export class GameRoom extends DurableObject {
 }
 
 // ───────────────────────────────────────────────────────────
-// A single instance that keeps the list of open rooms and
-// pushes it to everyone sitting on the home screen.
+// A single instance that keeps the list of open rooms and who is
+// online, pushes both to every open page, and passes invites along.
 // ───────────────────────────────────────────────────────────
+const INVITE_GAP_MS = 10000; // one invite per person per 10 s
+
+function cleanName(n) {
+  return String(n || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 20);
+}
+
 export class Lobby extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.rooms = {};
+    this.lastInvite = new Map();
     ctx.blockConcurrencyWhile(async () => {
       this.rooms = (await ctx.storage.get('rooms')) || {};
     });
@@ -202,6 +209,38 @@ export class Lobby extends DurableObject {
       .map(({ at, ...r }) => r);
   }
 
+  // Everyone with a page open who has typed a name (one entry per device)
+  people(except) {
+    const byId = new Map();
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === except) continue;
+      const a = ws.deserializeAttachment();
+      if (!a?.cid || !a.name) continue;
+      const prev = byId.get(a.cid);
+      if (!prev || (!prev.room && a.room)) byId.set(a.cid, { id: a.cid, name: a.name, room: a.room || null });
+    }
+    return [...byId.values()]
+      .map(p => ({ ...p, roomHost: p.room ? this.rooms[p.room]?.host || '' : '' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 200);
+  }
+
+  sendAll(obj, except) {
+    const msg = JSON.stringify(obj);
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === except) continue;
+      try { ws.send(msg); } catch {}
+    }
+  }
+
+  sendTo(cid, obj) {
+    let n = 0;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws.deserializeAttachment()?.cid === cid) { try { ws.send(JSON.stringify(obj)); n++; } catch {} }
+    }
+    return n;
+  }
+
   async fetch(request) {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return Response.json({ rooms: this.list() });
@@ -209,7 +248,9 @@ export class Lobby extends DurableObject {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ cid: null, name: '', room: null });
     server.send(JSON.stringify({ t: 'rooms', rooms: this.list() }));
+    server.send(JSON.stringify({ t: 'people', people: this.people() }));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -219,10 +260,53 @@ export class Lobby extends DurableObject {
     if (sum.online > 0 && sum.players + sum.watching > 0) this.rooms[sum.code] = { ...sum, at: Date.now() };
     else delete this.rooms[sum.code];
     await this.ctx.storage.put('rooms', this.rooms);
-    const msg = JSON.stringify({ t: 'rooms', rooms: this.list() });
-    for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch {} }
+    this.sendAll({ t: 'rooms', rooms: this.list() });
+    this.sendAll({ t: 'people', people: this.people() }); // "In Arun's room" labels may change
   }
 
-  async webSocketMessage() {}
-  async webSocketClose(ws) { try { ws.close(1000, 'bye'); } catch {} }
+  async webSocketMessage(ws, raw) {
+    if (typeof raw !== 'string' || raw.length > 1000) return;
+    let m;
+    try { m = JSON.parse(raw); } catch { return; }
+    const me = ws.deserializeAttachment() || {};
+
+    if (m.t === 'hello') {
+      const cid = /^[a-z0-9]{8,32}$/.test(m.cid || '') ? m.cid : null;
+      const room = /^[A-Z0-9]{4,8}$/.test(m.room || '') ? m.room : null;
+      const next = { cid, name: cleanName(m.name), room };
+      if (JSON.stringify(next) === JSON.stringify(me)) return;
+      ws.serializeAttachment(next);
+      return this.sendAll({ t: 'people', people: this.people() });
+    }
+
+    if (m.t === 'invite') {
+      if (!me.cid || !me.name || !me.room) return ws.send(JSON.stringify({ t: 'error', msg: 'Join a room before inviting' }));
+      const target = this.people().find(p => p.id === m.to);
+      if (!target) return ws.send(JSON.stringify({ t: 'error', msg: 'They are no longer online' }));
+      if (target.room) return ws.send(JSON.stringify({ t: 'error', msg: `${target.name} is already in a room` }));
+      const key = me.cid + '>' + m.to;
+      if (Date.now() - (this.lastInvite.get(key) || 0) < INVITE_GAP_MS) return;
+      this.lastInvite.set(key, Date.now());
+      if (this.lastInvite.size > 2000) this.lastInvite.clear();
+      this.sendTo(m.to, {
+        t: 'invited', fromId: me.cid, from: me.name, room: me.room,
+        roomHost: this.rooms[me.room]?.host || me.name, phase: this.rooms[me.room]?.phase || 'lobby',
+      });
+      return ws.send(JSON.stringify({ t: 'invite-sent', to: target.name }));
+    }
+
+    if (m.t === 'decline') {
+      if (!me.cid || typeof m.to !== 'string') return;
+      this.sendTo(m.to, { t: 'declined', from: me.name || 'Someone' });
+    }
+  }
+
+  async webSocketClose(ws) {
+    try { ws.close(1000, 'bye'); } catch {}
+    this.sendAll({ t: 'people', people: this.people(ws) }, ws);
+  }
+
+  async webSocketError(ws) {
+    this.sendAll({ t: 'people', people: this.people(ws) }, ws);
+  }
 }

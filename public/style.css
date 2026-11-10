@@ -72,6 +72,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .badge { font-size: .7rem; font-weight: 700; border-radius: 6px; padding: .15em .5em; background: rgba(60,207,110,.18); color: #6fe39a; white-space: nowrap; }
 .badge.live { background: rgba(255,106,43,.2); color: var(--accent); }
 .center { text-align: center; }
+.room-list.left { text-align: left; max-height: 55dvh; overflow: auto; }
+.status-txt { font-size: .8rem; color: var(--muted); }
+.status-txt.free { color: #6fe39a; }
 .watchers { width: 100%; font-size: .8rem; color: var(--muted); padding: 0 .3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .watch-note { text-align: center; background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; padding: 1rem; margin: 0 .5rem .5rem; color: var(--muted); }
 .settings { background: var(--panel); border-radius: 12px; padding: .8rem; display: flex; flex-direction: column; gap: .7rem; }

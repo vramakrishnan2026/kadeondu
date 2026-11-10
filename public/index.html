@@ -14,6 +14,7 @@
     <div class="topbar-right">
       <span id="roomChip" class="chip hidden"></span>
       <span id="netDot" class="net-dot" title="Connection"></span>
+      <button id="inviteTopBtn" class="ghost small hidden">👥 Invite</button>
       <button id="leaveBtn" class="ghost small hidden">Leave</button>
     </div>
   </header>
@@ -35,6 +36,9 @@
       <div class="rooms-head"><h3>Open rooms</h3><span id="roomsNet" class="net-dot" title="Live"></span></div>
       <ul id="roomList" class="room-list"></ul>
       <p id="noRooms" class="muted small-text center">No open rooms right now. Create one!</p>
+      <div class="rooms-head"><h3>Online now</h3><span id="peopleCount" class="muted small-text"></span></div>
+      <ul id="peopleHome" class="room-list"></ul>
+      <p id="noPeople" class="muted small-text center">Nobody else is online yet.</p>
     </div>
   </main>
 
@@ -47,6 +51,7 @@
         <button id="shareBtn" class="secondary">Share link</button>
         <button id="copyBtn" class="ghost">Copy link</button>
       </div>
+      <button id="inviteLobbyBtn" class="secondary">👥 Invite people who are online</button>
       <h3>Players <span id="playerCount" class="muted"></span></h3>
       <ul id="lobbyPlayers" class="lobby-players"></ul>
       <div id="hostSettings" class="settings hidden">
@@ -110,6 +115,26 @@
         <button data-color="b" class="pick c-b">Blue</button>
       </div>
       <button id="cancelPick" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Invite people who are online -->
+  <div id="peopleModal" class="overlay hidden">
+    <div class="modal">
+      <h3>Invite people online</h3>
+      <ul id="peopleList" class="room-list left"></ul>
+      <p id="noPeopleModal" class="muted small-text">Nobody else is online right now. Use Share link instead.</p>
+      <button id="closePeople" class="ghost">Close</button>
+    </div>
+  </div>
+
+  <!-- Someone invited you -->
+  <div id="inviteModal" class="overlay hidden">
+    <div class="modal">
+      <h2 id="inviteTitle"></h2>
+      <p id="inviteSub" class="muted"></p>
+      <button id="acceptInvite" class="primary big">Join</button>
+      <button id="declineInvite" class="ghost">Not now</button>
     </div>
   </div>
 

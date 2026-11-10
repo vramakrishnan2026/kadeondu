@@ -5,6 +5,7 @@
   const COLOR_NAMES = { r: 'red', y: 'yellow', g: 'green', b: 'blue' };
   const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const SESSION_KEY = 'cardgame-session';
+  const CID_KEY = 'cardgame-cid';
   const NAME_KEY = 'cardgame-name';
 
   // ── Apply the rename-able config ──────────────────────────
@@ -36,7 +37,6 @@
   }
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
-    if (screen === 'home') openRoomList(); else closeRoomList();
   }
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -143,10 +143,14 @@
     history.replaceState(null, '', location.pathname);
     $('roomChip').classList.add('hidden');
     $('leaveBtn').classList.add('hidden');
+    $('inviteTopBtn').classList.add('hidden');
+    $('peopleModal').classList.add('hidden');
     $('endOverlay').classList.add('hidden');
     $('colorPicker').classList.add('hidden');
     setNet('');
+    myName = $('nameInput').value.trim();
     show('home');
+    hello();
     if (msg) toast(msg);
   }
 
@@ -158,6 +162,10 @@
       $('roomChip').textContent = room;
       $('roomChip').classList.remove('hidden');
       $('leaveBtn').classList.remove('hidden');
+      $('inviteTopBtn').classList.remove('hidden');
+      myName = m.name;
+      hello();
+      for (const to of pendingInvites.splice(0)) sendInvite(to);
     } else if (m.t === 'state') {
       render(m);
     } else if (m.t === 'error') {
@@ -338,15 +346,27 @@
     }
   }
 
-  // ── Live list of open rooms (home screen) ────────────────
-  let listWs = null, listWanted = false, listRetry = 0, listPing = null;
-  function openRoomList() {
-    listWanted = true;
+  // ── Always-on link to the lobby: open rooms, who's online, invites ──
+  let cid = store.get(CID_KEY);
+  if (!/^[a-z0-9]{16}$/.test(cid || '')) {
+    cid = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => 'abcdefghijkmnopqrstuvwxyz23456789'[b % 33]).join('');
+    store.set(CID_KEY, cid);
+  }
+  let listWs = null, listRetry = 0, listPing = null, myName = '';
+  let people = [], pendingInvites = [], invitedAt = {}, currentInvite = null;
+  const inRoom = () => !!(wantOpen && room && session && session.room === room);
+
+  function hello() {
+    if (listWs?.readyState !== 1) return;
+    listWs.send(JSON.stringify({ t: 'hello', cid, name: myName, room: inRoom() ? room : null }));
+  }
+  function openLobby() {
     if (listWs && listWs.readyState <= 1) return;
     listWs = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/lobby`);
     listWs.onopen = () => {
       listRetry = 0;
       $('roomsNet').className = 'net-dot on';
+      hello();
       clearInterval(listPing);
       listPing = setInterval(() => listWs?.readyState === 1 && listWs.send('ping'), 25000);
     };
@@ -354,18 +374,19 @@
       if (ev.data === 'pong') return;
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === 'rooms') renderRooms(m.rooms);
+      else if (m.t === 'people') { people = m.people; renderPeople(); }
+      else if (m.t === 'invited') showInvite(m);
+      else if (m.t === 'invite-sent') toast(`Invite sent to ${m.to}`);
+      else if (m.t === 'declined') toast(`${m.from} can't play right now`);
+      else if (m.t === 'error') toast(m.msg);
     };
     listWs.onclose = () => {
       clearInterval(listPing);
       $('roomsNet').className = 'net-dot off';
-      if (listWanted) setTimeout(() => listWanted && openRoomList(), Math.min(10000, 1000 * 2 ** listRetry++));
+      setTimeout(openLobby, Math.min(10000, 1000 * 2 ** listRetry++));
     };
   }
-  function closeRoomList() {
-    listWanted = false;
-    clearInterval(listPing);
-    if (listWs) { listWs.onclose = null; try { listWs.close(); } catch {} listWs = null; }
-  }
+
   function renderRooms(rooms) {
     const ul = $('roomList');
     ul.replaceChildren();
@@ -389,9 +410,92 @@
     }
   }
 
+  function personRow(p, fromHome) {
+    const li = el('li');
+    const info = el('div', 'rinfo');
+    const free = !p.room;
+    const here = !free && inRoom() && p.room === room;
+    info.append(
+      el('div', 'rname', p.name),
+      el('div', 'status-txt' + (free ? ' free' : ''), free ? '● Online' : here ? 'In this room' : `In ${p.roomHost ? p.roomHost + "'s" : 'a'} room`),
+    );
+    li.append(info);
+    if (free) {
+      const recently = Date.now() - (invitedAt[p.id] || 0) < 10000;
+      const btn = el('button', 'primary small', recently ? 'Invited ✓' : 'Invite');
+      btn.disabled = recently;
+      btn.onclick = () => {
+        if (fromHome && !inRoom()) {
+          // Not in a room yet: make one, then invite once we're in
+          if (needName()) return;
+          pendingInvites = [p.id];
+          createTries = 0;
+          session = null;
+          connect(newCode(), { create: true });
+        } else {
+          sendInvite(p.id);
+        }
+        invitedAt[p.id] = Date.now();
+        renderPeople();
+        setTimeout(renderPeople, 10100);
+      };
+      li.append(btn);
+    }
+    return li;
+  }
+
+  function renderPeople() {
+    const others = people.filter(p => p.id !== cid);
+    $('peopleCount').textContent = others.length ? `(${others.length})` : '';
+    const home = $('peopleHome');
+    home.replaceChildren(...others.map(p => personRow(p, true)));
+    $('noPeople').classList.toggle('hidden', others.length > 0);
+    const list = $('peopleList');
+    list.replaceChildren(...others.map(p => personRow(p, false)));
+    $('noPeopleModal').classList.toggle('hidden', others.length > 0);
+  }
+
+  function sendInvite(to) {
+    if (listWs?.readyState === 1) listWs.send(JSON.stringify({ t: 'invite', to }));
+    else toast('Reconnecting…');
+  }
+
+  function showInvite(m) {
+    if (inRoom()) return; // already playing somewhere
+    currentInvite = m;
+    $('inviteTitle').textContent = `${m.from} invited you to play ${CFG.name}`;
+    $('inviteSub').textContent = m.phase === 'playing'
+      ? `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`
+      : `${m.roomHost}'s room · ${m.room}`;
+    $('inviteModal').classList.remove('hidden');
+    try { navigator.vibrate?.([80, 60, 80]); } catch {}
+  }
+  $('acceptInvite').onclick = () => {
+    $('inviteModal').classList.add('hidden');
+    if (!currentInvite) return;
+    if (!$('nameInput').value.trim()) $('nameInput').value = myName || 'Player';
+    store.set(NAME_KEY, $('nameInput').value.trim());
+    connect(currentInvite.room, { create: false });
+    currentInvite = null;
+  };
+  $('declineInvite').onclick = () => {
+    $('inviteModal').classList.add('hidden');
+    if (currentInvite && listWs?.readyState === 1) listWs.send(JSON.stringify({ t: 'decline', to: currentInvite.fromId }));
+    currentInvite = null;
+  };
+  const openPeople = () => { renderPeople(); $('peopleModal').classList.remove('hidden'); };
+  $('inviteTopBtn').onclick = openPeople;
+  $('inviteLobbyBtn').onclick = openPeople;
+  $('closePeople').onclick = () => $('peopleModal').classList.add('hidden');
+
   // ── Wire up controls ─────────────────────────────────────
   $('nameInput').value = store.get(NAME_KEY) || '';
   $('nameInput').addEventListener('change', () => store.set(NAME_KEY, $('nameInput').value.trim()));
+  let nameTimer;
+  $('nameInput').addEventListener('input', () => {
+    clearTimeout(nameTimer);
+    nameTimer = setTimeout(() => { if (!inRoom()) { myName = $('nameInput').value.trim(); hello(); } }, 400);
+  });
   function needName() {
     const n = $('nameInput').value.trim();
     if (!n) { $('nameInput').focus(); toast('Enter your name first'); return true; }
@@ -451,6 +555,9 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && wantOpen && ws?.readyState !== 1) connect(room, { create: false });
   });
+
+  myName = $('nameInput').value.trim();
+  openLobby();
 
   // ── Start: rejoin a saved game or prefill a shared link ──
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
