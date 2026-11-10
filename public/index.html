@@ -161,6 +161,7 @@
       <button id="scoresBtn" class="secondary hidden">🏆 Scores</button>
       <button id="nextRoundBarBtn" class="primary hidden">Next round</button>
     </div>
+    <button id="micEnable" class="mic-enable hidden">🎙 Turn on voice notes</button>
     <div id="hand" class="hand"></div>
     <div id="watchNote" class="watch-note hidden">👀 You're watching this round. You'll be dealt in when it ends.</div>
     <div id="logLine" class="log-line"></div>
@@ -228,6 +229,17 @@
       </ol>
       <p class="muted small-text">The game then opens full screen from its own icon, like an app.</p>
       <button id="closeIos" class="primary">Got it</button>
+    </div>
+  </div>
+
+  <!-- Microphone blocked: how to fix -->
+  <div id="micHelp" class="overlay hidden">
+    <div class="modal">
+      <h3>Turn on the microphone</h3>
+      <p class="muted small-text" style="margin:0">Your browser has blocked the mic for this game. A website can't switch it back on itself, so please do this:</p>
+      <ol id="micHelpSteps" class="steps"></ol>
+      <button id="micRetry" class="primary">I've done it, try again</button>
+      <button id="micHelpClose" class="ghost">Close</button>
     </div>
   </div>
 

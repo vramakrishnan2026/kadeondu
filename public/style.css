@@ -329,3 +329,8 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 /* TEMPORARY voice test link */
 .voicetest-link { display: block; text-align: center; margin-top: 1rem; color: var(--muted); font-size: .85rem; }
+
+/* voice notes: permission */
+.mic-enable { align-self: center; margin: .2rem 0 -.2rem; padding: .55em 1.1em; border-radius: 99px; font-weight: 700; font-size: .9rem;
+  background: rgba(255,255,255,.12); border: 1px dashed rgba(255,255,255,.35); }
+.mic-enable.blocked { background: rgba(229,72,77,.2); border-color: var(--red); color: #ffb3b3; }

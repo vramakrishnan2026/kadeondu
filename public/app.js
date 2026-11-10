@@ -304,6 +304,7 @@
     $('hand').classList.toggle('hidden', s.spectating);
     $('callBtn').classList.toggle('hidden', s.spectating);
     $('micBtn').classList.toggle('hidden', !!solo);
+    updateMicEnable();
     $('muteBtn').classList.toggle('hidden', !!solo);
 
     // table
@@ -578,6 +579,70 @@
     return recStream;
   }
   const isBrave = !!navigator.brave || /Brave/i.test(navigator.userAgent);
+
+  // ── Microphone permission: ask with a tap, explain if blocked ──
+  let micState = 'unknown'; // granted | denied | prompt | unknown
+  let micPerm = null;
+  try {
+    navigator.permissions?.query({ name: 'microphone' }).then(p => {
+      micPerm = p; micState = p.state; updateMicEnable();
+      p.onchange = () => { micState = p.state; updateMicEnable(); };
+    }).catch(() => {});
+  } catch {}
+  function updateMicEnable() {
+    const b = $('micEnable');
+    const inGame = !solo && S && !$('game').classList.contains('hidden');
+    const show = inGame && micState !== 'granted' && !!navigator.mediaDevices?.getUserMedia;
+    b.classList.toggle('hidden', !show);
+    b.classList.toggle('blocked', micState === 'denied');
+    b.textContent = micState === 'denied' ? '🎙 Mic blocked: how to fix' : '🎙 Turn on voice notes';
+  }
+  async function enableMic() {
+    if (micState === 'denied') return openMicHelp();
+    try {
+      await getMic();
+      micState = 'granted';
+      updateMicEnable();
+      toast('Voice notes on: hold the mic button to talk');
+    } catch (err) {
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') { micState = 'denied'; updateMicEnable(); openMicHelp(); }
+      else toastLong(micErrorText(err));
+    }
+  }
+  function micHelpSteps() {
+    const ua = navigator.userAgent;
+    if (isiOS && isBrave) return [
+      'Tap the <b>Brave lion</b> icon in the address bar and turn <b>Shields off</b> for this site.',
+      'Open the iPhone <b>Settings</b> app → scroll to <b>Brave</b> → turn <b>Microphone</b> on.',
+      'Come back here and tap <b>Try again</b>. If Brave asks, tap <b>Allow</b>.'];
+    if (isiOS && /CriOS/.test(ua)) return [
+      'Open the iPhone <b>Settings</b> app → scroll to <b>Chrome</b> → turn <b>Microphone</b> on.',
+      'Come back, reload this page, and tap <b>Try again</b>. Tap <b>Allow</b> when asked.'];
+    if (isiOS) return [
+      'In Safari, tap <b>aA</b> (or the page icon) in the address bar → <b>Website Settings</b> → <b>Microphone</b> → <b>Allow</b>.',
+      'Also check the iPhone <b>Settings</b> app → <b>Apps → Safari</b> → <b>Microphone</b> is set to <b>Ask</b> or <b>Allow</b>.',
+      'Come back and tap <b>Try again</b>.'];
+    if (isBrave) return [
+      'Tap the <b>lock</b> icon next to the address → <b>Permissions</b> (or Site settings) → <b>Microphone</b> → <b>Allow</b>.',
+      'If it still fails, tap the <b>Brave lion</b> icon and turn <b>Shields off</b> for this site.',
+      'Check the phone Settings → Apps → <b>Brave</b> → Permissions → <b>Microphone</b> is allowed.',
+      'Come back and tap <b>Try again</b>.'];
+    return [
+      'Tap the <b>lock</b> (or settings) icon next to the address → <b>Permissions</b> → <b>Microphone</b> → <b>Allow</b>.',
+      'Check the phone Settings → Apps → your browser → Permissions → <b>Microphone</b> is allowed.',
+      'Come back and tap <b>Try again</b>.'];
+  }
+  function openMicHelp() {
+    $('micHelpSteps').innerHTML = micHelpSteps().map(t => `<li>${t}</li>`).join('');
+    $('micHelp').classList.remove('hidden');
+  }
+  $('micEnable').onclick = enableMic;
+  $('micHelpClose').onclick = () => $('micHelp').classList.add('hidden');
+  $('micRetry').onclick = async () => {
+    $('micHelp').classList.add('hidden');
+    micState = 'unknown';
+    await enableMic();
+  };
   function micErrorText(err) {
     const name = err?.name || '';
     if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -600,8 +665,12 @@
     recWanted = true;
     const hadMic = !!recStream;
     let stream;
-    try { stream = await getMic(); }
-    catch (err) { recWanted = false; return toastLong(micErrorText(err)); }
+    try { stream = await getMic(); micState = 'granted'; updateMicEnable(); }
+    catch (err) {
+      recWanted = false;
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') { micState = 'denied'; updateMicEnable(); return openMicHelp(); }
+      return toastLong(micErrorText(err));
+    }
     if (!recWanted) { if (!hadMic) toast('Mic ready. Now hold the button to talk'); return; } // let go while the permission pop-up was open
     const mime = pickMime();
     try {
