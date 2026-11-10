@@ -1,0 +1,17 @@
+{
+  // "name" becomes your web address: https://<name>.<your-subdomain>.workers.dev
+  // Changing it later gives you a new address (the old one stops working).
+  "name": "kadeondu",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-10-01",
+
+  // The game page (HTML, CSS, JS) is served straight from this folder
+  "assets": { "directory": "./public" },
+
+  // Each room code gets its own little server that holds the game
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+  },
+  // Free plan needs SQLite-backed Durable Objects. Never edit this block after the first deploy.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }]
+}

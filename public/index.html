@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#17171c">
+  <title>Card game</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" data-name>Game</div>
+    <div class="topbar-right">
+      <span id="roomChip" class="chip hidden"></span>
+      <span id="netDot" class="net-dot" title="Connection"></span>
+      <button id="leaveBtn" class="ghost small hidden">Leave</button>
+    </div>
+  </header>
+
+  <!-- Home -->
+  <main id="home" class="screen">
+    <div class="home-card">
+      <h1 data-name>Game</h1>
+      <p class="tagline" data-tagline></p>
+      <label class="field">Your name
+        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="e.g. Arun">
+      </label>
+      <button id="createBtn" class="primary big">Create a room</button>
+      <div class="or"><span>or join one</span></div>
+      <div class="join-row">
+        <input id="codeInput" maxlength="8" placeholder="ROOM CODE" autocapitalize="characters" autocomplete="off">
+        <button id="joinBtn" class="secondary">Join</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Lobby -->
+  <main id="lobby" class="screen hidden">
+    <div class="lobby-card">
+      <p class="muted">Room code</p>
+      <div id="lobbyCode" class="big-code"></div>
+      <div class="share-row">
+        <button id="shareBtn" class="secondary">Share link</button>
+        <button id="copyBtn" class="ghost">Copy link</button>
+      </div>
+      <h3>Players <span id="playerCount" class="muted"></span></h3>
+      <ul id="lobbyPlayers" class="lobby-players"></ul>
+      <div id="hostSettings" class="settings hidden">
+        <label class="toggle"><input type="checkbox" id="stackingInput"> Allow stacking +2 / +4</label>
+        <label class="field inline">Cards per hand
+          <select id="handSizeInput"><option>5</option><option selected>7</option><option>10</option></select>
+        </label>
+      </div>
+      <p id="guestSettings" class="muted small-text"></p>
+      <button id="startBtn" class="primary big hidden">Start game</button>
+      <p id="waitHost" class="muted hidden">Waiting for the host to start…</p>
+    </div>
+  </main>
+
+  <!-- Game table -->
+  <main id="game" class="screen hidden">
+    <div id="opponents" class="opponents"></div>
+    <div class="table">
+      <div class="pile-wrap">
+        <button id="drawPile" class="card back" aria-label="Draw a card"><span>DRAW</span></button>
+        <div id="deckCount" class="muted small-text"></div>
+      </div>
+      <div class="center-info">
+        <div id="dirArrow" class="dir">↻</div>
+        <div id="colorDot" class="color-dot"></div>
+      </div>
+      <div class="pile-wrap"><div id="discard"></div><div class="muted small-text">Top card</div></div>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="actions">
+      <button id="passBtn" class="secondary hidden">Keep card &amp; pass</button>
+      <button id="drawBtn" class="secondary hidden">Draw</button>
+      <button id="callBtn" class="call" data-call disabled>Call</button>
+      <button id="skipTurnBtn" class="ghost small hidden" title="Skip a player who has stepped away">Skip their turn</button>
+    </div>
+    <div id="hand" class="hand"></div>
+    <div id="logLine" class="log-line"></div>
+  </main>
+
+  <!-- Round over -->
+  <div id="endOverlay" class="overlay hidden">
+    <div class="modal">
+      <h2 id="endTitle"></h2>
+      <p id="endPoints" class="muted"></p>
+      <ol id="scoreList" class="scores"></ol>
+      <button id="nextRoundBtn" class="primary big hidden">Next round</button>
+      <p id="endWait" class="muted hidden">Waiting for the host…</p>
+    </div>
+  </div>
+
+  <!-- Wild colour picker -->
+  <div id="colorPicker" class="overlay hidden">
+    <div class="modal">
+      <h3>Pick a colour</h3>
+      <div class="color-grid">
+        <button data-color="r" class="pick c-r">Red</button>
+        <button data-color="y" class="pick c-y">Yellow</button>
+        <button data-color="g" class="pick c-g">Green</button>
+        <button data-color="b" class="pick c-b">Blue</button>
+      </div>
+      <button id="cancelPick" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
