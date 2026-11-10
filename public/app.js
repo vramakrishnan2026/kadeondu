@@ -92,9 +92,16 @@
   let wantOpen = false, retry = 0, pingTimer = null, createTries = 0, joinIntent = {};
   let S = null, lastSeq = 0, pendingWild = null, prevTurn = null, leaving = false;
 
-  function setNet(state) {
+  // Top-right dot: green = connected, amber = connecting, red = can't reach the server.
+  // In a room it shows the room connection; elsewhere the home-screen connection.
+  let netFails = 0;
+  function setNet() {
+    const sock = wantOpen ? ws : listWs;
+    const st = sock?.readyState;
+    const cls = st === 1 ? 'on' : st === 0 ? 'wait' : 'off';
     const d = $('netDot');
-    d.className = 'net-dot ' + (state === 'on' ? 'on' : state === 'off' ? 'off' : '');
+    d.className = 'net-dot ' + cls;
+    d.title = cls === 'on' ? 'Connected' : cls === 'wait' ? 'Connecting…' : 'Not connected, retrying';
   }
 
   function connect(code, intent) {
@@ -104,10 +111,10 @@
     if (ws) { try { ws.onclose = null; ws.close(); } catch {} }
     const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${code}`;
     ws = new WebSocket(url);
-    setNet('');
+    setNet();
     ws.onopen = () => {
       retry = 0;
-      setNet('on');
+      setNet();
       const s = session && session.room === room ? session : null;
       ws.send(JSON.stringify({
         t: 'join',
@@ -125,9 +132,10 @@
     };
     ws.onclose = () => {
       clearInterval(pingTimer);
-      setNet('off');
+      setNet();
       if (!wantOpen) return;
       const wait = Math.min(8000, 500 * 2 ** retry++);
+      if (retry === 3) toast("Can't reach the game room. Retrying…");
       setTimeout(() => wantOpen && connect(room, { create: false }), wait);
     };
   }
@@ -147,7 +155,7 @@
     $('peopleModal').classList.add('hidden');
     $('endOverlay').classList.add('hidden');
     $('colorPicker').classList.add('hidden');
-    setNet('');
+    setNet();
     myName = $('nameInput').value.trim();
     show('home');
     hello();
@@ -365,7 +373,8 @@
     listWs = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/lobby`);
     listWs.onopen = () => {
       listRetry = 0;
-      $('roomsNet').className = 'net-dot on';
+      setNet();
+      netFails = 0;
       hello();
       clearInterval(listPing);
       listPing = setInterval(() => listWs?.readyState === 1 && listWs.send('ping'), 25000);
@@ -382,7 +391,8 @@
     };
     listWs.onclose = () => {
       clearInterval(listPing);
-      $('roomsNet').className = 'net-dot off';
+      setNet();
+      if (++netFails === 3 && !wantOpen) toast("Can't reach the game server. Retrying…");
       setTimeout(openLobby, Math.min(10000, 1000 * 2 ** listRetry++));
     };
   }
