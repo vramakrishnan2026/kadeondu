@@ -3,6 +3,8 @@
 Everyone opens one link on their phone, one person creates a room, the rest join with the 4-letter code.
 No player limit: an extra deck is added automatically for every 10 players.
 
+**Live game:** https://kadeondu.goarena.workers.dev
+
 ## What's in this folder
 
 | File | What it does |
@@ -27,7 +29,7 @@ No player limit: an extra deck is added automatically for every 10 players.
 2. Sign up with the new Gmail address and verify the email Cloudflare sends.
 3. Choose the **Free** plan if asked. You shouldn't need to add a card for the free Workers plan.
 4. In the left menu open **Workers & Pages** once (it may sit under "Compute"). Cloudflare will ask you to pick your
-   **workers.dev subdomain**, e.g. `ondu-games`. Your game will live at `https://kadeondu.<your-subdomain>.workers.dev`.
+   **workers.dev subdomain**, e.g. `ondu-games`. Your game will live at `https://kadeondu.goarena.workers.dev`.
 
 ### 3. Install Node.js on your laptop
 1. Download the **LTS** version from <https://nodejs.org> and install it with the defaults.
@@ -46,7 +48,7 @@ No player limit: an extra deck is added automatically for every 10 players.
    (If it opens your work browser profile, copy the link into the private window instead.)
 2. `npx wrangler whoami` — check it shows the new Gmail address.
 3. `npx wrangler deploy`
-4. It prints your address, e.g. `https://kadeondu.<your-subdomain>.workers.dev`. Open it on your phone. Done!
+4. It prints your address, e.g. `https://kadeondu.goarena.workers.dev`. Open it on your phone. Done!
 
 ---
 
