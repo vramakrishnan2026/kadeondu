@@ -4,7 +4,7 @@ import * as G from '../public/shared/game.js';
 const IDLE_CLEANUP_MS = 24 * 60 * 60 * 1000; // forget a room 24 h after its last activity
 const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it hasn't reported for 6 h
 const MAX_SOCKETS = 300;
-const MAX_VOICE_CHARS = 120000; // about 5 s of compressed speech
+const MAX_VOICE_CHARS = 300000; // 5 s of speech, with room for iPhone recordings
 const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
 
 // Front door: the game page is served from /public automatically.

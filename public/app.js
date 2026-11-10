@@ -148,6 +148,7 @@
   }
   function goHome(msg) {
     if (solo) { clearTimeout(solo.timer); clearTimeout(solo.tt); solo = null; }
+    try { stopRec(); releaseMic(); } catch {}
     wantOpen = false;
     try { ws?.close(); } catch {}
     ws = null; S = null; room = null; lastSeq = 0;
@@ -545,19 +546,35 @@
     }
     return '';
   }
+  // Keep the microphone open once allowed, so Safari doesn't ask (and cancel) on every hold.
+  async function getMic() {
+    if (recStream && recStream.getAudioTracks().some(t => t.readyState === 'live')) return recStream;
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    return recStream;
+  }
+  function releaseMic() {
+    recStream?.getTracks().forEach(t => t.stop());
+    recStream = null;
+  }
   async function startRec() {
     if (solo || rec) return;
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Voice notes are not supported on this browser');
     recWanted = true;
-    try {
-      recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch { recWanted = false; return toast('Allow the microphone to send voice notes'); }
-    if (!recWanted) { recStream.getTracks().forEach(t => t.stop()); recStream = null; return; } // let go before it started
+    const hadMic = !!recStream;
+    let stream;
+    try { stream = await getMic(); }
+    catch { recWanted = false; return toast('Allow the microphone to send voice notes'); }
+    if (!recWanted) { if (!hadMic) toast('Mic ready. Now hold the button to talk'); return; } // let go while the permission pop-up was open
     const mime = pickMime();
-    rec = new MediaRecorder(recStream, mime ? { mimeType: mime, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 });
+    try {
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+    } catch {
+      try { rec = new MediaRecorder(stream); } catch { recWanted = false; return toast("This phone can't record voice notes"); }
+    }
     recChunks = [];
     rec.ondataavailable = e => e.data.size && recChunks.push(e.data);
     rec.onstop = finishRec;
+    rec.onerror = () => toast('Recording failed, try again');
     rec.start();
     recStartAt = Date.now();
     $('micBtn').classList.add('rec');
@@ -573,19 +590,28 @@
     const r = rec, took = Date.now() - recStartAt;
     rec = null;
     $('micBtn').classList.remove('rec');
-    recStream?.getTracks().forEach(t => t.stop());
-    recStream = null;
     if (took < 400) return toast('Hold the mic to talk');
-    const blob = new Blob(recChunks, { type: r?.mimeType || 'audio/webm' });
-    if (blob.size > 85000) return toast('Voice note too long');
+    const type = (r?.mimeType || recChunks[0]?.type || 'audio/mp4').split(';')[0] || 'audio/mp4';
+    const blob = new Blob(recChunks, { type });
+    if (!blob.size) return toast('Nothing was recorded, try again');
+    if (blob.size > 200000) return toast('Voice note too long');
     const fr = new FileReader();
     fr.onload = () => { send({ t: 'voice', data: fr.result }); toast('Voice note sent'); };
     fr.readAsDataURL(blob);
   }
   const mic = $('micBtn');
-  mic.addEventListener('pointerdown', e => { e.preventDefault(); mic.setPointerCapture?.(e.pointerId); startRec(); });
-  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) mic.addEventListener(ev, stopRec);
+  if ('ontouchstart' in window) {
+    // touch phones: handle the touch ourselves so iOS doesn't turn the hold into text selection
+    mic.addEventListener('touchstart', e => { e.preventDefault(); unlockAudio(); startRec(); }, { passive: false });
+    mic.addEventListener('touchend', e => { e.preventDefault(); stopRec(); }, { passive: false });
+    mic.addEventListener('touchcancel', stopRec);
+  } else {
+    mic.addEventListener('pointerdown', e => { e.preventDefault(); mic.setPointerCapture?.(e.pointerId); startRec(); });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) mic.addEventListener(ev, stopRec);
+  }
   mic.addEventListener('contextmenu', e => e.preventDefault());
+  // close the mic when the page is hidden (phone locked / app switched)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { stopRec(); releaseMic(); } });
 
   // iPhones only play sound that a tap started. On the first tap anywhere we "unlock"
   // one audio player and reuse it for every voice note after that.
