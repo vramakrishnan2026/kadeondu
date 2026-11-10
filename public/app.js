@@ -350,8 +350,14 @@
     if (!firstState) animateEvents(fresh, s);
 
     // round over
-    if (s.phase === 'ended' && s.lastRound) {
-      $('endOverlay').classList.remove('hidden');
+    const roundOver = s.phase === 'ended' && !!s.lastRound;
+    if (!roundOver) endClosedRound = null;
+    const endClosed = roundOver && endClosedRound === s.round;
+    $('scoresBtn').classList.toggle('hidden', !endClosed);
+    $('nextRoundBarBtn').classList.toggle('hidden', !(endClosed && isHost));
+    $('nextRoundBarBtn').disabled = s.players.length < 2;
+    if (roundOver) {
+      $('endOverlay').classList.toggle('hidden', endClosed);
       const w = s.lastRound.winnerId;
       $('endTitle').textContent = w === s.you ? 'You win! 🎉' : `${name(w)} wins!`;
       $('endPoints').textContent = `+${s.lastRound.points} points from everyone's leftover cards`;
@@ -513,6 +519,7 @@
   }
 
   let lastPlayFrom = null; // where my card was when I tapped it
+  let endClosedRound = null; // round whose result pop-up this player closed
   function playCard(c, node) {
     if (node) lastPlayFrom = { rect: node.getBoundingClientRect(), at: Date.now() };
     if (c.c === 'w') {
@@ -743,6 +750,9 @@
   $('addBotBtn').onclick = () => send({ t: 'addbot' });
   $('addBotEndBtn').onclick = () => send({ t: 'addbot' });
   $('nextRoundBtn').onclick = () => send({ t: 'start' });
+  $('nextRoundBarBtn').onclick = () => send({ t: 'start' });
+  $('closeEnd').onclick = () => { endClosedRound = S?.round ?? null; $('endOverlay').classList.add('hidden'); if (S) render(S); };
+  $('scoresBtn').onclick = () => { endClosedRound = null; if (S) render(S); };
   $('drawPile').onclick = () => send({ t: 'draw' });
   $('drawBtn').onclick = () => send({ t: 'draw' });
   $('passBtn').onclick = () => send({ t: 'pass' });
