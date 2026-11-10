@@ -73,7 +73,8 @@
       <button id="pairJoin" class="primary" style="flex:0">Join</button>
     </div>
     <div class="row"><button id="pairSend" class="secondary" disabled>Send my 3 s recording</button></div>
-    <div id="pairRes" class="res muted">Not joined</div>
+    <div id="pairWho" class="res warn">Not in a test room yet. Tap Join.</div>
+    <div id="pairRes" class="res muted">Nothing sent or received yet</div>
   </div>
 
   <div class="card-box">
@@ -164,7 +165,7 @@
     rec.onerror = e => set('recRes', `❌ Recorder error: ${errText(e.error)}`, 'bad');
     rec.onstop = () => {
       blob = new Blob(chunks, { type: (rec.mimeType || chunks[0]?.type || 'audio/mp4').split(';')[0] });
-      const fr = new FileReader(); fr.onload = () => { dataUrl = fr.result; $('pairSend').disabled = !pairWs; };
+      const fr = new FileReader(); fr.onload = () => { dataUrl = fr.result; $('pairSend').disabled = pairWs?.readyState !== 1; };
       fr.readAsDataURL(blob);
       set('recRes', blob.size ? `✅ Recorded ${blob.size} bytes as ${rec.mimeType || blob.type || 'unknown'}` : '❌ Recording is empty (0 bytes)', blob.size ? 'ok' : 'bad');
     };
@@ -192,7 +193,7 @@
   };
 
   // 5. two phones
-  let pairWs = null;
+  let pairWs = null, myTestName = '';
   $('pairJoin').onclick = () => {
     const code = $('pairCode').value.trim().toUpperCase();
     if (!/^[A-Z0-9]{4,8}$/.test(code)) return set('pairRes', 'Code must be 4–8 letters/numbers', 'warn');
@@ -201,8 +202,17 @@
     pairWs.onopen = () => pairWs.send(JSON.stringify({ t: 'join', name: `Test ${env.browser}` }));
     pairWs.onmessage = ev => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.t === 'welcome') { set('pairRes', `✅ Joined test room ${code} as ${m.name}. Waiting for the other phone…`, 'ok'); $('pairSend').disabled = !dataUrl; }
-      if (m.t === 'state') log(`room has ${m.players.length} people: ${m.players.map(p => p.name).join(', ')}`);
+      if (m.t === 'welcome') {
+        myTestName = m.name;
+        $('pairSend').disabled = !dataUrl;
+        if (!dataUrl) set('pairRes', 'Joined. Now do step 3 (Record 3 s) so you have something to send.', 'warn');
+      }
+      if (m.t === 'state') {
+        const names = m.players.map(p => p.name + (p.id === m.you ? ' (this phone)' : ''));
+        const others = m.players.length - 1;
+        set('pairWho', `✅ In test room ${code}: ${names.join(', ')}` + (others ? `\n${others} other phone${others > 1 ? 's' : ''} connected. Ready to send.` : '\nWaiting for the other phone to tap Join…'), others ? 'ok' : 'warn');
+        $('pairWho').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
       if (m.t === 'error') set('pairRes', `Server: ${m.msg}`, 'warn');
       if (m.t === 'voice') {
         const type = (m.data.match(/^data:([^;,]+)/) || [])[1];
@@ -213,7 +223,9 @@
         el.play().catch(e => set('pairRes', `❌ Got ${m.name}'s note but play() was blocked: ${errText(e)}. Tap anywhere and try again`, 'bad'));
       }
     };
-    pairWs.onclose = () => log('test room connection closed');
+    pairWs.onerror = () => set('pairWho', '❌ Could not connect to the test room', 'bad');
+    pairWs.onclose = () => { log('test room connection closed'); $('pairSend').disabled = true; };
+    set('pairWho', `Connecting to test room ${code}…`, 'warn');
   };
   $('pairSend').onclick = () => {
     if (!dataUrl) return set('pairRes', 'Record in step 3 first', 'warn');
