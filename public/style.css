@@ -401,3 +401,28 @@ body.lefty .act-main { flex-direction: row-reverse; margin-left: 0; margin-right
 .draw-btn::after, .pass-btn::after { content: ""; position: absolute; inset: -7px -4px; }
 .actions .draw-btn, .actions .pass-btn { min-height: 36px; }
 @media (max-width: 380px) { .draw-btn, .pass-btn { min-width: 66px; height: 36px; font-size: .78rem; } }
+
+/* Sticker reactions */
+.react-btn { font-size: 1.35rem !important; }
+.react-tray { position: fixed; z-index: 40; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(94vw, 420px); display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; padding: .6rem;
+  background: rgba(30,28,40,.96); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
+.react-pick { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: .35rem .2rem; border-radius: 14px;
+  background: rgba(255,255,255,.06); min-height: 48px; }
+.react-pick:active { transform: scale(.94); background: rgba(255,255,255,.14); }
+.react-pick img { width: 100%; max-width: 92px; aspect-ratio: 1; object-fit: contain; pointer-events: none; }
+.react-pick span { font-size: .72rem; font-weight: 700; color: var(--text); }
+.react-pop { position: fixed; z-index: 70; pointer-events: none; display: flex; flex-direction: column; align-items: center; transform: translate(-50%,-100%); }
+.react-pop img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+.react-cap { margin-top: -10%; padding: .15em .6em; border-radius: 99px; background: #fff; color: #15151b; font-weight: 900; font-style: italic;
+  font-family: "KO Numbers", system-ui, sans-serif; font-size: .82rem; border: 2px solid #15151b; transform: rotate(-4deg); white-space: nowrap; }
+.react-who { margin-top: .2rem; font-size: .68rem; color: #fff; background: rgba(0,0,0,.55); padding: .05em .5em; border-radius: 99px; }
+body.lefty .react-tray { left: 50%; }
+
+/* reactions floating up the side */
+.react-float { position: fixed; z-index: 70; pointer-events: none; display: flex; flex-direction: column; align-items: center;
+  transform: translate(-50%, 0); will-change: transform, opacity; }
+.react-float img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
+.react-float:not(.main) img { border-radius: 50%; }
+.react-float .react-cap { margin-top: -8%; font-size: .72rem; }
+.react-float .react-who { font-size: .62rem; }

@@ -71,6 +71,9 @@ No player limit: an extra deck is added automatically for every 10 players.
   otherwise draws and plays that card if it fits, or passes. It never calls for them.
 - **Wild +4 effect** (off by default; host turns it on in room settings, or tick it in Play vs computer): Mani rises in the middle of the screen with an evil laugh for 3 seconds.
   Change or switch it off under `drawFourEffect` in `public/config.js` (picture: `public/fx/mani.webp`).
+- **😄 Sticker reactions** (room setting, off by default; also in Play vs computer): tap 😄 during a game and pick one of six stickers.
+  It floats up the side of everyone's screen with a trail of small copies (about 3 seconds). Never stored.
+  Pictures: `public/fx/reactions/`, captions in `config.js`.
 - **Voice notes**: in a room, hold the mic button to talk (up to 5 s), let go to send. Everyone else in the room hears it
   straight away. Voice notes are passed through and never saved. The speaker button mutes incoming voice notes.
 - The host can turn on **stacking** (+2 on +2, +4 on anything) and change cards per hand before a round.

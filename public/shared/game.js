@@ -52,7 +52,7 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, wd4Fx: false, private: false },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, wd4Fx: false, private: false, reactions: false },
     turnNo: 0,       // goes up every time the turn moves on
     deadline: null,  // ms timestamp when the current person's time runs out
     deadlineFor: -1,
@@ -368,6 +368,7 @@ function handleInner(s, pid, msg) {
     if (TURN_TIMES.includes(msg.turnTime)) s.settings.turnTime = msg.turnTime;
     if (typeof msg.wd4Fx === 'boolean') s.settings.wd4Fx = msg.wd4Fx;
     if (typeof msg.private === 'boolean') s.settings.private = msg.private;
+    if (typeof msg.reactions === 'boolean') s.settings.reactions = msg.reactions;
     if ([5, 7, 10].includes(msg.handSize)) s.settings.handSize = msg.handSize;
     return {};
   }

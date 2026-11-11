@@ -196,6 +196,8 @@
     } else if (m.t === 'kicked') {
       goHome(leaving ? 'You left the room' : 'You were removed');
       leaving = false;
+    } else if (m.t === 'react') {
+      showReaction(m.name, m.id);
     } else if (m.t === 'voice') {
       playVoice(m);
     } else if (m.t === 'replaced') {
@@ -251,6 +253,7 @@
       $('stackingInput').checked = s.settings.stacking;
       $('wd4FxInput').checked = !!s.settings.wd4Fx;
       $('privateInput').checked = !!s.settings.private;
+      $('reactionsInput').checked = !!s.settings.reactions;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
       $('turnTimeInput').value = String(s.settings.turnTime || 0);
       $('handSizeInput').value = String(s.settings.handSize);
@@ -258,7 +261,7 @@
         `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
         (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
         ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
-        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
+        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '') + (s.settings.reactions ? ' · 😄 stickers on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -309,6 +312,8 @@
     $('hand').classList.toggle('hidden', s.spectating);
     $('callBtn').classList.toggle('hidden', s.spectating);
     $('micBtn').classList.toggle('hidden', !!solo);
+    $('reactBtn').classList.toggle('hidden', !s.settings.reactions || s.phase === 'lobby');
+    if (!s.settings.reactions) $('reactTray').classList.add('hidden');
     updateMicEnable();
     $('muteBtn').classList.toggle('hidden', !!solo);
 
@@ -482,6 +487,80 @@
     cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(() => { if (S && !$('game').classList.contains('hidden')) render(S); });
   });
+
+  // ── Sticker reactions ─────────────────────────────────────
+  const REACTS = (CFG.reactions || []).map(r => ({ ...r, src: `fx/reactions/${r.id}.webp` }));
+  REACTS.forEach(r => { const i = new Image(); i.src = r.src; }); // preload so they pop instantly
+  (function buildTray() {
+    const tray = $('reactTray');
+    for (const r of REACTS) {
+      const b = el('button', 'react-pick');
+      b.setAttribute('aria-label', r.label || r.id.replace('_', ' '));
+      const img = el('img'); img.src = r.src; img.alt = ''; b.append(img);
+      if (r.label) b.append(el('span', '', r.label));
+      b.onclick = () => { sendReaction(r.id); tray.classList.add('hidden'); };
+      tray.append(b);
+    }
+  })();
+  let lastReactAt = 0;
+  function sendReaction(id) {
+    if (Date.now() - lastReactAt < 1200) return toast('One sticker at a time');
+    lastReactAt = Date.now();
+    if (solo) {
+      const me = solo.s.players.find(p => p.id === solo.me);
+      return showReaction(me?.name, id);
+    }
+    if (ws?.readyState === 1) ws.send(JSON.stringify({ t: 'react', id }));
+  }
+  $('reactBtn').onclick = e => { e.stopPropagation(); $('reactTray').classList.toggle('hidden'); };
+  document.addEventListener('pointerdown', e => {
+    if (!$('reactTray').classList.contains('hidden') && !e.target.closest('#reactTray, #reactBtn')) $('reactTray').classList.add('hidden');
+  });
+  // Reactions float up the side of the screen (right side; left when left-handed),
+  // the sent sticker first, followed by a trail of smaller copies.
+  function floatUp(node, { x, startY, endY, size, delay, dur, sway, fadeFrom = .7 }) {
+    node.style.width = `${size}px`;
+    node.style.left = `${x}px`;
+    node.style.top = `${startY}px`;
+    document.body.append(node);
+    const rise = endY - startY, steps = 8, kf = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const dx = Math.sin(t * Math.PI * 2.2) * sway;          // gentle side-to-side wobble
+      const sc = t < .12 ? .3 + (t / .12) * .8 : 1.1 - t * .25;
+      const op = t < .1 ? t / .1 : t > fadeFrom ? Math.max(0, 1 - (t - fadeFrom) / (1 - fadeFrom)) : 1;
+      kf.push({ transform: `translate(calc(-50% + ${dx.toFixed(1)}px), ${(rise * t).toFixed(1)}px) scale(${sc.toFixed(2)})`, opacity: op });
+    }
+    node.animate(kf, { duration: dur, delay, easing: 'linear', fill: 'both' }).finished.then(() => node.remove(), () => node.remove());
+  }
+  function showReaction(name, id) {
+    const r = REACTS.find(x => x.id === id);
+    if (!r || !name) return;
+    const lefty = document.body.classList.contains('lefty');
+    const edge = Math.min(64, innerWidth * 0.16);
+    const baseX = lefty ? edge : innerWidth - edge;
+    const actions = document.querySelector('.actions')?.getBoundingClientRect();
+    const startY = (actions && actions.top > 0 ? actions.top : innerHeight * 0.7) - 70;
+    const endY = Math.max(70, innerHeight * 0.14);
+    const isMe = name === S?.players.find(p => p.id === S.you)?.name;
+    // the sticker itself, with caption and sender
+    const main = el('div', 'react-float main');
+    const img = el('img'); img.src = r.src; img.alt = r.label || id; main.append(img);
+    if (r.label) main.append(el('div', 'react-cap', r.label));
+    main.append(el('div', 'react-who', isMe ? 'You' : name));
+    floatUp(main, { x: baseX, startY, endY, size: Math.min(96, innerWidth * 0.24), delay: 0, dur: 3200, sway: 14 });
+    // trail of small copies
+    for (let i = 0; i < 6; i++) {
+      const small = el('div', 'react-float');
+      const im = el('img'); im.src = r.src; im.alt = ''; small.append(im);
+      const jitter = (Math.random() - .5) * 46;
+      floatUp(small, {
+        x: baseX + jitter, startY: startY + 30, endY: endY + 40 + Math.random() * 80,
+        size: 30 + Math.random() * 18, delay: 160 + i * (140 + Math.random() * 90),
+        dur: 2200 + Math.random() * 900, sway: 8 + Math.random() * 12, fadeFrom: .55,
+      });
+    }
+  }
 
   // ── Turn clock ─────────────────────────────────────────
   let deadlineAt = null, turnLength = 0, buzzed = false;
@@ -1073,6 +1152,7 @@
   $('stackingInput').onchange = e => send({ t: 'settings', stacking: e.target.checked });
   $('wd4FxInput').onchange = e => send({ t: 'settings', wd4Fx: e.target.checked });
   $('privateInput').onchange = e => send({ t: 'settings', private: e.target.checked });
+  $('reactionsInput').onchange = e => send({ t: 'settings', reactions: e.target.checked });
   // left-handed layout (saved on this phone)
   const applyLefty = on => document.body.classList.toggle('lefty', on);
   $('leftyInput').checked = !!store.get('cardgame-lefty');
@@ -1154,6 +1234,7 @@
     s.settings.botLevel = $('soloLevel').value;
     s.settings.turnTime = Number($('soloTime').value);
     s.settings.wd4Fx = $('soloWd4Fx').checked;
+    s.settings.reactions = $('soloReactions').checked;
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
     for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
     G.handle(s, me.id, { t: 'start' });

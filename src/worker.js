@@ -6,6 +6,8 @@ const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it 
 const MAX_SOCKETS = 300;
 const MAX_VOICE_CHARS = 300000; // 5 s of speech, with room for iPhone recordings
 const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
+const REACTIONS = ['nice_play', 'really', 'whats_next', 'oh_no', 'angry', 'evil'];
+const REACT_GAP_MS = 1200;
 
 // Front door: the game page is served from /public automatically.
 // /ws?room=CODE  → that room's server
@@ -158,6 +160,7 @@ export class GameRoom extends DurableObject {
     if (!msg || typeof msg.t !== 'string') return;
     const att = ws.deserializeAttachment() || {};
     if (msg.t === 'voice') return this.relayVoice(ws, att, msg);
+    if (msg.t === 'react') return this.relayReaction(ws, att, msg);
     if (raw.length > 2000) return;
     if (this.room.deadline && Date.now() >= this.room.deadline) await this.onTurnTimeout();
 
@@ -213,6 +216,22 @@ export class GameRoom extends DurableObject {
     try { ws.close(1000, 'bye'); } catch {}
     this.broadcast(ws);
     await this.report(ws);
+  }
+
+  // Sticker reactions: shown to everyone (sender included), never stored.
+  relayReaction(ws, att, msg) {
+    const s = this.room;
+    if (!att.pid || !s.settings.reactions || !REACTIONS.includes(msg.id)) return;
+    const p = [...s.players, ...(s.spectators || [])].find(x => x.id === att.pid);
+    if (!p) return;
+    this.reactAt ||= new Map();
+    const now = Date.now();
+    if (now - (this.reactAt.get(att.pid) || 0) < REACT_GAP_MS) return;
+    this.reactAt.set(att.pid, now);
+    const out = JSON.stringify({ t: 'react', from: att.pid, name: p.name, id: msg.id });
+    for (const other of this.ctx.getWebSockets()) {
+      if (other.deserializeAttachment()?.pid) { try { other.send(out); } catch {} }
+    }
   }
 
   // Voice notes are passed straight to the other phones in the room.

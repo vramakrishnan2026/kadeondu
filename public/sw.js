@@ -1,8 +1,10 @@
 // Offline helper: always tries the network first (so updates show up straight away)
 // and falls back to the last copy only when there's no connection.
-const CACHE = 'kade-ondu-v3';
+const CACHE = 'kade-ondu-v4';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js',
-  '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/mani.webp', '/fx/rangoli.svg', '/fx/evil-laugh.mp3'];
+  '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/mani.webp', '/fx/rangoli.svg', '/fx/evil-laugh.mp3',
+  '/fx/reactions/nice_play.webp', '/fx/reactions/really.webp', '/fx/reactions/whats_next.webp',
+  '/fx/reactions/oh_no.webp', '/fx/reactions/angry.webp', '/fx/reactions/evil.webp'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));

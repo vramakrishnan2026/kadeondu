@@ -19,6 +19,17 @@ window.GAME_CONFIG = {
     durationMs: 3000,
   },
 
+  // Sticker reactions (room setting, off by default). Pictures live in public/fx/reactions/.
+  // label: caption shown under the sticker ('' when the picture already has its own text)
+  reactions: [
+    { id: 'nice_play',  label: 'Nice play!' },
+    { id: 'really',     label: 'Really?' },
+    { id: 'whats_next', label: "What's next?" },
+    { id: 'oh_no',      label: 'Oh no!' },
+    { id: 'angry',      label: '' },
+    { id: 'evil',       label: '' },
+  ],
+
   // Colours of the four suits and the app accent
   theme: {
     red: '#e5484d',

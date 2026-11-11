@@ -116,6 +116,7 @@
       <div id="hostSettings" class="settings hidden">
         <label class="toggle"><input type="checkbox" id="stackingInput"> Allow stacking +2 / +4</label>
         <label class="toggle"><input type="checkbox" id="wd4FxInput"> Wild +4 laugh animation</label>
+        <label class="toggle"><input type="checkbox" id="reactionsInput"> 😄 Sticker reactions</label>
         <label class="toggle"><input type="checkbox" id="privateInput"> 🔒 Private room <span class="muted small-text">(hidden from Open rooms; join only with the link or code)</span></label>
         <label class="field inline">Cards per hand
           <select id="handSizeInput"><option>5</option><option selected>7</option><option>10</option></select>
@@ -156,6 +157,7 @@
     <!-- Controls: rarely used on the far side, main actions in the thumb's easy reach -->
     <div class="actions">
       <div class="act-side">
+        <button id="reactBtn" class="ghost icon-btn react-btn hidden" aria-label="Send a sticker reaction" title="Reactions">😄</button>
         <button id="muteBtn" class="ghost small icon-btn mute hidden" aria-label="Mute voice notes" title="Mute voice notes"><svg class="ico on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><svg class="ico off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg></button>
         <button id="skipTurnBtn" class="ghost small hidden" title="Skip a player who has stepped away">Skip their turn</button>
         <button id="scoresBtn" class="secondary hidden">🏆 Scores</button>
@@ -219,6 +221,7 @@
       </label>
       <label class="toggle"><input type="checkbox" id="soloStacking"> Allow stacking +2 / +4</label>
       <label class="toggle"><input type="checkbox" id="soloWd4Fx"> Wild +4 laugh animation</label>
+      <label class="toggle"><input type="checkbox" id="soloReactions"> 😄 Sticker reactions</label>
       <p class="muted small-text">Just you and the computer. No room, nobody else can see it.</p>
       <button id="soloStart" class="primary big">Start</button>
       <button id="soloCancel" class="ghost">Cancel</button>
@@ -238,6 +241,9 @@
       <button id="closeIos" class="primary">Got it</button>
     </div>
   </div>
+
+  <!-- Sticker tray -->
+  <div id="reactTray" class="react-tray hidden" role="dialog" aria-label="Sticker reactions"></div>
 
   <!-- Microphone blocked: how to fix -->
   <div id="micHelp" class="overlay hidden">
