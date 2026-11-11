@@ -548,16 +548,18 @@
     const img = el('img'); img.src = r.src; img.alt = r.label || id; main.append(img);
     if (r.label) main.append(el('div', 'react-cap', r.label));
     main.append(el('div', 'react-who', isMe ? 'You' : name));
-    floatUp(main, { x: baseX, startY, endY, size: Math.min(96, innerWidth * 0.24), delay: 0, dur: 3200, sway: 14 });
-    // trail of small copies
-    for (let i = 0; i < 6; i++) {
+    floatUp(main, { x: baseX - (lefty ? -1 : 1) * 8, startY, endY, size: Math.min(96, innerWidth * 0.24), delay: 0, dur: 3000, sway: 10 });
+    // a steady stream of small copies: even timing + fixed lanes so they stay spaced out
+    const lanes = [0, -34, 30, -16, 16, -40, 38];
+    const count = 14, gap = 150, flight = 1900;
+    for (let i = 0; i < count; i++) {
       const small = el('div', 'react-float');
       const im = el('img'); im.src = r.src; im.alt = ''; small.append(im);
-      const jitter = (Math.random() - .5) * 46;
+      const lane = lanes[i % lanes.length] * (lefty ? -1 : 1);
       floatUp(small, {
-        x: baseX + jitter, startY: startY + 30, endY: endY + 40 + Math.random() * 80,
-        size: 30 + Math.random() * 18, delay: 160 + i * (140 + Math.random() * 90),
-        dur: 2200 + Math.random() * 900, sway: 8 + Math.random() * 12, fadeFrom: .55,
+        x: baseX + lane, startY: startY + 30, endY: endY + 20 + (i % 3) * 30,
+        size: 34 + (i % 3) * 5, delay: 120 + i * gap,
+        dur: flight, sway: 6 + (i % 2) * 3, fadeFrom: .6,
       });
     }
   }
