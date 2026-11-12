@@ -1,3 +1,11 @@
 node_modules/
 .wrangler/
 .dev.vars
+tests/mock/game.js
+tests/mock/worker.js
+tests/*.png
+tests/*.mp4
+tests/*.webm
+tests/vid/
+tests/rvid/
+tests/__pycache__/
