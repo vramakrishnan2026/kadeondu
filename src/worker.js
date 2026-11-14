@@ -115,14 +115,15 @@ export class GameRoom extends DurableObject {
   armTurnTimer() {
     clearTimeout(this.turnTimer);
     this.turnTimer = null;
-    const d = this.room.deadline;
-    if (!d || this.online().size === 0) return;
+    // whichever comes first: this turn's deadline or the round's time limit
+    const d = Math.min(this.room.deadline || Infinity, this.room.roundEndsAt || Infinity);
+    if (d === Infinity || this.online().size === 0) return;
     this.turnTimer = setTimeout(() => this.onTurnTimeout(), Math.max(0, d - Date.now()) + 60);
   }
 
   async onTurnTimeout() {
     this.turnTimer = null;
-    if (G.timeoutMove(this.room)) {
+    if (G.roundTimeUp(this.room) || G.timeoutMove(this.room)) {
       await this.save();
       this.broadcast();
       await this.report();
@@ -137,6 +138,7 @@ export class GameRoom extends DurableObject {
 
   async botTick() {
     this.botTimer = null;
+    if (this.room.roundEndsAt && Date.now() >= this.room.roundEndsAt) return this.onTurnTimeout();
     const a = G.nextBotAction(this.room);
     if (!a) return;
     const res = G.handle(this.room, a.pid, a.msg);
@@ -162,7 +164,8 @@ export class GameRoom extends DurableObject {
     if (msg.t === 'voice') return this.relayVoice(ws, att, msg);
     if (msg.t === 'react') return this.relayReaction(ws, att, msg);
     if (raw.length > 2000) return;
-    if (this.room.deadline && Date.now() >= this.room.deadline) await this.onTurnTimeout();
+    const now = Date.now();
+    if ((this.room.deadline && now >= this.room.deadline) || (this.room.roundEndsAt && now >= this.room.roundEndsAt)) await this.onTurnTimeout();
 
     if (msg.t === 'join') {
       const s = this.room;

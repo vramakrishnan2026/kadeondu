@@ -52,10 +52,11 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, wd4Fx: false, private: false, reactions: false },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, roundTime: 0, wd4Fx: false, private: false, reactions: false },
     turnNo: 0,       // goes up every time the turn moves on
     deadline: null,  // ms timestamp when the current person's time runs out
     deadlineFor: -1,
+    roundEndsAt: null, // ms timestamp when the round's time limit runs out (null = no limit)
     round: 0,
     deck: [],
     discard: [],
@@ -67,7 +68,7 @@ export function newRoom() {
     drawnCardId: null,
     vulnerable: null, // player id who reached one card without calling
     winnerId: null,
-    lastRound: null,  // { winnerId, points }
+    lastRound: null,  // { winnerId, points, timeUp? }
     nextCardId: 0,
     log: [],
     seq: 0,
@@ -136,6 +137,7 @@ function advance(s, k) {
 }
 
 export const TURN_TIMES = [0, 10, 15, 20, 30, 45, 60];
+export const ROUND_TIMES = [0, 3, 5]; // minutes; 0 = no limit
 
 // Start the clock whenever a new person's turn begins (computer players don't need one)
 export function refreshDeadline(s, now = Date.now()) {
@@ -171,6 +173,21 @@ export function timeoutMove(s, now = Date.now()) {
     const r = handle(s, p.id, autoMove(s, p));
     if (r.error) break;
   }
+  return true;
+}
+
+const handPoints = p => p.hand.reduce((a, c) => a + cardPoints(c), 0);
+
+// Round time limit: when it runs out, the lowest card points in hand wins.
+// Ties: fewer cards, then whoever is next to play (starting with the current player).
+export function roundTimeUp(s, now = Date.now()) {
+  if (s.phase !== 'playing' || !s.roundEndsAt || now < s.roundEndsAt) return false;
+  const n = s.players.length;
+  const order = p => mod((s.players.indexOf(p) - s.turn) * s.dir, n);
+  const winner = [...s.players].sort((a, b) =>
+    handPoints(a) - handPoints(b) || a.hand.length - b.hand.length || order(a) - order(b))[0];
+  log(s, { k: 'timeup' });
+  endRound(s, winner, true);
   return true;
 }
 
@@ -223,6 +240,7 @@ export function removePlayer(s, id, kind = 'leave') {
   if (s.phase === 'playing') {
     if (s.players.length < 2) {
       s.phase = 'lobby';
+      s.roundEndsAt = null;
       mergeSpectators(s);
       if (!playerById(s, s.hostId)) s.hostId = firstHuman(s);
       log(s, { k: 'toofew' });
@@ -238,7 +256,7 @@ export function removePlayer(s, id, kind = 'leave') {
   }
 }
 
-export function startRound(s) {
+export function startRound(s, now = Date.now()) {
   mergeSpectators(s);
   const n = s.players.length;
   if (n < 2) return 'Need at least 2 players';
@@ -267,18 +285,21 @@ export function startRound(s) {
   s.winnerId = null;
   s.phase = 'playing';
   s.turnNo = (s.turnNo || 0) + 1;
+  s.roundEndsAt = s.settings.roundTime ? now + s.settings.roundTime * 60000 : null;
   log(s, { k: 'start', r: s.round, decks });
   return null;
 }
 
-function endRound(s, winner) {
+function endRound(s, winner, timeUp = false) {
   let points = 0;
   for (const p of s.players) if (p !== winner) for (const c of p.hand) points += cardPoints(c);
   winner.score += points;
   s.phase = 'ended';
   s.winnerId = winner.id;
   s.vulnerable = null;
+  s.roundEndsAt = null;
   s.lastRound = { winnerId: winner.id, points };
+  if (timeUp) { s.lastRound.timeUp = true; s.lastRound.left = handPoints(winner); }
   log(s, { k: 'win', p: winner.name, x: points });
   mergeSpectators(s);
 }
@@ -348,6 +369,7 @@ function draw(s, p) {
 
 // Returns { error } or { kick: playerId } or {}
 export function handle(s, pid, msg) {
+  roundTimeUp(s); // a move that arrives after the round's time limit doesn't count
   const res = handleInner(s, pid, msg);
   refreshDeadline(s);
   return res;
@@ -366,6 +388,7 @@ function handleInner(s, pid, msg) {
     if (typeof msg.stacking === 'boolean') s.settings.stacking = msg.stacking;
     if (['easy', 'normal'].includes(msg.botLevel)) s.settings.botLevel = msg.botLevel;
     if (TURN_TIMES.includes(msg.turnTime)) s.settings.turnTime = msg.turnTime;
+    if (ROUND_TIMES.includes(msg.roundTime)) s.settings.roundTime = msg.roundTime;
     if (typeof msg.wd4Fx === 'boolean') s.settings.wd4Fx = msg.wd4Fx;
     if (typeof msg.private === 'boolean') s.settings.private = msg.private;
     if (typeof msg.reactions === 'boolean') s.settings.reactions = msg.reactions;
@@ -491,6 +514,7 @@ export function viewFor(s, pid, online) {
     spectators: (s.spectators || []).map(p => ({ id: p.id, name: p.name, online: online.has(p.id) })),
     deckCount: s.deck.length,
     deadlineIn: s.deadline ? Math.max(0, s.deadline - Date.now()) : null,
+    roundEndsIn: playing && s.roundEndsAt ? Math.max(0, s.roundEndsAt - Date.now()) : null,
     lastRound: s.lastRound,
     log: s.log.slice(-15),
   };

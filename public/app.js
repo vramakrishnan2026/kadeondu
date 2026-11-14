@@ -91,6 +91,7 @@
       case 'skipped': return `${e.p}'s turn was skipped`;
       case 'toofew': return 'Not enough players, back to the lobby';
       case 'timeout': return `Time's up for ${e.p}. Auto-move`;
+      case 'timeup': return "Round time is up. Lowest card points wins";
       default: return '';
     }
   }
@@ -256,11 +257,13 @@
       $('reactionsInput').checked = !!s.settings.reactions;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
       $('turnTimeInput').value = String(s.settings.turnTime || 0);
+      $('roundTimeInput').value = String(s.settings.roundTime || 0);
       $('handSizeInput').value = String(s.settings.handSize);
       $('guestSettings').textContent = isHost ? '' :
         `${s.settings.handSize} cards each · stacking ${s.settings.stacking ? 'on' : 'off'}` +
         (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
         ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
+        (s.settings.roundTime ? ` · round ends after ${s.settings.roundTime} min` : '') +
         (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '') + (s.settings.reactions ? ' · 😄 stickers on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
@@ -345,6 +348,7 @@
     st.dataset.base = st.textContent;
     deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? Date.now() + s.deadlineIn : null;
     turnLength = (s.settings.turnTime || 0) * 1000;
+    roundEndAt = s.phase === 'playing' && s.roundEndsIn != null ? Date.now() + s.roundEndsIn : null;
     buzzed = false;
     tickClock();
 
@@ -390,7 +394,8 @@
       $('endOverlay').classList.toggle('hidden', endClosed);
       const w = s.lastRound.winnerId;
       $('endTitle').textContent = w === s.you ? 'You win! 🎉' : `${name(w)} wins!`;
-      $('endPoints').textContent = `+${s.lastRound.points} points from everyone's leftover cards`;
+      $('endPoints').textContent = (s.lastRound.timeUp ? `⏳ Time's up. Lowest card points in hand wins (${s.lastRound.left}). ` : '') +
+        `+${s.lastRound.points} points from everyone's leftover cards`;
       const ol = $('scoreList');
       ol.replaceChildren();
       for (const p of [...s.players].sort((a, b) => b.score - a.score)) {
@@ -565,8 +570,17 @@
   }
 
   // ── Turn clock ─────────────────────────────────────────
-  let deadlineAt = null, turnLength = 0, buzzed = false;
+  let deadlineAt = null, turnLength = 0, buzzed = false, roundEndAt = null;
+  function tickRoundClock() {
+    const rc = $('roundClock');
+    const on = !!roundEndAt && !!S && S.phase === 'playing';
+    if (!on) { rc.textContent = '\u00a0'; rc.classList.remove('hurry'); return; }
+    const secs = Math.ceil(Math.max(0, roundEndAt - Date.now()) / 1000);
+    rc.textContent = `⏳ ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    rc.classList.toggle('hurry', secs <= 30);
+  }
   function tickClock() {
+    tickRoundClock();
     const st = $('status');
     st.querySelector('.secs')?.remove();
     document.querySelectorAll('#seats .clock').forEach(x => x.remove());
@@ -1164,6 +1178,7 @@
   $('startBtn').onclick = () => send({ t: 'start' });
   $('botLevelInput').onchange = e => send({ t: 'settings', botLevel: e.target.value });
   $('turnTimeInput').onchange = e => send({ t: 'settings', turnTime: Number(e.target.value) });
+  $('roundTimeInput').onchange = e => send({ t: 'settings', roundTime: Number(e.target.value) });
   $('addBotBtn').onclick = () => send({ t: 'addbot' });
   $('addBotEndBtn').onclick = () => send({ t: 'addbot' });
   $('nextRoundBtn').onclick = () => send({ t: 'start' });
@@ -1202,9 +1217,10 @@
     render(solo.G.viewFor(solo.s, solo.me, new Set([solo.me])));
     // my turn clock
     clearTimeout(solo.tt);
-    const d = solo.s.deadline;
-    if (d) solo.tt = setTimeout(() => {
-      if (solo && solo.G.timeoutMove(solo.s)) { soloRender(); soloKick(); }
+    // whichever comes first: my turn's deadline or the round's time limit
+    const d = Math.min(solo.s.deadline || Infinity, solo.s.roundEndsAt || Infinity);
+    if (d !== Infinity) solo.tt = setTimeout(() => {
+      if (solo && (solo.G.roundTimeUp(solo.s) || solo.G.timeoutMove(solo.s))) { soloRender(); soloKick(); }
     }, Math.max(0, d - Date.now()) + 30);
   }
   function soloKick() {
@@ -1235,6 +1251,7 @@
     s.settings.handSize = Number($('soloHand').value);
     s.settings.botLevel = $('soloLevel').value;
     s.settings.turnTime = Number($('soloTime').value);
+    s.settings.roundTime = Number($('soloRoundTime').value);
     s.settings.wd4Fx = $('soloWd4Fx').checked;
     s.settings.reactions = $('soloReactions').checked;
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');

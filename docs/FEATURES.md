@@ -28,6 +28,7 @@
 | Allow stacking +2 / +4 | off | +2 on +2, +4 on +2 or +4. The next player stacks or picks up the total |
 | Cards per hand | 7 | 5, 7 or 10 |
 | Time per turn | **15 s** | Off, 10, 15, 20, 30, 45 or 60 |
+| End round after | **Off** | Off, 3 min or 5 min |
 | Computer players | Normal | Easy or Normal level for players added with 🤖 Add computer player |
 | Wild +4 laugh animation | **off** | Mani appears with the evil laugh |
 | 😄 Sticker reactions | **off** | Shows the 😄 button and sticker tray |
@@ -48,6 +49,12 @@ Guests see a one-line summary of the settings.
 ## Turn timer
 
 A ring around the current player's avatar empties as time runs out, with the seconds shown next to "Your turn". It turns red in the last 5 seconds, and your phone buzzes. When time is up, the game makes the **simplest move** for that person: it plays the first card that fits (even a wild, with the colour taken from their hand), otherwise draws and plays the drawn card if it fits, or passes. It **never calls Ondu!** for them. The timer only applies to people, and it keeps a game moving if someone disconnects (as long as one person stays connected).
+
+## Round time limit
+
+**End round after** (Off, 3 min or 5 min; off by default) puts a clock on every round. The time left shows under the discard pile (⏳ 2:41) and turns red in the last 30 seconds. The clock restarts each round.
+
+When it runs out and nobody has finished their cards, the player whose remaining cards add up to the **lowest card points** wins the round (numbers at face value, action cards 20, wilds 50). Ties go to whoever holds fewer cards, then to whoever would play next. Scoring is the same as a normal win: the winner gets the points of everyone else's leftover cards. A move that arrives after the limit doesn't count. It works in rooms and in Play vs computer.
 
 ## Computer players
 

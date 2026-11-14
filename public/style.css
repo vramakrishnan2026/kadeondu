@@ -247,6 +247,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .status .secs { display: inline-block; min-width: 2.6em; margin-left: .4em; padding: .05em .45em; border-radius: 99px;
   background: rgba(255,255,255,.1); font-variant-numeric: tabular-nums; }
 .status .secs.hurry { background: var(--red); color: #fff; }
+/* Round time limit: minutes left, under the discard pile */
+.round-clock { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.round-clock.hurry { color: var(--red); font-weight: 700; }
 /* Wild +4 effect */
 .fx-laugh { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
 .fx-flash { position: absolute; inset: 0; opacity: 0;

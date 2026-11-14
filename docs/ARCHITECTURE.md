@@ -20,7 +20,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 - **Broadcast:** after each change, every socket gets a **personalised** view, `G.viewFor(room, pid, onlineSet)`. A player sees only their own hand; everyone else's hand is a card count.
 - **Timers** (only while at least one person is connected):
   - `kickBots()` → `setTimeout(nextBotAction.delay)` → `botTick()` plays computer turns.
-  - `armTurnTimer()` → fires at `room.deadline` → `G.timeoutMove()`. Messages also check for overdue deadlines, which covers restarts that lost the timer.
+  - `armTurnTimer()` → fires at `room.deadline` → `G.timeoutMove()`. Messages also check for overdue deadlines, which covers restarts that lost the timer. The same timer also fires at `room.roundEndsAt` (round time limit) → `G.roundTimeUp()`.
   - `afterChange()` calls both.
 - **Relays (never stored):** `voice` (max 300,000 chars of data URL, `data:audio/*;base64,`, 2.5 s gap per player) and `react` (sticker id from a fixed list, only when `settings.reactions` is on, 1.2 s gap).
 - **report():** sends `G.summary(room, code, onlineCount)` to the Lobby whenever it changes.
@@ -54,7 +54,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 ### GameRoom → browser
 `welcome {playerId, token, name}` · `state {…view}` · `error {msg, code?}` · `kicked` · `replaced` (opened in another tab) · `voice {from, name, data}` · `react {from, name, id}`
 
-The `state` view includes `you, phase (lobby|playing|ended), round, hostId, settings, players[{id,name,count,score,online,bot}], hand, playable[ids], top, color, dir, turnId, pendingDraw, drawnCardId, vulnerable, canCall, saidOndu, spectating, spectators[], deckCount, deadlineIn (ms), lastRound, log[last 15]`.
+The `state` view includes `you, phase (lobby|playing|ended), round, hostId, settings, players[{id,name,count,score,online,bot}], hand, playable[ids], top, color, dir, turnId, pendingDraw, drawnCardId, vulnerable, canCall, saidOndu, spectating, spectators[], deckCount, deadlineIn (ms), roundEndsIn (ms), lastRound, log[last 15]`.
 
 Log entries are `{n, k, p, …}` where `k` is one of `join, watch, leave, kick, start, play, draw, pass, call, catch, win, reshuffle, newdeck, skipped, toofew, timeout`. The browser turns them into text (`logText` in `app.js`), so the call word comes from `config.js`.
 
@@ -68,7 +68,7 @@ Pure functions with no Cloudflare APIs. It's used by the Worker and loaded in th
 
 Key exports: `newRoom, addPlayer(s, name, {bot, level}), removePlayer, startRound, handle(s, pid, msg)` (wraps `handleInner` and then `refreshDeadline`), `canPlay, viewFor, summary, botMove, nextBotAction, botName, refreshDeadline, timeoutMove, TURN_TIMES, MAX_BOTS`.
 
-Notable fields: `turnNo` (goes up whenever the turn moves; used for deadlines), `deadline`/`deadlineFor`, `wd4Turn` (lets bots wait out the +4 animation), `spectators[]` (merged into `players` when a round ends), `nextCardId` (card ids stay unique when extra decks are opened).
+Notable fields: `turnNo` (goes up whenever the turn moves; used for deadlines), `deadline`/`deadlineFor`, `roundEndsAt` (round time limit, set in `startRound`), `wd4Turn` (lets bots wait out the +4 animation), `spectators[]` (merged into `players` when a round ends), `nextCardId` (card ids stay unique when extra decks are opened).
 
 ## Browser (`public/app.js`)
 

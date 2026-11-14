@@ -14,6 +14,7 @@ Restart it after changing `src/worker.js` or `public/shared/game.js`. Changes to
 node sim.mjs        # 420 random games, 2–60 players, stacking on/off, joins/kicks, watchers; checks card counts and turn order
 node botsim.mjs     # 1,800 computer-only games; Easy vs Normal win rates; no stuck games
 node timersim.mjs   # everyone always lets the clock run out; checks auto-moves always move the turn on
+node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, ties, scoring, late moves, off by default
 ```
 
 ## Browser tests (Python Playwright + Chromium, with the stand-in running)
@@ -25,6 +26,7 @@ node timersim.mjs   # everyone always lets the clock run out; checks auto-moves 
 | `ui_invite.py` | Online now, invite/accept/decline, invite from home, invite mid-game |
 | `ui_bots.py` | solo vs computer to the end, room with computer players |
 | `ui_timer.py` | turn timer auto-moves (room and solo) |
+| `ui_roundtime.py` | round time limit: setting, countdown, time-up result (room, via the stand-in's `/__test/roundends` shortcut) and solo |
 | `ui_fx.py`, `ui_fx_off.py` | Wild +4 effect on (centred, sound loaded) and off by default |
 | `ui_ring.py`, `ui_fit.py` | round table at 4/10/20 players; no scrolling at several screen sizes |
 | `ui_controls.py` | private room hidden from the list; button sizes and positions for both hands |

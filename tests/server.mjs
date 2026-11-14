@@ -13,7 +13,11 @@ class MockWS { constructor(sock){ this.sock=sock; this.open=true; this.att=null;
   send(str){ if(!this.open) throw new Error('closed'); const b=Buffer.from(str); let h; if(b.length<126) h=Buffer.from([0x81,b.length]); else if(b.length<65536){h=Buffer.alloc(4);h[0]=0x81;h[1]=126;h.writeUInt16BE(b.length,2)} else {h=Buffer.alloc(10);h[0]=0x81;h[1]=127;h.writeBigUInt64BE(BigInt(b.length),2)} this.sock.write(Buffer.concat([h,b])); }
   close(){ if(!this.open) return; this.open=false; try{this.sock.write(Buffer.from([0x88,0]));this.sock.end()}catch{} } }
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.woff':'font/woff','.mp3':'audio/mpeg'};
-const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x'); let f=u.pathname==='/'?'/index.html':u.pathname; const p=path.join(PUB,f);
+const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x'); 
+  // Test-only shortcut (stand-in only, not in the real Worker): make a room's round time limit run out in ?ms= milliseconds
+  if(u.pathname==='/__test/roundends'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); if(!r||!r.room.roundEndsAt){res.writeHead(404);return res.end('no limit running')}
+    r.room.roundEndsAt=Date.now()+Number(u.searchParams.get('ms')||1000); r.broadcast(); r.afterChange(); res.writeHead(200); return res.end("ok") }
+  let f=u.pathname==='/'?'/index.html':u.pathname; const p=path.join(PUB,f);
   if(!p.startsWith(PUB)||!fs.existsSync(p)){res.writeHead(404);return res.end('nf')} res.writeHead(200,{'content-type':mime[path.extname(p)]||'application/octet-stream'}); fs.createReadStream(p).pipe(res); });
 srv.on('upgrade',(req,sock)=>{ const u=new URL(req.url,'http://x'); const code=(u.searchParams.get('room')||'').toUpperCase();
   const isLobby=u.pathname==='/lobby';
