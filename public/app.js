@@ -575,6 +575,7 @@
   function tickRoundClock() {
     const rc = $('roundClock');
     const on = !!roundEndAt && !!S && S.phase === 'playing';
+    rc.classList.toggle('on', on);
     if (!on) { rc.textContent = '\u00a0'; rc.classList.remove('hurry'); return; }
     const secs = Math.ceil(Math.max(0, roundEndAt - Date.now()) / 1000);
     rc.textContent = `⏳ ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
