@@ -1,11 +1,14 @@
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto';
-import { GameRoom, Lobby } from './mock/worker.js';
+import worker, { GameRoom, Lobby } from './mock/worker.js';
 const PUB = path.resolve(new URL('../public', import.meta.url).pathname);
 const rooms = new Map();
 function makeCtx(){ const store=new Map(); const sockets=new Set();
-  return { sockets, storage:{ get:async k=>store.has(k)?structuredClone(store.get(k)):undefined, put:async(k,v)=>store.set(k,structuredClone(v)), setAlarm:async()=>{}, deleteAll:async()=>store.clear() },
+  return { sockets, storage:{ get:async k=>store.has(k)?structuredClone(store.get(k)):undefined, put:async(k,v)=>store.set(k,structuredClone(v)), setAlarm:async()=>{}, deleteAll:async()=>store.clear(),
+      delete:async k=>{ for(const x of [].concat(k)) store.delete(x) },
+      list:async({prefix='',end,reverse,limit=Infinity}={})=>{ let ks=[...store.keys()].filter(k=>k.startsWith(prefix)&&(end===undefined||k<end)).sort(); if(reverse) ks.reverse(); return new Map(ks.slice(0,limit).map(k=>[k,structuredClone(store.get(k))])) } },
     blockConcurrencyWhile:async fn=>fn(), acceptWebSocket:ws=>sockets.add(ws), getWebSockets:()=>[...sockets].filter(w=>w.open), setWebSocketAutoResponse(){} }; }
-let lobby; const env={ LOBBY:{ idFromName:n=>n, get:()=>lobby } };
+let lobby; const env={ LOBBY:{ idFromName:n=>n, get:()=>lobby }, STATS_KEY:'test-stats-key-123' };
+let testGeo={city:'Bengaluru',region:'Karnataka',country:'IN'}; // stand-in for Cloudflare's location; change with /__test/geo
 lobby=new Lobby(makeCtx(),env);
 function getRoom(code){ if(!rooms.has(code)){ const ctx=makeCtx(); ctx.storage.put('code',code); const r=new GameRoom(ctx,env); rooms.set(code,r); } return rooms.get(code); }
 class MockWS { constructor(sock){ this.sock=sock; this.open=true; this.att=null; }
@@ -14,6 +17,10 @@ class MockWS { constructor(sock){ this.sock=sock; this.open=true; this.att=null;
   close(){ if(!this.open) return; this.open=false; try{this.sock.write(Buffer.from([0x88,0]));this.sock.end()}catch{} } }
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.woff':'font/woff','.mp3':'audio/mpeg'};
 const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x'); 
+  // The real front door answers /api/stats (password check included)
+  if(u.pathname==='/api/stats'){ return worker.fetch(new Request('http://x/api/stats',{headers:{'x-stats-key':req.headers['x-stats-key']||''}}),env).then(async r=>{ res.writeHead(r.status,{'content-type':r.headers.get('content-type')||'text/plain'}); res.end(await r.text()) }) }
+  // Test-only: pretend the next connections come from another place
+  if(u.pathname==='/__test/geo'){ testGeo={city:u.searchParams.get('city')||'',region:u.searchParams.get('region')||'',country:u.searchParams.get('country')||''}; res.writeHead(200); return res.end('ok') }
   // Test-only shortcut (stand-in only, not in the real Worker): make a room's round time limit run out in ?ms= milliseconds
   if(u.pathname==='/__test/roundends'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); if(!r||!r.room.roundEndsAt){res.writeHead(404);return res.end('no limit running')}
     r.room.roundEndsAt=Date.now()+Number(u.searchParams.get('ms')||1000); r.broadcast(); r.afterChange(); res.writeHead(200); return res.end("ok") }
@@ -25,7 +32,7 @@ srv.on('upgrade',(req,sock)=>{ const u=new URL(req.url,'http://x'); const code=(
   const acc=crypto.createHash('sha1').update(req.headers['sec-websocket-key']+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${acc}\r\n\r\n`);
   const room=isLobby?lobby:getRoom(code); const ws=new MockWS(sock); room.ctx.acceptWebSocket(ws);
-  if(isLobby){ ws.serializeAttachment({cid:null,name:'',room:null}); ws.send(JSON.stringify({t:'rooms',rooms:lobby.list()})); ws.send(JSON.stringify({t:'people',people:lobby.people()})); } else ws.serializeAttachment({pid:null});
+  if(isLobby){ ws.serializeAttachment({cid:null,name:'',room:null}); ws.send(JSON.stringify({t:'rooms',rooms:lobby.list()})); ws.send(JSON.stringify({t:'people',people:lobby.people()})); } else ws.serializeAttachment({pid:null, geo:GameRoom.geoFrom(new Request('http://x/',{headers:{'x-geo':encodeURIComponent(JSON.stringify(testGeo))}}))});
   let buf=Buffer.alloc(0); let chain=Promise.resolve();
   const closed=()=>{ if(ws.closedFired) return; ws.closedFired=true; ws.open=false; chain=chain.then(()=>room.webSocketClose(ws,1006)); };
   sock.on('data',d=>{ buf=Buffer.concat([buf,d]);

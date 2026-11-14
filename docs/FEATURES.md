@@ -56,6 +56,14 @@ A ring around the current player's avatar empties as time runs out, with the sec
 
 When it runs out and nobody has finished their cards, the player whose remaining cards add up to the **lowest card points** wins the round (numbers at face value, action cards 20, wilds 50). Ties go to whoever holds fewer cards, then to whoever would play next. Scoring is the same as a normal win: the winner gets the points of everyone else's leftover cards. A move that arrives after the limit doesn't count. It works in rooms and in Play vs computer.
 
+## Join stats (owner only)
+
+Every time someone **starts or joins a room**, the server notes the time, the name they typed, their approximate **city / region / country** (from Cloudflare, based on the internet connection; the IP address itself is not kept) and whether they started the room or joined it. Reconnects and Play vs computer games are not counted. Entries are deleted after **90 days**.
+
+The owner sees them at **`/stats.html`** after typing the stats password: totals, joins by city, joins by day and the recent joins list, for today / 7 / 30 / 90 days. The password is the `STATS_KEY` secret in Cloudflare (see [DEPLOYMENT.md](DEPLOYMENT.md)); until it is set, the page shows nothing to anyone. The home screen tells players: "When you join a room, the game notes your name and approximate city (from your internet connection) for the creator's stats."
+
+City is approximate: mobile data often shows the carrier's hub city, and a VPN shows the VPN's location.
+
 ## Computer players
 
 - **🤖 Play vs computer** (solo): 1–9 computer players, Easy/Normal, cards per hand, time per turn, stacking, Wild +4 laugh and stickers. It runs entirely in the browser (no room, nothing on the server).

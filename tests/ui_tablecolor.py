@@ -19,9 +19,10 @@ async def main():
             names={'r':'red','y':'yellow','g':'green','b':'blue'}
             assert col in names and names[col] in dot, (col, dot)      # table always matches the colour dot
             if col not in seen:
-                await s.wait_for_timeout(600); seen[col]=await s.evaluate(FELT)
-                if await s.get_attribute('#ring','data-color')==col: await s.screenshot(path=f'tc_{col}.png')
-            if len(seen)==4 or await s.is_visible('#endOverlay'): break
+                await s.wait_for_timeout(700)   # let the fade finish; only count it if the colour is still the same
+                if await s.get_attribute('#ring','data-color')==col: seen[col]=await s.evaluate(FELT); await s.screenshot(path=f'tc_{col}.png')
+            if len(seen)==4: break
+            if await s.is_visible('#endOverlay'): await s.click('#nextRoundBtn', force=True); await s.wait_for_timeout(600); continue
             # keep the round going: play a card if it's my turn, otherwise wait for the computer players
             if 'mine' in (await s.get_attribute('#status','class') or ''):
                 pl=s.locator('#hand .card.playable')

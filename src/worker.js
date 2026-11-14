@@ -8,17 +8,47 @@ const MAX_VOICE_CHARS = 300000; // 5 s of speech, with room for iPhone recording
 const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
 const REACTIONS = ['nice_play', 'really', 'whats_next', 'oh_no', 'angry', 'evil'];
 const REACT_GAP_MS = 1200;
+const STATS_KEEP_MS = 90 * 24 * 60 * 60 * 1000; // join log entries are deleted after 90 days
+const STATS_MAX_ROWS = 5000;                    // the stats page shows the most recent joins, up to this many
+
+// Rough location of a connection, from Cloudflare (based on the IP address; the IP itself is never kept)
+function geoOf(request) {
+  const cf = request.cf || {};
+  const s = v => (typeof v === 'string' ? v.slice(0, 60) : '');
+  return { city: s(cf.city), region: s(cf.region), country: s(cf.country) };
+}
+function sameText(a, b) { // compare without stopping at the first difference
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
 
 // Front door: the game page is served from /public automatically.
 // /ws?room=CODE  → that room's server
 // /lobby         → the live list of open rooms
+// /api/stats     → the owner's join log (needs the STATS_KEY secret; see docs/DEPLOYMENT.md)
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/ws') {
       const room = (url.searchParams.get('room') || '').toUpperCase();
       if (!/^[A-Z0-9]{4,8}$/.test(room)) return new Response('Bad room code', { status: 400 });
-      return env.ROOMS.get(env.ROOMS.idFromName(room)).fetch(request);
+      // pass the rough location along to the room (anything the browser sent under this name is overwritten)
+      let toRoom = request;
+      try {
+        const headers = new Headers(request.headers);
+        headers.set('x-geo', encodeURIComponent(JSON.stringify(geoOf(request))));
+        toRoom = new Request(request, { headers });
+      } catch {} // stats must never get in the way of joining a room
+      return env.ROOMS.get(env.ROOMS.idFromName(room)).fetch(toRoom);
+    }
+    if (url.pathname === '/api/stats') {
+      const key = env.STATS_KEY || '';
+      const given = request.headers.get('x-stats-key') || '';
+      // no key set (or a short one) means the page is switched off; a wrong key looks the same as "no such page"
+      if (key.length < 12 || !sameText(given, key)) return new Response('Not found', { status: 404 });
+      const rows = await env.LOBBY.get(env.LOBBY.idFromName('main')).stats();
+      return Response.json({ rows, keepDays: STATS_KEEP_MS / 86400000, max: STATS_MAX_ROWS }, { headers: { 'cache-control': 'no-store' } });
     }
     if (url.pathname === '/lobby') {
       return env.LOBBY.get(env.LOBBY.idFromName('main')).fetch(request);
@@ -37,6 +67,15 @@ function autoPong(ctx) {
 // checks every move, and sends each phone only what it may see.
 // ───────────────────────────────────────────────────────────
 export class GameRoom extends DurableObject {
+  // The location the front door attached to this connection
+  static geoFrom(request) {
+    try {
+      const g = JSON.parse(decodeURIComponent(request.headers.get('x-geo') || '')) || {};
+      const s = v => (typeof v === 'string' ? v.slice(0, 60) : '');
+      return { city: s(g.city), region: s(g.region), country: s(g.country) };
+    } catch { return { city: '', region: '', country: '' }; }
+  }
+
   constructor(ctx, env) {
     super(ctx, env);
     this.room = null;
@@ -65,8 +104,18 @@ export class GameRoom extends DurableObject {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ pid: null });
+    server.serializeAttachment({ pid: null, geo: GameRoom.geoFrom(request) });
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Owner's stats: note who joined and roughly where from (name, city, time). Reconnects aren't counted.
+  async logJoin(p, att, kind) {
+    if (!this.env.LOBBY) return;
+    const g = att.geo || {};
+    try {
+      await this.env.LOBBY.get(this.env.LOBBY.idFromName('main'))
+        .logJoin({ name: p.name, city: g.city || '', region: g.region || '', country: g.country || '', kind });
+    } catch {}
   }
 
   online(except) {
@@ -178,7 +227,9 @@ export class GameRoom extends DurableObject {
         if (msg.joinOnly && this.room.players.length === 0) {
           return this.send(ws, { t: 'error', code: 'noroom', msg: 'No room with that code' });
         }
+        const kind = this.room.players.length === 0 ? 'create' : 'join';
         p = G.addPlayer(this.room, msg.name);
+        await this.logJoin(p, att, kind);
       } else {
         // Same player opened a new tab or reconnected: retire the old socket
         for (const other of this.ctx.getWebSockets()) {
@@ -188,7 +239,7 @@ export class GameRoom extends DurableObject {
           }
         }
       }
-      ws.serializeAttachment({ pid: p.id });
+      ws.serializeAttachment({ ...att, pid: p.id });
       this.send(ws, { t: 'welcome', playerId: p.id, token: p.token, name: p.name });
       await this.save();
       this.broadcast();
@@ -352,6 +403,30 @@ export class Lobby extends DurableObject {
     server.send(JSON.stringify({ t: 'rooms', rooms: this.list() }));
     server.send(JSON.stringify({ t: 'people', people: this.people() }));
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Join log for the owner's stats page. Called by rooms (RPC). One small entry per join:
+  // time, name, city / region / country, and whether they created the room or joined it.
+  async logJoin(e) {
+    const now = Date.now();
+    const key = `j:${String(now).padStart(14, '0')}:${Math.random().toString(36).slice(2, 8)}`;
+    await this.ctx.storage.put(key, {
+      at: now, name: cleanName(e?.name), city: String(e?.city || '').slice(0, 60), region: String(e?.region || '').slice(0, 60),
+      country: String(e?.country || '').slice(0, 8), kind: e?.kind === 'create' ? 'create' : 'join',
+    });
+    // tidy up entries past the keep time, at most once an hour
+    if (now - (this.lastPrune || 0) > 60 * 60 * 1000) {
+      this.lastPrune = now;
+      const old = await this.ctx.storage.list({ prefix: 'j:', end: `j:${String(now - STATS_KEEP_MS).padStart(14, '0')}`, limit: 128 });
+      if (old.size) await this.ctx.storage.delete([...old.keys()]);
+    }
+  }
+
+  // Most recent joins first, within the keep time
+  async stats() {
+    const cutoff = Date.now() - STATS_KEEP_MS;
+    const got = await this.ctx.storage.list({ prefix: 'j:', reverse: true, limit: STATS_MAX_ROWS });
+    return [...got.values()].filter(r => r && r.at >= cutoff);
   }
 
   // Called by rooms (RPC)

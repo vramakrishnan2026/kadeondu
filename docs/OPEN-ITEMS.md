@@ -14,6 +14,8 @@
 4. **Mani photo looking straight:** needs a front-facing photo from the owner (replace `public/fx/mani.webp`, about 640 px wide, soft-edged PNG/WebP).
 5. **Consent:** Mani's photo and the sticker friend's photos are visible to anyone with the link, and in the repo if it's public. The owner was asked to make sure the friends are fine with this.
 
+6. **Stats password:** the owner must add the `STATS_KEY` secret in Cloudflare before `/stats.html` shows anything (steps in [DEPLOYMENT.md](DEPLOYMENT.md)). Joins are logged from the moment the feature is deployed, with or without the password.
+
 ## Known limitations
 - A website can't re-open the microphone pop-up after the user has blocked it. The game shows per-browser steps instead.
 - Older iPhones may not play some formats. Recording prefers MP4/AAC to avoid this.

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Join stats</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 1rem; font: 16px/1.4 system-ui, sans-serif; background: #14121c; color: #f4f4f6; }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.3rem; margin: .2rem 0 1rem; } h2 { font-size: 1rem; margin: 1.4rem 0 .5rem; color: #ffb08a; }
+  input, select, button { font: inherit; padding: .6em .8em; border-radius: 10px; border: 1px solid #3a3648; background: #1f1c2b; color: inherit; }
+  button { background: #ff6b2c; border-color: #ff6b2c; color: #fff; font-weight: 700; }
+  button.plain { background: none; border-color: #3a3648; color: #a0a0ab; font-weight: 400; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .row input { flex: 1; min-width: 0; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+  .tile { background: #1f1c2b; border: 1px solid #2c2939; border-radius: 12px; padding: .7rem; text-align: center; }
+  .tile b { display: block; font-size: 1.5rem; } .tile span { font-size: .78rem; color: #a0a0ab; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .4rem .3rem; border-bottom: 1px solid #2c2939; }
+  th { color: #a0a0ab; font-weight: 600; font-size: .78rem; } td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: #a0a0ab; font-size: .82rem; } .hidden { display: none; } #msg { color: #ffb3b3; min-height: 1.4em; }
+  .scroll { max-height: 60vh; overflow: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>📍 Join stats</h1>
+  <div id="login">
+    <p class="muted">For the game's owner. Enter the stats password.</p>
+    <div class="row"><input id="key" type="password" autocomplete="current-password" placeholder="Stats password"><button id="go">Show</button></div>
+    <p id="msg"></p>
+  </div>
+  <div id="stats" class="hidden">
+    <div class="row">
+      <select id="days"><option value="1">Today</option><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select>
+      <button id="refresh" class="plain">Refresh</button><button id="logout" class="plain">Log out</button>
+    </div>
+    <h2>Summary</h2>
+    <div class="tiles">
+      <div class="tile"><b id="tJoins">0</b><span>joins</span></div>
+      <div class="tile"><b id="tNames">0</b><span>different names</span></div>
+      <div class="tile"><b id="tCities">0</b><span>cities</span></div>
+    </div>
+    <h2>By city</h2>
+    <table><thead><tr><th>City</th><th>Region</th><th>Country</th><th class="n">Joins</th><th class="n">Names</th></tr></thead><tbody id="byCity"></tbody></table>
+    <h2>By day</h2>
+    <table><thead><tr><th>Day</th><th class="n">Joins</th><th class="n">Names</th></tr></thead><tbody id="byDay"></tbody></table>
+    <h2>Recent joins</h2>
+    <div class="scroll"><table><thead><tr><th>When</th><th>Name</th><th>City</th><th>How</th></tr></thead><tbody id="recent"></tbody></table></div>
+    <p id="note" class="muted"></p>
+  </div>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+  let rows = [];
+  const cell = (tr, text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.append(td); };
+  const dayOf = at => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const place = r => r.city || '(unknown)';
+
+  function render() {
+    const days = Number($('days').value);
+    const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - (days - 1));
+    const list = rows.filter(r => r.at >= start.getTime());
+    const names = new Set(list.map(r => r.name.toLowerCase()));
+    const cities = new Map(), byDay = new Map();
+    for (const r of list) {
+      const ck = [place(r), r.region, r.country].join('|');
+      const c = cities.get(ck) || { city: place(r), region: r.region, country: r.country, n: 0, names: new Set() };
+      c.n++; c.names.add(r.name.toLowerCase()); cities.set(ck, c);
+      const d = byDay.get(dayOf(r.at)) || { n: 0, names: new Set() };
+      d.n++; d.names.add(r.name.toLowerCase()); byDay.set(dayOf(r.at), d);
+    }
+    $('tJoins').textContent = list.length; $('tNames').textContent = names.size;
+    $('tCities').textContent = [...cities.values()].filter(c => c.city !== '(unknown)').length;
+    const bc = $('byCity'); bc.replaceChildren();
+    for (const c of [...cities.values()].sort((a, b) => b.n - a.n || a.city.localeCompare(b.city))) {
+      const tr = document.createElement('tr'); cell(tr, c.city); cell(tr, c.region); cell(tr, c.country); cell(tr, c.n, 'n'); cell(tr, c.names.size, 'n'); bc.append(tr);
+    }
+    const bd = $('byDay'); bd.replaceChildren();
+    for (const [day, d] of [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0]))) {
+      const tr = document.createElement('tr'); cell(tr, day); cell(tr, d.n, 'n'); cell(tr, d.names.size, 'n'); bd.append(tr);
+    }
+    const rc = $('recent'); rc.replaceChildren();
+    for (const r of list.slice(0, 300)) {
+      const tr = document.createElement('tr');
+      cell(tr, new Date(r.at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+      cell(tr, r.name); cell(tr, [place(r), r.country].filter(Boolean).join(', ')); cell(tr, r.kind === 'create' ? 'Started a room' : 'Joined'); rc.append(tr);
+    }
+    if (!list.length) { const tr = document.createElement('tr'); cell(tr, 'No joins in this period yet'); tr.firstChild.colSpan = 4; rc.append(tr); }
+  }
+
+  async function load(key) {
+    $('msg').textContent = '';
+    let res;
+    try { res = await fetch('/api/stats', { headers: { 'x-stats-key': key }, cache: 'no-store' }); }
+    catch { $('msg').textContent = "Couldn't reach the game. Check your connection."; return false; }
+    if (!res.ok) { $('msg').textContent = 'Wrong password, or the stats password has not been set up yet.'; store.set('cardgame-stats-key', null); $('login').classList.remove('hidden'); $('stats').classList.add('hidden'); return false; }
+    const data = await res.json();
+    rows = data.rows || [];
+    store.set('cardgame-stats-key', key);
+    $('login').classList.add('hidden'); $('stats').classList.remove('hidden');
+    $('note').textContent = `City comes from the internet connection, so it is approximate (mobile data often shows a different city). ` +
+      `Times are in this device's time zone. Entries are deleted after ${data.keepDays} days; the page shows up to the latest ${data.max} joins. ` +
+      `Play vs computer games are not counted. Names are whatever people typed.`;
+    render();
+    return true;
+  }
+  $('go').onclick = () => { const k = $('key').value.trim(); if (k) load(k); };
+  $('key').onkeydown = e => { if (e.key === 'Enter') $('go').click(); };
+  $('days').onchange = render;
+  $('refresh').onclick = () => load(store.get('cardgame-stats-key') || '');
+  $('logout').onclick = () => { store.set('cardgame-stats-key', null); rows = []; $('key').value = ''; $('stats').classList.add('hidden'); $('login').classList.remove('hidden'); };
+  const saved = store.get('cardgame-stats-key');
+  if (saved) load(saved);
+})();
+</script>
+</body>
+</html>

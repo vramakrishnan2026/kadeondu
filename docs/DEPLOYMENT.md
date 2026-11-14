@@ -44,3 +44,13 @@ Deploying by hand (fallback): `npm install`, then `npx wrangler login` (signed i
 | CPU | 10 ms per request | Handlers are light |
 
 If a limit is hit, operations of that type fail until the reset. The Workers paid plan (US$5/month) removes this. Watch Worker → **Metrics** and **Durable Objects** usage. Built-in caps: 300 connections per room, 20 computer players per room, 100 rooms listed, 200 people listed.
+
+## Stats password (`STATS_KEY`)
+
+The join stats page (`/stats.html`) only works once a secret called `STATS_KEY` exists. Only the owner can add it:
+
+1. Cloudflare dashboard → **Workers & Pages** → **kadeondu** → **Settings** → **Variables and Secrets** → **Add**.
+2. Type: **Secret**. Name: `STATS_KEY`. Value: a password of **12 or more characters** (shorter ones are ignored).
+3. **Deploy**. Then open `https://kadeondu.goarena.workers.dev/stats.html` and type the password.
+
+Use the type **Secret**, not plain text: secrets stay in place when GitHub deploys a new version. Never put the password in the repo (it is public). To change it, edit the secret; every device then has to type the new one.

@@ -1,6 +1,6 @@
 // Offline helper: always tries the network first (so updates show up straight away)
 // and falls back to the last copy only when there's no connection.
-const CACHE = 'kade-ondu-v4';
+const CACHE = 'kade-ondu-v5';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js',
   '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/mani.webp', '/fx/rangoli.svg', '/fx/evil-laugh.mp3',
   '/fx/reactions/nice_play.webp', '/fx/reactions/really.webp', '/fx/reactions/whats_next.webp',
@@ -16,7 +16,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname === '/ws' || url.pathname === '/lobby') return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname === '/ws' || url.pathname === '/lobby' || url.pathname.startsWith('/api/')) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {

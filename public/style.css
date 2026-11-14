@@ -294,6 +294,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .with-ico { display: inline-flex; align-items: center; justify-content: center; gap: .5em; }
 .credits { text-align: center; margin: 1.6rem 0 .6rem; font-size: .8rem; color: var(--muted); letter-spacing: .02em; }
 .credits span::before { content: "✦ "; color: var(--accent); }
+.privacy-note { text-align: center; margin: 0 1rem .8rem; font-size: .72rem; color: var(--muted); opacity: .85; }
 .credits span::after { content: " ✦"; color: var(--accent); }
 
 /* colour picker buttons (the card rules only set colour variables, so paint them here) */

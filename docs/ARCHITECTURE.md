@@ -20,7 +20,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 - **Broadcast:** after each change, every socket gets a **personalised** view, `G.viewFor(room, pid, onlineSet)`. A player sees only their own hand; everyone else's hand is a card count.
 - **Timers** (only while at least one person is connected):
   - `kickBots()` → `setTimeout(nextBotAction.delay)` → `botTick()` plays computer turns.
-  - `armTurnTimer()` → fires at `room.deadline` → `G.timeoutMove()`. Messages also check for overdue deadlines, which covers restarts that lost the timer. The same timer also fires at `room.roundEndsAt` (round time limit) → `G.roundTimeUp()`.
+  - `armTurnTimer()` → fires at `room.deadline` → `G.timeoutMove()`. Messages also check for overdue deadlines, which covers restarts that lost the timer. **Join log:** the front door puts Cloudflare's rough location (`request.cf` city/region/country) in an `x-geo` header; the room keeps it on the socket and, when a new player is added (not a reconnect), calls `Lobby.logJoin()`, which stores one `j:<time>:<rand>` entry in the Lobby's storage (deleted after 90 days). `/api/stats` (header `x-stats-key` must equal the `STATS_KEY` secret, 12+ characters) returns the latest 5,000; `public/stats.html` does the totals in the browser. The same timer also fires at `room.roundEndsAt` (round time limit) → `G.roundTimeUp()`.
   - `afterChange()` calls both.
 - **Relays (never stored):** `voice` (max 300,000 chars of data URL, `data:audio/*;base64,`, 2.5 s gap per player) and `react` (sticker id from a fixed list, only when `settings.reactions` is on, 1.2 s gap).
 - **report():** sends `G.summary(room, code, onlineCount)` to the Lobby whenever it changes.
