@@ -8,6 +8,10 @@ const MAX_VOICE_CHARS = 300000; // 5 s of speech, with room for iPhone recording
 const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
 const REACTIONS = ['nice_play', 'really', 'whats_next', 'oh_no', 'angry', 'evil'];
 const REACT_GAP_MS = 1200;
+const CHAT_KEEP = 200;                    // room chat: the last 200 messages are kept, oldest dropped first
+const CHAT_MAX_CHARS = 200;
+const CHAT_GAP_MS = 1000;                 // one message a second per person
+const CHAT_EMPTY_MS = 5 * 60 * 1000;      // chat is wiped once no person has been connected for 5 minutes
 const STATS_KEEP_MS = 90 * 24 * 60 * 60 * 1000; // join log entries are deleted after 90 days
 const STATS_MAX_ROWS = 5000;                    // the stats page shows the most recent joins, up to this many
 
@@ -81,11 +85,15 @@ export class GameRoom extends DurableObject {
     this.room = null;
     this.code = null;
     this.lastSummary = '';
+    this.chat = [];        // room chat, newest last (see CHAT_KEEP)
+    this.chatEmptyAt = 0;  // when the last person disconnected (0 = someone is connected)
     this.botTimer = null;
     this.turnTimer = null;
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || G.newRoom();
       this.code = (await ctx.storage.get('code')) || null;
+      this.chat = (await ctx.storage.get('chat')) || [];
+      this.chatEmptyAt = (await ctx.storage.get('chatEmptyAt')) || 0;
     });
     autoPong(ctx);
   }
@@ -201,7 +209,8 @@ export class GameRoom extends DurableObject {
 
   async save() {
     await this.ctx.storage.put('room', this.room);
-    await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
+    // next wake-up: the chat countdown if it is running, otherwise the 24 h idle clean-up
+    await this.ctx.storage.setAlarm(this.chatEmptyAt ? this.chatEmptyAt + CHAT_EMPTY_MS : Date.now() + IDLE_CLEANUP_MS);
   }
 
   async webSocketMessage(ws, raw) {
@@ -212,6 +221,7 @@ export class GameRoom extends DurableObject {
     const att = ws.deserializeAttachment() || {};
     if (msg.t === 'voice') return this.relayVoice(ws, att, msg);
     if (msg.t === 'react') return this.relayReaction(ws, att, msg);
+    if (msg.t === 'chat') return this.onChat(ws, att, msg);
     if (raw.length > 2000) return;
     const now = Date.now();
     if ((this.room.deadline && now >= this.room.deadline) || (this.room.roundEndsAt && now >= this.room.roundEndsAt)) await this.onTurnTimeout();
@@ -223,6 +233,7 @@ export class GameRoom extends DurableObject {
         if (msg.create && s.players.length > 0) {
           if (this.online(ws).size > 0) return this.send(ws, { t: 'error', code: 'taken', msg: 'Room code in use' });
           this.room = G.newRoom(); // abandoned room with the same code: start fresh
+          await this.wipeChat();
         }
         if (msg.joinOnly && this.room.players.length === 0) {
           return this.send(ws, { t: 'error', code: 'noroom', msg: 'No room with that code' });
@@ -241,6 +252,13 @@ export class GameRoom extends DurableObject {
       }
       ws.serializeAttachment({ ...att, pid: p.id });
       this.send(ws, { t: 'welcome', playerId: p.id, token: p.token, name: p.name });
+      // someone is here again: the chat survives if they came back within 5 minutes
+      if (this.chatEmptyAt) {
+        if (now - this.chatEmptyAt >= CHAT_EMPTY_MS) await this.wipeChat();
+        this.chatEmptyAt = 0;
+        await this.ctx.storage.put('chatEmptyAt', 0);
+      }
+      this.send(ws, { t: 'chatlog', list: this.chat });
       await this.save();
       this.broadcast();
       await this.report();
@@ -260,6 +278,8 @@ export class GameRoom extends DurableObject {
         }
       }
     }
+    // everyone has tapped Leave (computer players don't count): the chat goes with them
+    if (this.chat.length && !this.people().length) await this.wipeChat();
     await this.save();
     this.broadcast();
     await this.report();
@@ -270,6 +290,55 @@ export class GameRoom extends DurableObject {
     try { ws.close(1000, 'bye'); } catch {}
     this.broadcast(ws);
     await this.report(ws);
+    await this.noteEmpty(ws);
+  }
+
+  // ── Room chat: text only, seen by everyone in the room (players and watchers). ──
+  // The last 200 messages are kept with the room so late joiners can scroll back. They are deleted
+  // when every person has left, when nobody has been connected for 5 minutes, or with the room itself.
+  people() {
+    return [...this.room.players, ...(this.room.spectators || [])].filter(p => !p.bot);
+  }
+
+  async onChat(ws, att, msg) {
+    if (!att.pid || typeof msg.text !== 'string') return;
+    const s = this.room;
+    const watching = (s.spectators || []).some(x => x.id === att.pid);
+    const p = [...s.players, ...(s.spectators || [])].find(x => x.id === att.pid);
+    if (!p) return;
+    const text = msg.text.slice(0, 1000).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_CHARS);
+    if (!text) return;
+    this.chatAt ||= new Map();
+    const now = Date.now();
+    if (now - (this.chatAt.get(att.pid) || 0) < CHAT_GAP_MS) return this.send(ws, { t: 'error', msg: 'One message a second, please' });
+    this.chatAt.set(att.pid, now);
+    const m = { id: (this.chat.at(-1)?.id || 0) + 1, at: now, from: p.id, name: p.name, text };
+    if (watching) m.w = 1;
+    this.chat.push(m);
+    if (this.chat.length > CHAT_KEEP) this.chat.splice(0, this.chat.length - CHAT_KEEP);
+    await this.ctx.storage.put('chat', this.chat);
+    const out = JSON.stringify({ t: 'chat', m });
+    for (const other of this.ctx.getWebSockets()) {
+      if (other.deserializeAttachment()?.pid) { try { other.send(out); } catch {} }
+    }
+  }
+
+  async wipeChat() {
+    this.chat = [];
+    this.chatEmptyAt = 0;
+    await this.ctx.storage.delete(['chat', 'chatEmptyAt']);
+    const out = JSON.stringify({ t: 'chatlog', list: [] });
+    for (const other of this.ctx.getWebSockets()) {
+      if (other.deserializeAttachment()?.pid) { try { other.send(out); } catch {} }
+    }
+  }
+
+  // The last person just disconnected: start the 5-minute countdown for the chat
+  async noteEmpty(closing) {
+    if (!this.chat.length || this.chatEmptyAt || this.online(closing).size > 0) return;
+    this.chatEmptyAt = Date.now();
+    await this.ctx.storage.put('chatEmptyAt', this.chatEmptyAt);
+    await this.ctx.storage.setAlarm(this.chatEmptyAt + CHAT_EMPTY_MS);
   }
 
   // Sticker reactions: shown to everyone (sender included), never stored.
@@ -310,9 +379,20 @@ export class GameRoom extends DurableObject {
   async webSocketError(ws) {
     this.broadcast(ws);
     await this.report(ws);
+    await this.noteEmpty(ws);
   }
 
   async alarm() {
+    // chat countdown: nobody connected for 5 minutes
+    if (this.chat.length && this.chatEmptyAt && this.online().size === 0 && Date.now() - this.chatEmptyAt >= CHAT_EMPTY_MS - 2000) {
+      await this.wipeChat();
+      await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
+      return;
+    }
+    if (this.chat.length && this.chatEmptyAt && Date.now() < this.chatEmptyAt + CHAT_EMPTY_MS) {
+      await this.ctx.storage.setAlarm(this.chatEmptyAt + CHAT_EMPTY_MS); // woke early: this is not the idle clean-up
+      return;
+    }
     if (this.ctx.getWebSockets().length > 0) {
       await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
       return;
@@ -320,6 +400,8 @@ export class GameRoom extends DurableObject {
     await this.ctx.storage.deleteAll();
     this.room = G.newRoom();
     this.code = null;
+    this.chat = [];
+    this.chatEmptyAt = 0;
   }
 }
 

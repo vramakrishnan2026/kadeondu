@@ -26,7 +26,7 @@ async def main():
         assert re.match(r'⏳ 2:5\d$', ca) and re.match(r'⏳ 2:5\d$', cq)
         fits=await a.evaluate("document.documentElement.scrollHeight<=innerHeight"); print('no scrolling:', fits); assert fits
         await a.screenshot(path='rt_clock.png')
-        counts=await a.evaluate("[...document.querySelectorAll('#seats .seat .count')].map(x=>x.textContent)")
+        counts=await a.evaluate("[...document.querySelectorAll('#seats .seat')].map(x=>x.dataset.count)")
         urllib.request.urlopen(BASE+'__test/roundends?room='+code+'&ms=1500').read()
         await a.wait_for_timeout(700); print('last seconds:', (await a.text_content('#roundClock')).strip(), '| red:', 'hurry' in (await a.get_attribute('#roundClock','class')))
         await a.wait_for_selector('#endOverlay:not(.hidden)', timeout=5000); await q.wait_for_selector('#endOverlay:not(.hidden)', timeout=5000)

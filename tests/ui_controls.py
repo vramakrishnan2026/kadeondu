@@ -1,7 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
 BASE='http://localhost:8788/'
-SIZES="""() => ['muteBtn','micBtn','callBtn','drawBtn','passBtn'].map(id=>{const e=document.getElementById(id); if(!e||e.offsetParent===null) return id+': hidden'; const r=e.getBoundingClientRect(); return `${id}: ${Math.round(r.width)}x${Math.round(r.height)} @x=${Math.round(r.left+r.width/2)}`})"""
+SIZES="""() => ['catchBtn','callBtn','drawBtn','passBtn','muteBtn','micBtn'].map(id=>{const e=document.getElementById(id); if(!e||e.offsetParent===null) return id+': hidden'; const r=e.getBoundingClientRect(); return `${id}: ${Math.round(r.width)}x${Math.round(r.height)} @x=${Math.round(r.left+r.width/2)}`})"""
 async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch(args=['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']); errs=[]

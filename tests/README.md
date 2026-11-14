@@ -14,6 +14,7 @@ Restart it after changing `src/worker.js` or `public/shared/game.js`. Changes to
 node sim.mjs        # 420 random games, 2–60 players, stacking on/off, joins/kicks, watchers; checks card counts and turn order
 node botsim.mjs     # 1,800 computer-only games; Easy vs Normal win rates; no stuck games
 node timersim.mjs   # everyone always lets the clock run out; checks auto-moves always move the turn on
+node chatsim.mjs    # room chat on the server: who can post, cleaning, last-200 limit, wipe rules (run prepare-mock.sh once first)
 node statssim.mjs   # join stats: password check, join log, 90-day clean-up, location hand-off (run prepare-mock.sh once first)
 node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, ties, scoring, late moves, off by default
 ```
@@ -27,6 +28,8 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_invite.py` | Online now, invite/accept/decline, invite from home, invite mid-game |
 | `ui_bots.py` | solo vs computer to the end, room with computer players |
 | `ui_timer.py` | turn timer auto-moves (room and solo) |
+| `ui_table.py` | fans instead of circles, no own seat, scores under names, own card count, fixed Catch! button, button rows, left-handed |
+| `ui_chat.py` | room chat: edge tab and dot, drawer, watchers, history for late joiners, refresh, wipe after 5 min empty, none in Play vs computer |
 | `ui_stats.py` | join stats: joins logged with name + city, reconnects not counted, stats page needs the password, home notice |
 | `ui_roundtime.py` | round time limit: setting, countdown, time-up result (room, via the stand-in's `/__test/roundends` shortcut) and solo |
 | `ui_fx.py`, `ui_fx_off.py` | Wild +4 effect on (centred, sound loaded) and off by default |

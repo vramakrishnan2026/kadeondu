@@ -43,12 +43,12 @@ Guests see a one-line summary of the settings.
 - Match the colour or the symbol. Wilds can always be played, and a **Wild +4 can be played at any time** (no challenge rule).
 - If you can't (or don't want to) play: draw 1. If the drawn card fits, play it or tap **Keep & pass**. If it doesn't fit, your turn ends automatically.
 - Reverse with 2 players acts as Skip. Draw 2 and Wild +4 make the next player draw and lose their turn (unless stacking is on).
-- **Calling "Ondu!":** tap the call button while you hold 2 cards on your turn, or right after dropping to 1. If you forget, anyone can tap **Catch!** on your seat until the next player moves, and you pick up 2.
+- **Calling "Ondu!":** tap the call button while you hold 2 cards on your turn, or right after dropping to 1. If you forget, anyone can tap the **Catch!** button until the next player moves, and you pick up 2. Catch! has one fixed place at the left of the top button row: grey all the time, red when someone can be caught (their name also turns red).
 - Round winner scores everyone else's leftover cards: numbers at face value, action cards 20, wilds 50. Scores carry over between rounds.
 
 ## Turn timer
 
-A ring around the current player's avatar empties as time runs out, with the seconds shown next to "Your turn". It turns red in the last 5 seconds, and your phone buzzes. When time is up, the game makes the **simplest move** for that person: it plays the first card that fits (even a wild, with the colour taken from their hand), otherwise draws and plays the drawn card if it fits, or passes. It **never calls Ondu!** for them. The timer only applies to people, and it keeps a game moving if someone disconnects (as long as one person stays connected).
+A bar under the current player's name empties as time runs out, with the seconds shown next to "Your turn". It turns red in the last 5 seconds, and your phone buzzes. When time is up, the game makes the **simplest move** for that person: it plays the first card that fits (even a wild, with the colour taken from their hand), otherwise draws and plays the drawn card if it fits, or passes. It **never calls Ondu!** for them. The timer only applies to people, and it keeps a game moving if someone disconnects (as long as one person stays connected).
 
 ## Round time limit
 
@@ -82,11 +82,26 @@ City is approximate: mobile data often shows the carrier's hub city, and a VPN s
 
 ## Controls (bottom bar, built for thumbs)
 
-Right-handed default: 😄 stickers · 🔈 mute · (Skip their turn / 🏆 Scores) on the left. **Ondu! · Draw · 🎙 mic** are on the right, with the mic at the far right. **✋ Left-handed controls** mirrors the bar. All tap targets are at least 48 px. Draw shows visually as a 72×36 px button but has a 52 px tap area. Draw greys out when it isn't your turn, turns red with "Pick up 4" when a penalty is waiting, and becomes **Keep & pass** in the same spot after you draw. Tapping the deck on the table also draws.
+Two rows. **Top row: Catch! · Ondu! · Draw**, three equal buttons 54 px tall (50 px on small phones) that never move. Draw is the one used all round, so it is the solid orange one at the right thumb; Catch! and Ondu! stay grey until they can be used. Draw greys out when it isn't your turn, turns red with "Pick up 4" when a penalty is waiting, and becomes **Keep & pass** in the same spot after you draw. Tapping the deck on the table also draws. **Bottom row:** 😄 stickers · 🔈 mute · (Skip their turn / 🏆 Scores) on the left, **your own card count** (and points, once anyone has some) in the middle, and the 🎙 mic at the far right. **✋ Left-handed controls** mirrors both rows. All tap targets are at least 48 px.
+
+## The table
+
+- **Opponents hold their cards like real ones:** each player is a fan of face-down cards, one per card in their hand (up to 7, then "+N"; up to 5 in rooms of 15 or more), with the name underneath. There are no circles with initials. The fan shrinks in bigger rooms, and switches to a smaller size by itself if it would cover the piles.
+- **You have no seat:** your place is the bottom of the table, where your cards are. "Your turn" and the count by the mic say the rest. Someone who is only watching sees every player around the table.
+- **Whose turn:** the name turns orange and the fan glows. **Stepped away:** the fan fades. **Computer players** have 🤖 before the name.
+- **Scores under names** appear once anyone has points (so not in round 1). The full list is on 🏆 Scores and the round-end screen. Scoring is unchanged: the round winner collects everyone else's leftover points.
+- **Card back:** the Kannada numeral ೧ ("ondu" = one) on an orange disc, on a charcoal card. Used on the draw pile, the fans, flying cards and the small deck on the Draw button.
+
+## Room chat (rooms only)
+
+- **Always on**, for everyone in the room: players and people watching. Text only, up to 200 characters, one message a second each. Not in Play vs computer.
+- **Hidden while you play:** a small 💬 tab sits at the right edge (left edge in left-handed mode), in the table's empty bottom corner. A **green dot** on it means a new message. Tap or pull the tab to slide the chat in; tap ✕, tap outside, or swipe it back to hide it.
+- **History:** the room keeps the **last 200 messages** (oldest dropped first), so late joiners and watchers can scroll back, and a refresh keeps the chat. Watchers' messages are marked "· watching".
+- **When it is wiped:** as soon as every person has tapped Leave (computer players don't count), when nobody has been connected for 5 minutes, and with the room itself. This is the one thing in a room that is stored; voice notes and stickers are still only passed along.
 
 ## Voice notes (rooms only)
 
-- **Hold the 🎙 mic** to talk (up to 5 s), and let go to send. Everyone else in the room hears it, with a 🔊 bubble on the sender's seat. Each player can send one every 2.5 s. **Never stored**: the server only relays it.
+- **Hold the 🎙 mic** to talk (up to 5 s), and let go to send. Everyone else in the room hears it, with a 🔊 bubble on the sender's fan (your own shows by the mic). Each player can send one every 2.5 s. **Never stored**: the server only relays it.
 - **🔈 mute** stops incoming voice notes on that phone (remembered).
 - **🎙 Turn on voice notes** button: brings up the microphone permission pop-up with one tap. If the mic is blocked, it turns red ("Mic blocked: how to fix") and opens step-by-step instructions for that browser (iPhone + Brave / Safari / Chrome, Android).
 - iPhone details: sound is unlocked on the first tap; the mic stays open once allowed (orange dot) so Safari doesn't ask on every hold; recording prefers MP4/AAC, which every phone can play.

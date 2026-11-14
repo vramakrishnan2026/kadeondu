@@ -23,7 +23,7 @@ Deep purple background with orange, violet and teal glows and a faint dot grid. 
 ## Controls (research-based)
 - Steven Hoober's observation study: 49% hold the phone one-handed, and of those, 67% use the right thumb. The bottom-right **corner** itself is less accurate, so main actions go just inside the right side, not in the corner.
 - Minimum tap targets: Apple 44 pt, Material 48 dp. Here every target is at least 48 px.
-- The owner's iterations: Draw started on the left ("most humans are right handed", and "DRAW button is very poorly designed"), then became a big card-shaped button ("very big"), then was reduced 30% (now 72×36 visual, 52 px tap area). **The mic must be at the far right.** Final order, right-handed: `😄 🔈 … Ondu! · Draw · 🎙`. Left-handed mirrors it.
+- The owner's iterations: Draw started on the left ("most humans are right handed", and "DRAW button is very poorly designed"), then became a big card-shaped button ("very big"), then was reduced 30%. In Nov 2026 the owner found Ondu! and Draw "disproportional": Draw is used all round, so it must be big and functional, with Ondu! the same size, and **Catch!** must have a fixed, known place instead of popping up on a seat. Final layout: top row `Catch! · Ondu! · Draw` (three equal buttons), bottom row `😄 🔈 … your card count … 🎙`. **The mic must be at the far end.** Left-handed mirrors both rows.
 - Draw stays in one fixed spot (greyed out when it isn't your turn), and **Keep & pass** replaces it in the same spot, so the thumb doesn't hunt for it.
 
 ## Home screen flow
@@ -39,3 +39,9 @@ Newcomers thought they **had** to create a room. The redesign: name first, then 
 
 ## Accessibility
 Tap targets of 48 px or more; a left-handed mode; animations respect "reduce motion"; colour is never the only signal (cards show symbols, the colour picker has text, and the current colour shows as a dot); aria-labels on icon buttons; 6 and 9 underlined.
+
+## Table redesign (Nov 2026)
+- **Fans, not badges.** The owner wanted to see opponents' cards "like how a real life opponent will hold the cards", and then asked why a circle with an initial was needed when the name is right there. So: no circles, a larger fan, name underneath. The owner also asked why their own seat was shown at all; it only repeated "Your turn" and the cards already on screen, so it was removed and the felt moved down into the space (seat maths in `app.js`, `cy = 55`).
+- **Card back B** was chosen by the owner from five renders: the Kannada numeral ೧ on an orange disc. It is drawn as an SVG path (`--back-one` in `style.css`), original artwork, so every phone shows the same shape whatever fonts it has.
+- **Chat position.** The owner asked for a chat that "rolls to the right and hides when playing", can be pulled out, and shows a dot for new messages. The bottom edge was rejected because that is where the cards and the phone's home gesture are. The tab sits in the table's bottom corner, which is always empty because seats lie on an oval.
+- **Scoring** was discussed (everyone scoring their own leftover points) and deliberately left as it is.

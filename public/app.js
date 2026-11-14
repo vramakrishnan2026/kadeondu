@@ -44,7 +44,86 @@
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
     document.body.classList.toggle('in-game', screen === 'game'); // game screen fits the phone, no scrolling
+    placeChatTab();
+    requestAnimationFrame(placeChatTab); // again once the new screen has been laid out
   }
+
+  // ── Room chat: text for everyone in the room. Hidden at the edge while playing. ──
+  let chatLog = [], chatOpen = false, chatUnread = false;
+  function chatAvailable() { // in a room with other people (never in Play vs computer), on the waiting-room or game screen
+    try { return !!room && !solo && !!session && $('home').classList.contains('hidden'); } catch { return false; }
+  }
+  function placeChatTab() {
+    const tab = $('chatTab');
+    const on = chatAvailable();
+    tab.classList.toggle('hidden', !on || chatOpen);
+    if (!on) { if (chatOpen) setChatOpen(false); return; }
+    // on the game screen it sits in the table's empty bottom corner; in the waiting room, mid-screen
+    if (!$('game').classList.contains('hidden')) {
+      const r = $('ring').getBoundingClientRect();
+      tab.style.top = `${Math.max(60, r.bottom - tab.offsetHeight - 2)}px`;
+    } else tab.style.top = '42%';
+    $('chatDot').classList.toggle('hidden', !chatUnread);
+    tab.setAttribute('aria-label', chatUnread ? 'Open room chat (new messages)' : 'Open room chat');
+  }
+  function renderChat(stick) {
+    const list = $('chatList');
+    const nearEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+    list.replaceChildren();
+    if (!chatLog.length) list.append(el('p', 'chat-empty', 'No messages yet. Say hello 👋'));
+    for (const m of chatLog) {
+      const mine = m.from === session?.playerId;
+      const row = el('div', 'chat-msg' + (mine ? ' mine' : ''));
+      if (!mine) row.append(el('b', '', m.name + (m.w ? ' · watching' : '')));
+      row.append(el('span', '', m.text));
+      list.append(row);
+    }
+    if (stick || nearEnd) list.scrollTop = list.scrollHeight;
+    placeChatTab();
+  }
+  function fitChat() { // keep the typing box above the phone's keyboard
+    const vv = window.visualViewport, c = $('chat');
+    if (!vv || !chatOpen) { c.style.height = ''; c.style.top = ''; return; }
+    c.style.height = `${vv.height}px`;
+    c.style.top = `${vv.offsetTop}px`;
+    $('chatList').scrollTop = $('chatList').scrollHeight;
+  }
+  function setChatOpen(on) {
+    chatOpen = !!on;
+    if (chatOpen) chatUnread = false;
+    $('chat').classList.toggle('open', chatOpen);
+    $('chat').setAttribute('aria-hidden', String(!chatOpen));
+    $('chatBack').classList.toggle('hidden', !chatOpen);
+    if (!chatOpen) $('chatInput').blur();
+    fitChat();
+    placeChatTab();
+    if (chatOpen) $('chatList').scrollTop = $('chatList').scrollHeight;
+  }
+  $('chatTab').onclick = () => setChatOpen(true);
+  $('chatClose').onclick = () => setChatOpen(false);
+  $('chatBack').onclick = () => setChatOpen(false);
+  $('chatForm').onsubmit = e => {
+    e.preventDefault();
+    const text = $('chatInput').value.trim();
+    if (!text) return;
+    if (ws?.readyState !== 1) return toast('Reconnecting…');
+    ws.send(JSON.stringify({ t: 'chat', text }));
+    $('chatInput').value = '';
+  };
+  window.visualViewport?.addEventListener('resize', fitChat);
+  window.visualViewport?.addEventListener('scroll', fitChat);
+  // pull the tab out, or push the open chat back to the edge
+  let chatDrag = null;
+  const chatSide = () => (document.body.classList.contains('lefty') ? -1 : 1);
+  $('chatTab').addEventListener('pointerdown', e => { chatDrag = { x: e.clientX, open: false }; });
+  $('chat').addEventListener('pointerdown', e => { if (!e.target.closest('input, button')) chatDrag = { x: e.clientX, open: true }; });
+  window.addEventListener('pointerup', e => {
+    if (!chatDrag) return;
+    const dx = (e.clientX - chatDrag.x) * chatSide();
+    if (!chatDrag.open && dx < -24) setChatOpen(true);
+    if (chatDrag.open && dx > 60) setChatOpen(false);
+    chatDrag = null;
+  });
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -167,6 +246,7 @@
     $('peopleModal').classList.add('hidden');
     $('endOverlay').classList.add('hidden');
     $('colorPicker').classList.add('hidden');
+    chatLog = []; chatUnread = false; setChatOpen(false); renderChat();
     setNet();
     myName = $('nameInput').value.trim();
     inviteRoom = '';
@@ -201,6 +281,16 @@
       showReaction(m.name, m.id);
     } else if (m.t === 'voice') {
       playVoice(m);
+    } else if (m.t === 'chatlog') {
+      chatLog = Array.isArray(m.list) ? m.list.slice(-200) : [];
+      chatUnread = false;
+      renderChat(true);
+    } else if (m.t === 'chat') {
+      if (!m.m) return;
+      chatLog.push(m.m);
+      if (chatLog.length > 200) chatLog.shift();
+      if (!chatOpen && m.m.from !== session?.playerId) chatUnread = true;
+      renderChat(m.m.from === session?.playerId);
     } else if (m.t === 'replaced') {
       wantOpen = false;
       toast('This game is open in another tab');
@@ -277,33 +367,36 @@
     if (myTurn && prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
     prevTurn = s.turnId;
 
-    // seats around the table: you at the bottom, others clockwise in turn order
+    // seats around the table: the others clockwise in turn order. You have no seat of your own
+    // (your place is the bottom of the table, where your cards are).
     const seats = $('seats');
     seats.replaceChildren();
     const n = s.players.length;
     const meIdx = Math.max(0, s.players.findIndex(p => p.id === s.you));
-    const ring = $('ring').getBoundingClientRect();
-    // keep every seat fully inside the table area (half a seat from each edge)
-    const half = n > 14 ? { x: 27, y: 30 } : n > 8 ? { x: 33, y: 36 } : { x: 41, y: 44 };
-    const rx = 50 - ((half.x + 4) / Math.max(ring.width, 1)) * 100;
-    const ry = 50 - ((half.y + 2) / Math.max(ring.height, 1)) * 100;
+    const showScores = s.players.some(p => p.score > 0); // nothing to show until someone has points
+    const fanMax = n > 14 ? 5 : 7;
     $('ring').classList.toggle('crowded', n > 8);
     $('ring').classList.toggle('packed', n > 14);
     s.players.forEach((p, i) => {
       const k = (i - meIdx + n) % n;
       const ang = Math.PI / 2 + (k * 2 * Math.PI) / n;   // 90° = bottom, increasing = clockwise
-      const d = el('div', 'seat' + (p.id === s.turnId ? ' turn' : '') + (p.id === s.you ? ' me' : '') + (p.online ? '' : ' away'));
-      d.style.left = `${50 + rx * Math.cos(ang)}%`;
-      d.style.top = `${50 + ry * Math.sin(ang)}%`;
+      if (p.id === s.you) return;
+      const d = el('div', 'seat' + (p.id === s.turnId ? ' turn' : '') + (p.online ? '' : ' away') + (s.vulnerable === p.id ? ' vulnerable' : ''));
+      d.dataset.ang = ang;
       d.dataset.name = p.name;
-      const av = el('div', 'avatar', p.bot ? '🤖' : (p.name.trim()[0] || '?').toUpperCase());
-      av.append(el('span', 'count', String(p.count)));
-      d.append(av, el('div', 'sname', p.id === s.you ? 'You' : p.name), el('div', 'sscore', `${p.score} pts`));
-      if (s.vulnerable === p.id && p.id !== s.you && !s.spectating) {
-        const c = el('button', 'catch', 'Catch!');
-        c.onclick = () => send({ t: 'catch', target: p.id });
-        d.append(c);
+      d.dataset.count = p.count;
+      // their hand, held like a real one: one face-down card per card (up to 7, then "+N")
+      const fan = el('div', 'fan');
+      const shown = Math.min(p.count, fanMax);
+      for (let c = 0; c < shown; c++) {
+        const card = el('i', 'fc');
+        card.style.transform = `rotate(${shown === 1 ? 0 : (c - (shown - 1) / 2) * Math.min(11, 56 / (shown - 1))}deg)`;
+        fan.append(card);
       }
+      if (p.count > shown) fan.append(el('span', 'more', `+${p.count - shown}`));
+      fan.setAttribute('aria-label', `${p.count} cards`);
+      d.append(fan, el('div', 'sname', (p.bot ? '🤖 ' : '') + p.name));
+      if (showScores) d.append(el('div', 'sscore', `${p.score} pts`));
       seats.append(d);
     });
 
@@ -313,7 +406,13 @@
     w.textContent = s.spectators.length ? `👀 Watching: ${s.spectators.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
     $('watchNote').classList.toggle('hidden', !s.spectating);
     $('hand').classList.toggle('hidden', s.spectating);
-    $('callBtn').classList.toggle('hidden', s.spectating);
+    $('callBtn').classList.toggle('hidden', s.spectating || s.phase !== 'playing');
+    // Catch! lives in one fixed place: grey until someone forgets to call, then red
+    const canCatch = s.phase === 'playing' && !s.spectating && !!s.vulnerable && s.vulnerable !== s.you;
+    $('catchBtn').classList.toggle('hidden', s.spectating || s.phase !== 'playing');
+    $('catchBtn').disabled = !canCatch;
+    const mine = s.players.find(p => p.id === s.you);
+    $('myInfo').textContent = !mine || s.spectating ? '' : `${mine.count} card${mine.count === 1 ? '' : 's'}` + (showScores ? ` · ${mine.score} pts` : '');
     $('micBtn').classList.toggle('hidden', !!solo);
     $('reactBtn').classList.toggle('hidden', !s.settings.reactions || s.phase === 'lobby');
     if (!s.settings.reactions) $('reactTray').classList.add('hidden');
@@ -329,6 +428,34 @@
     if (s.color) $('ring').dataset.color = s.color; else delete $('ring').dataset.color; // table felt shows the colour being played
     $('dirArrow').classList.toggle('ccw', s.dir === -1);
     $('deckCount').textContent = `${s.deckCount} left`;
+    // Put the seats on their oval. If a fan would land on the piles (side seats on a narrow phone), use the smaller fan.
+    const placeSeats = tight => {
+      $('ring').classList.toggle('tight', tight);
+      const ring = $('ring').getBoundingClientRect();
+      const narrow = innerWidth <= 380;
+      // half a seat, so every seat stays fully inside the table area
+      const half = n > 14 ? { x: 30, y: 24 } : n > 8 ? { x: 38, y: 30 } : tight ? (narrow ? { x: 36, y: 30 } : { x: 42, y: 34 }) : narrow ? { x: 42, y: 34 } : { x: 48, y: 38 };
+      const rx = 50 - ((half.x + 4) / Math.max(ring.width, 1)) * 100;
+      // The table sits a little low (centre at 55%): with no seat of your own, the space at the bottom belongs to the felt.
+      const cy = 55, hy = ((half.y + 2) / Math.max(ring.height, 1)) * 100;
+      // how far down the lowest seats reach: the two next to you, or the very bottom when you are only watching
+      const lowest = [...seats.children].some(d => Math.sin(+d.dataset.ang) > 0.99) ? 1 : Math.cos((2 * Math.PI) / n);
+      const ry = Math.max(10, Math.min(cy - hy, lowest > 0.05 ? (100 - cy - hy) / lowest : Infinity));
+      for (const d of seats.children) {
+        d.style.left = `${50 + rx * Math.cos(+d.dataset.ang)}%`;
+        d.style.top = `${cy + ry * Math.sin(+d.dataset.ang)}%`;
+      }
+    };
+    const fansHitPiles = () => {
+      const piles = [$('drawPile'), $('discard'), $('roundClock'), $('deckCount')].map(e => e.getBoundingClientRect());
+      return [...seats.querySelectorAll('.fan, .sname')].some(e => {
+        const f = e.getBoundingClientRect();
+        return piles.some(r => f.right > r.left + 2 && f.left < r.right - 2 && f.bottom > r.top + 2 && f.top < r.bottom - 2);
+      });
+    };
+    placeSeats(false);
+    if (n <= 8 && fansHitPiles()) placeSeats(true);
+
     const canDraw = myTurn && s.drawnCardId === null;
     $('drawPile').classList.toggle('can', canDraw);
     $('drawPile').disabled = !canDraw;
@@ -595,7 +722,7 @@
     if (seat) {
       const ring = el('span', 'clock' + (hurry ? ' hurry' : ''));
       ring.style.setProperty('--left', turnLength ? (left / turnLength).toFixed(3) : 1);
-      seat.querySelector('.avatar').append(ring);
+      seat.append(ring);
     }
     st.append(el('span', 'secs' + (hurry ? ' hurry' : ''), `${secs}s`));
     if (hurry && !buzzed && S.turnId === S.you) { buzzed = true; try { navigator.vibrate?.([60, 60, 60]); } catch {} }
@@ -607,7 +734,7 @@
   function centerOf(r) { return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
   function seatRect(name) {
     const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === name);
-    return seat ? seat.querySelector('.avatar').getBoundingClientRect() : null;
+    return seat ? seat.querySelector('.fan').getBoundingClientRect() : null;
   }
   function fly(node, fromRect, toRect, { delay = 0, duration = 480, fromScale = 0.55, toScale = 1, spin = 0 } = {}) {
     if (!fromRect || !toRect) return Promise.resolve();
@@ -652,7 +779,6 @@
           : to;
         for (let i = 0; i < Math.min(e.x || 1, 6); i++) {
           const back = el('div', 'card back');
-          back.append(el('span', '', CFG.name));
           back.style.width = `${from.width}px`;
           fly(back, from, toRect, { delay: drawDelay + i * 110, duration: 420, fromScale: 1, toScale: 0.4, spin: 10 });
         }
@@ -878,7 +1004,8 @@
     voicePlaying = true;
     const seat = [...document.querySelectorAll('#seats .seat')].find(x => x.dataset.name === m.name);
     const bubble = el('div', 'voice-bubble', '🔊');
-    seat?.append(bubble);
+    (seat || $('micBtn').parentElement).append(bubble); // no seat of your own: your notes show by the mic
+    if (!seat) bubble.classList.add('by-mic');
     let finished = false;
     const done = () => { if (finished) return; finished = true; bubble.remove(); setTimeout(nextVoice, 150); };
     const safety = setTimeout(done, VOICE_MAX_MS + 2500);
@@ -1189,6 +1316,7 @@
   $('scoresBtn').onclick = () => { endClosedRound = null; if (S) render(S); };
   $('drawPile').onclick = () => send({ t: 'draw' });
   $('drawBtn').onclick = () => send({ t: 'draw' });
+  $('catchBtn').onclick = () => { if (S?.vulnerable) send({ t: 'catch', target: S.vulnerable }); };
   $('passBtn').onclick = () => send({ t: 'pass' });
   $('callBtn').onclick = () => send({ t: 'ondu' });
   $('skipTurnBtn').onclick = () => send({ t: 'skipturn' });

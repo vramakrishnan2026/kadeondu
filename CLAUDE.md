@@ -12,8 +12,8 @@ Read `README.md` and the `docs/` folder first. This file covers how to work on t
 1. **Original artwork only.** Never copy UNO/Mattel card designs, logos or naming, even if asked "with a different font". Decline in one line and offer an original alternative. (See `docs/DESIGN.md`.)
 2. **New toggles default to off** unless the owner says otherwise (Wild +4 effect, stickers and private rooms are all off by default; the round time limit defaults to 3 min because the owner asked for that).
 3. **The game screen must fit the phone with no scrolling.** Check with `tests/ui_fit.py` after layout changes.
-4. **Controls:** keep the order `😄 🔈 … Ondu! · Draw · 🎙` (mic at the far right, mirrored for left-handed), with tap targets of 48 px or more.
-5. Voice notes and stickers are **relayed, never stored**. Keep it that way.
+4. **Controls:** two rows. Top: `Catch! · Ondu! · Draw` (three equal buttons, each always in the same place; Draw is the main one). Bottom: `😄 🔈 … card count … 🎙` (mic at the far end). Left-handed mirrors both rows. Tap targets of 48 px or more.
+5. Voice notes and stickers are **relayed, never stored**. Keep it that way. Room chat is the one exception: the last 200 messages are kept with the room and wiped when it empties (see `docs/FEATURES.md`).
 6. Don't edit existing Durable Object migrations in `wrangler.jsonc`; only append. Don't rename the Worker (`kadeondu`); the GitHub auto-deploy is tied to it.
 7. When adding assets that should work offline, add them to `SHELL` in `public/sw.js` and bump `CACHE`.
 

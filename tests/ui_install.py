@@ -11,7 +11,7 @@ async def main():
         m=await cdp.send('Page.getAppManifest'); print('manifest errors:', m.get('errors'))
         # iPhone
         ictx=await b.new_context(viewport={'width':390,'height':780}, device_scale_factor=2, user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1')
-        ip=await ictx.new_page(); await ip.goto('http://localhost:8788/'); await ip.wait_for_timeout(400)
+        ip=await ictx.new_page(); await ip.goto('http://localhost:8788/'); await ip.fill('#nameInput','Asha'); await ip.click('#nameGo'); await ip.wait_for_timeout(400)  # the Install button is on the menu, after the name step
         print('iphone install button:', await ip.is_visible('#installBtn')); await ip.click('#installBtn'); await ip.wait_for_timeout(200)
         await ip.screenshot(path='ios_install.png'); print('errors', errs); await b.close()
 asyncio.run(main())

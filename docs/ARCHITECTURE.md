@@ -22,6 +22,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
   - `kickBots()` → `setTimeout(nextBotAction.delay)` → `botTick()` plays computer turns.
   - `armTurnTimer()` → fires at `room.deadline` → `G.timeoutMove()`. Messages also check for overdue deadlines, which covers restarts that lost the timer. **Join log:** the front door puts Cloudflare's rough location (`request.cf` city/region/country) in an `x-geo` header; the room keeps it on the socket and, when a new player is added (not a reconnect), calls `Lobby.logJoin()`, which stores one `j:<time>:<rand>` entry in the Lobby's storage (deleted after 90 days). `/api/stats` (header `x-stats-key` must equal the `STATS_KEY` secret, 12+ characters) returns the latest 5,000; `public/stats.html` does the totals in the browser. The same timer also fires at `room.roundEndsAt` (round time limit) → `G.roundTimeUp()`.
   - `afterChange()` calls both.
+- **Room chat (stored with the room):** `chat` `{text}` from any player or watcher → cleaned (control characters out, 200 chars, 1 s gap per person) and appended to `this.chat` (last 200, saved under the storage key `chat`), then sent to every socket as `{t:'chat', m:{id, at, from, name, text, w?}}`. On join the socket gets `{t:'chatlog', list}`. Wiped by `wipeChat()` when no person is left in the room, when nobody has been connected for 5 minutes (`chatEmptyAt` + the object's alarm, also checked on the next join), and by the 24 h idle clean-up. Chat is not part of the game state (`viewFor`).
 - **Relays (never stored):** `voice` (max 300,000 chars of data URL, `data:audio/*;base64,`, 2.5 s gap per player) and `react` (sticker id from a fixed list, only when `settings.reactions` is on, 1.2 s gap).
 - **report():** sends `G.summary(room, code, onlineCount)` to the Lobby whenever it changes.
 
@@ -75,7 +76,7 @@ Notable fields: `turnNo` (goes up whenever the turn moves; used for deadlines), 
 One IIFE. The main parts:
 - **Connections:** `connect(code, intent)` for the room socket, with exponential-backoff reconnect. `openLobby()` keeps the lobby socket open all the time.
 - **Screens:** `show('home'|'lobby'|'game')`. The `in-game` class on `<body>` makes the game screen fit the viewport.
-- **`render(state)`:** draws the waiting area or the table (seats on an ellipse sized from the ring's pixel size), status, controls, hand, round-over pop-up, and runs `animateEvents` for new log entries.
+- **`render(state)`:** draws the waiting area or the table (opponents' fans on an ellipse sized from the ring's pixel size; no seat for the viewer unless they are watching), status, controls, hand, round-over pop-up, and runs `animateEvents` for new log entries.
 - **Solo mode:** `solo = { G, s, me, timer, tt }`. `send()` goes to `soloSend`, which calls `G.handle` locally, with bot and turn timers in the browser.
 - **Features:** voice (MediaRecorder, persistent mic stream, `audioSession`, unlock on first tap, Web Audio fallback), stickers (`showReaction`/`floatUp`), Wild +4 effect (`showDrawFour`), turn clock ring (`tickClock`, 250 ms), share panel, install prompt, microphone permission helper.
 - **localStorage keys:** `cardgame-session` (room, playerId, token), `cardgame-name`, `cardgame-cid` (device id for presence), `cardgame-voice-muted`, `cardgame-lefty`.

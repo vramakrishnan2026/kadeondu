@@ -105,7 +105,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .opp .oname { font-weight: 600; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: .3rem; align-items: center; }
 .opp .ocount { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .3rem; }
 .mini-back { width: 12px; height: 17px; border-radius: 3px; background: linear-gradient(135deg, var(--accent), #8a2be2); display: inline-block; }
-.opp .catch { margin-top: .2rem; padding: .3em; font-size: .8rem; font-weight: 800; background: var(--red); color: #fff; animation: pulse .7s infinite alternate; }
 .opp.away { opacity: .55; }
 
 .table { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 6vw, 3rem); flex: 1; min-height: 150px; }
@@ -229,31 +228,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .seats { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .seat { position: absolute; transform: translate(-50%, -50%); width: 78px; display: flex; flex-direction: column;
   align-items: center; gap: 1px; text-align: center; pointer-events: auto; transition: left .4s, top .4s; }
-.avatar { width: 46px; height: 46px; border-radius: 50%; background: #3a3a46; display: grid; place-items: center;
-  font-weight: 800; font-size: 1.2rem; border: 3px solid rgba(255,255,255,.15); position: relative; }
-.seat.me .avatar { background: #4a3328; }
-.seat.turn .avatar { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,106,43,.25), 0 0 18px rgba(255,106,43,.7); animation: pulse .8s infinite alternate; }
 .seat.away { opacity: .5; }
-.avatar .count { position: absolute; right: -8px; bottom: -5px; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 99px;
-  background: #fff; color: #111; font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
 .sname { font-size: .78rem; font-weight: 600; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sscore { font-size: .66rem; color: var(--muted); }
-.seat .catch { margin-top: 2px; padding: .25em .6em; font-size: .75rem; font-weight: 800; background: var(--red); color: #fff;
-  border-radius: 99px; animation: pulse .7s infinite alternate; }
-.ring.crowded .avatar { width: 36px; height: 36px; font-size: .95rem; }
 .ring.crowded .sscore { display: none; }
 .ring.crowded .seat { width: 62px; }
 .ring.crowded .sname { font-size: .68rem; max-width: 62px; }
-.ring.packed .avatar { width: 28px; height: 28px; font-size: .8rem; border-width: 2px; }
 .ring.packed .seat { width: 50px; }
 .ring.packed .sname { font-size: .6rem; max-width: 50px; }
-.ring.packed .avatar .count { min-width: 17px; height: 15px; font-size: .6rem; right: -7px; }
 /* Turn clock: a ring around the avatar that empties as time runs out */
-.avatar .clock { position: absolute; inset: -8px; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(var(--accent) calc(var(--left, 1) * 360deg), rgba(255,255,255,.08) 0);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
-          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); }
-.avatar .clock.hurry { background: conic-gradient(var(--red) calc(var(--left, 1) * 360deg), rgba(255,255,255,.08) 0); }
 .status .secs { display: inline-block; min-width: 2.6em; margin-left: .4em; padding: .05em .45em; border-radius: 99px;
   background: rgba(255,255,255,.1); font-variant-numeric: tabular-nums; }
 .status .secs.hurry { background: var(--red); color: #fff; }
@@ -445,3 +428,129 @@ body.lefty .react-tray { left: 50%; }
 .react-float:not(.main) img { border-radius: 50%; }
 .react-float .react-cap { margin-top: -8%; font-size: .72rem; }
 .react-float .react-who { font-size: .62rem; }
+
+/* ════════ Table redesign (Nov 2026): card back, fans, button rows, room chat ════════ */
+
+/* Card back: the Kannada numeral ೧ ("ondu" = one) on an orange disc. Drawn as artwork so every phone shows the same shape. */
+:root { --back-one: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M39 77C23 68 17 43 32 28 46 15 68 18 77 35 85 51 79 69 63 77' fill='none' stroke='%23fff' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.card.back { --cc: #1b1922; border-color: #fdfbf6;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.12) 18%, transparent 22%) 0 0 / calc(var(--cw) * .09) calc(var(--cw) * .09),
+    linear-gradient(160deg, #2a2733, #15131b);
+  box-shadow: 0 calc(var(--cw) * .05) calc(var(--cw) * .14) rgba(0,0,0,.5), inset 0 0 0 calc(var(--cw) * .05) var(--accent); }
+.card.back span { display: none; }
+.card.back::before { content: ""; width: calc(var(--cw) * .6); height: calc(var(--cw) * .6); border-radius: 50%;
+  background: var(--back-one) center / 62% no-repeat, radial-gradient(circle at 35% 30%, #ff9a5c, #ee5216);
+  box-shadow: 0 0 0 calc(var(--cw) * .03) #15131b, 0 0 0 calc(var(--cw) * .05) #fdfbf6; }
+.draw-btn .mini-deck { background: #1c1a24; box-shadow: inset 0 0 0 2px var(--accent), 2px 2px 0 #fdfbf6, 3px 3px 0 #15151b; }
+
+/* Opponents: a fan of face-down cards (their real card count) with the name underneath. No circle, no seat for you. */
+.ring { --fw: 23px; --fh: 34px; }
+.seat { width: 96px; gap: 0; }
+.fan { position: relative; width: 100%; height: calc(var(--fh) + 8px); pointer-events: none; }
+.fc { position: absolute; left: 50%; bottom: 0; width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2); border-radius: 4px;
+  border: 1.5px solid #fdfbf6; background: #1c1a24; box-shadow: inset 0 0 0 1.5px var(--accent), 0 2px 4px rgba(0,0,0,.55); transform-origin: 50% 190%; }
+.fc::after { content: ""; position: absolute; left: 50%; top: 50%; width: 36%; aspect-ratio: 1; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); }
+.fan .more { position: absolute; right: 0; top: -4px; z-index: 2; font-size: .68rem; font-weight: 800; line-height: 17px; padding: 0 5px;
+  border-radius: 99px; background: #fff; color: #111; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.sname { margin-top: 3px; font-size: .8rem; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: rgba(0,0,0,.5); max-width: 100%; }
+.sscore { font-size: .66rem; color: #e6e6ec; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.seat.turn .sname { background: var(--accent); color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 14px rgba(255,106,43,.9); }
+.seat.turn .fc { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 1.5px var(--accent), 0 0 10px rgba(255,106,43,.9); }
+.seat.vulnerable .sname { background: var(--red); color: #fff; animation: pulse .7s infinite alternate; }
+.seat.away .fan { opacity: .4; }
+/* turn timer: a bar that empties under the name */
+.seat .clock { display: block; width: 70%; height: 4px; margin-top: 3px; border-radius: 4px; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent) calc(var(--left, 1) * 100%), rgba(255,255,255,.18) 0); }
+.seat .clock.hurry { background: linear-gradient(90deg, var(--red) calc(var(--left, 1) * 100%), rgba(255,255,255,.18) 0); }
+.ring.crowded { --fw: 17px; --fh: 25px; }
+.ring.crowded .seat { width: 76px; }
+.ring.crowded .sname { font-size: .7rem; max-width: 76px; padding: 1px 6px; }
+.ring.crowded .sscore { display: block; font-size: .58rem; }
+.ring.packed { --fw: 12px; --fh: 18px; }
+.ring.packed .seat { width: 60px; }
+.ring.packed .sname { font-size: .6rem; max-width: 60px; padding: 0 4px; }
+.ring.packed .sscore { display: none; }
+.ring.packed .fc { border-width: 1px; border-radius: 3px; }
+.ring.packed .fan .more { font-size: .56rem; line-height: 14px; padding: 0 3px; }
+@media (max-width: 380px) {
+  .ring { --fw: 19px; --fh: 28px; }
+  .seat { width: 84px; }
+  .ring.crowded { --fw: 15px; --fh: 22px; }
+  .ring.packed { --fw: 11px; --fh: 16px; }
+  body.in-game .sscore { display: block; }
+}
+.voice-bubble.by-mic { top: -16px; right: 0; }
+
+/* Buttons. Top row: Catch! · Ondu! · Draw, always in the same place, Draw being the one used most.
+   Bottom row: stickers, sound … your card count … mic. Left-handed mode mirrors both rows. */
+.actions { flex-wrap: wrap; row-gap: .35rem; column-gap: .45rem; }
+.act-main { order: 1; flex: 1 0 100%; margin: 0; gap: .45rem; }
+.act-side { order: 2; flex: 1 0 100%; gap: .45rem; position: relative; min-height: 48px; }
+.act-side .mic { margin-left: auto; }
+body.lefty .actions { flex-direction: row; }
+body.lefty .act-main, body.lefty .act-side { flex-direction: row-reverse; }
+body.lefty .act-side .mic { margin-left: 0; margin-right: auto; }
+.act-main > button, body.in-game .act-main > button { height: 54px; min-height: 54px; min-width: 0; flex: 1 1 0; padding: 0 .3rem; border-radius: 14px;
+  font-size: clamp(.9rem, 4.2vw, 1.08rem); white-space: nowrap; }
+.act-main > button.hidden { display: none; }
+.act-main .catch-btn { flex: .85 1 0; font-weight: 900; font-style: italic; }
+.act-main .catch-btn:disabled, .act-main .call:disabled { opacity: 1; background: #2b2836; color: #8b8797; border: 2px solid #3b3748; box-shadow: none; animation: none; }
+.act-main .catch-btn:not(:disabled) { background: linear-gradient(160deg, #ff5a5f, #c2161e); color: #fff; border: 2px solid #fff;
+  box-shadow: 0 0 0 3px rgba(255,90,95,.35), 0 0 18px rgba(255,90,95,.8); animation: pulse .7s infinite alternate; }
+.act-main .call { border-radius: 14px; border: 2px solid transparent; font-style: italic; }
+.act-main .call:not(:disabled) { border-color: #fff; }
+.act-main .draw-btn, .act-main .pass-btn { position: relative; border-width: 2px; overflow: hidden; }
+.act-main .draw-btn { padding-left: 2rem; }
+.act-main .draw-btn .mini-deck { left: .6rem; width: 17px; height: 24px; border-width: 1.5px; border-radius: 3px; }
+.act-main .draw-btn::after, .act-main .pass-btn::after { display: none; }
+.act-main .draw-btn:not(:disabled) { animation: none; }
+.act-main .pass-btn { font-size: clamp(.8rem, 3.7vw, .98rem); }
+.my-info { flex: 1; text-align: center; font-size: .82rem; font-weight: 600; color: #cfcfd8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { .act-main > button, body.in-game .act-main > button { height: 50px; min-height: 50px; } }
+
+/* Room chat: a tab at the edge (dot = new message) and a drawer that slides in. Left-handed mode puts both on the left. */
+.chat-tab { position: fixed; right: 0; top: 42%; z-index: 15; width: 30px; height: 50px; padding: 0 0 0 5px; display: grid; place-items: center;
+  border-radius: 14px 0 0 14px; border: 1.5px solid #4a4560; border-right: 0; background: #1b1826; color: #fff; font-size: 1rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,.55); touch-action: none; }
+.chat-tab::before { content: ""; position: absolute; inset: -6px 0 -6px -20px; } /* bigger area to tap or grab */
+.chat-tab::after { content: ""; position: absolute; left: 4px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: #6b6680; }
+.chat-dot { position: absolute; top: -6px; left: -6px; width: 14px; height: 14px; border-radius: 50%; background: #35d07f; border: 2px solid #14121c;
+  box-shadow: 0 0 8px #35d07f; animation: pulse .8s infinite alternate; }
+body.lefty .chat-tab { right: auto; left: 0; padding: 0 5px 0 0; border-radius: 0 14px 14px 0; border-right: 1.5px solid #4a4560; border-left: 0; }
+body.lefty .chat-tab::before { inset: -6px -20px -6px 0; }
+body.lefty .chat-tab::after { left: auto; right: 4px; }
+body.lefty .chat-dot { left: auto; right: -6px; }
+.chat-back { position: fixed; inset: 0; z-index: 16; background: rgba(0,0,0,.35); }
+.chat { position: fixed; top: 0; right: 0; z-index: 17; width: min(84vw, 380px); height: 100dvh; display: flex; flex-direction: column;
+  background: #1b1826; color: var(--text, #f4f4f6); border-left: 1px solid #3b3748; border-radius: 18px 0 0 18px; box-shadow: -10px 0 40px rgba(0,0,0,.6);
+  transform: translateX(105%); transition: transform .22s ease-out; visibility: hidden; }
+.chat.open { transform: none; visibility: visible; }
+body.lefty .chat { right: auto; left: 0; border-left: 0; border-right: 1px solid #3b3748; border-radius: 0 18px 18px 0; transform: translateX(-105%); }
+body.lefty .chat.open { transform: none; }
+.chat header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .6rem .5rem .6rem .9rem; border-bottom: 1px solid #332f40; }
+.chat header span { display: block; font-size: .72rem; color: var(--muted); }
+.chat header button { width: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 1.05rem; flex: none; }
+.chat-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .6rem .7rem; display: flex; flex-direction: column; gap: .35rem; }
+.chat-list > :first-child { margin-top: auto; } /* few messages sit at the bottom, next to the typing box */
+.chat-msg { max-width: 86%; align-self: flex-start; padding: .35rem .65rem; border-radius: 13px; background: #2b2836; font-size: .9rem; line-height: 1.28; overflow-wrap: anywhere; }
+.chat-msg b { display: block; font-size: .68rem; color: #ffb08a; }
+.chat-msg.mine { align-self: flex-end; background: var(--accent); color: #fff; }
+.chat-empty { text-align: center; color: var(--muted); font-size: .85rem; }
+.chat-form { display: flex; gap: .4rem; padding: .5rem .6rem calc(.5rem + env(safe-area-inset-bottom)); border-top: 1px solid #332f40; }
+.chat-form input { flex: 1; min-width: 0; border-radius: 99px; padding: .6rem .9rem; font-size: 16px; } /* 16px stops iPhones zooming in */
+.chat-form button { border-radius: 99px; padding: 0 1rem; min-height: 44px; }
+@media (prefers-reduced-motion: reduce) { .chat { transition: none; } }
+
+/* The felt and the piles sit a little low: there is no seat at the bottom any more (see the seat maths in app.js, cy = 55) */
+.ring::before { inset: 15% 13% 5%; }
+.ring::after { inset: 22% 22% 12%; }
+.ring .table { inset: 10% 0 0 0; }
+.act-main .draw-btn { padding-left: 2.2rem; }
+@media (max-width: 380px) { .ring .table { gap: clamp(.35rem, 2.2vw, 1rem); } .act-main .draw-btn { padding-left: 1.9rem; } }
+
+/* tight: set by app.js when a full-size fan would sit on top of the piles (side seats on a narrow phone) */
+.ring.tight { --fw: 19px; --fh: 28px; }
+.ring.tight .seat { width: 84px; }
+.ring.tight .table { gap: clamp(.35rem, 2.2vw, 1rem); }
+@media (max-width: 380px) { .ring.tight { --fw: 16px; --fh: 24px; } .ring.tight .seat { width: 72px; } .ring.tight .sname { font-size: .72rem; } }

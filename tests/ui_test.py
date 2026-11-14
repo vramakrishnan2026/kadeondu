@@ -37,7 +37,7 @@ async def main():
             for pg in pages:
                 if await pg.is_enabled('#callBtn'):
                     await pg.click('#callBtn', force=True); await pg.wait_for_timeout(60)
-                catch=pg.locator('.catch')
+                catch=pg.locator('#catchBtn:not([disabled]):not(.hidden)')
                 if await catch.count() and random.random()<0.5:
                     try: await catch.first.click(timeout=300, force=True)
                     except Exception: pass
