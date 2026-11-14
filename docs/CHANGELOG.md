@@ -29,3 +29,4 @@
 
 ## 2026-11-14
 - **Round time limit**: new setting **End round after** (Off / 3 min / 5 min, off by default) for rooms and Play vs computer. When time runs out, the lowest card points in hand wins and scores as a normal win. Countdown under the discard pile.
+- **Table colour** follows the colour being played (red, yellow, green or blue) with a short fade, instead of always green.

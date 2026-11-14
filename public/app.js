@@ -326,6 +326,7 @@
     if (s.top) disc.append(makeCard(s.top));
     $('colorDot').style.background = s.color ? `var(--${COLOR_NAMES[s.color]})` : 'transparent';
     $('colorDot').style.color = s.color ? `var(--${COLOR_NAMES[s.color]})` : 'transparent';
+    if (s.color) $('ring').dataset.color = s.color; else delete $('ring').dataset.color; // table felt shows the colour being played
     $('dirArrow').classList.toggle('ccw', s.dir === -1);
     $('deckCount').textContent = `${s.deckCount} left`;
     const canDraw = myTurn && s.drawnCardId === null;

@@ -201,12 +201,22 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 @media (min-width: 900px) { :root { --cw: 96px; } }
 
 /* ── Round table: seats in a circle around the piles ───────── */
-.ring { position: relative; width: 100%; flex: 1; min-height: 330px; max-width: 760px; }
+/* The table felt takes the colour being played (green until a round starts). Deep shades, so cards and text stay readable. */
+@property --felt1 { syntax: '<color>'; inherits: true; initial-value: #1f6b52; }
+@property --felt2 { syntax: '<color>'; inherits: true; initial-value: #12443a; }
+@property --felt3 { syntax: '<color>'; inherits: true; initial-value: #0b2a25; }
+.ring { position: relative; width: 100%; flex: 1; min-height: 330px; max-width: 760px;
+  --felt1: #1f6b52; --felt2: #12443a; --felt3: #0b2a25; }
+.ring[data-color="r"] { --felt1: #a23036; --felt2: #66181d; --felt3: #360b0e; }
+.ring[data-color="y"] { --felt1: #b08a0e; --felt2: #735607; --felt3: #3d2d03; }
+.ring[data-color="g"] { --felt1: #1f6b52; --felt2: #12443a; --felt3: #0b2a25; }
+.ring[data-color="b"] { --felt1: #1f62b3; --felt2: #123e7a; --felt3: #0a2348; }
 .ring::before { content: ""; position: absolute; inset: 15% 13%; border-radius: 50%;
   background:
     radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1.5px) 0 0 / 12px 12px,
     repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.025) 0 2px, transparent 2px 9px),
-    radial-gradient(ellipse at 50% 38%, #1f6b52 0%, #12443a 55%, #0b2a25 100%);
+    radial-gradient(ellipse at 50% 38%, var(--felt1) 0%, var(--felt2) 55%, var(--felt3) 100%);
+  transition: --felt1 .45s ease, --felt2 .45s ease, --felt3 .45s ease;
   box-shadow: 0 0 0 7px #6b3d1c, 0 0 0 9px #3a1f0c, 0 0 0 10px rgba(255,200,140,.25), 0 18px 40px rgba(0,0,0,.6),
     inset 0 0 50px rgba(0,0,0,.55), inset 0 2px 0 rgba(255,255,255,.08); }
 /* faint rangoli under the table */

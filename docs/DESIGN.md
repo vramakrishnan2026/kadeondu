@@ -13,7 +13,7 @@ The owner asked for the cards to use "the same Mattel card design" and shared ph
 - The colour picker buttons use the card colour variables. Learned the hard way: when the card CSS changed to set only variables, the picker went grey. **After restyling shared classes, check every place that uses them, visually.**
 
 ## Background and table
-Deep purple background with orange, violet and teal glows and a faint dot grid. Green felt table with a wooden rim and a slowly turning rangoli (`fx/rangoli.svg`, generated in code). Glass-effect top bar. The owner called the earlier background "very boring".
+Deep purple background with orange, violet and teal glows and a faint dot grid. Felt table that takes the **colour being played** (deep red, mustard, green or blue; green before a round starts; set by `data-color` on `#ring` and the `--felt1..3` variables in `style.css`), with a wooden rim and a slowly turning rangoli (`fx/rangoli.svg`, generated in code). Glass-effect top bar. The owner called the earlier background "very boring".
 
 ## Layout
 - **Players in a circle** around the piles: you at the bottom, the others clockwise in turn order.

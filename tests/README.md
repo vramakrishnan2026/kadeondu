@@ -28,6 +28,7 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_timer.py` | turn timer auto-moves (room and solo) |
 | `ui_roundtime.py` | round time limit: setting, countdown, time-up result (room, via the stand-in's `/__test/roundends` shortcut) and solo |
 | `ui_fx.py`, `ui_fx_off.py` | Wild +4 effect on (centred, sound loaded) and off by default |
+| `ui_tablecolor.py` | table felt matches the colour being played (solo game, all four colours when they come up) |
 | `ui_ring.py`, `ui_fit.py` | round table at 4/10/20 players; no scrolling at several screen sizes |
 | `ui_controls.py` | private room hidden from the list; button sizes and positions for both hands |
 | `ui_voice.py`, `ui_voice_touch.py`, `ui_micperm.py` | voice notes (mouse and touch hold), mute, mic allowed and blocked |
