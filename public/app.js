@@ -48,6 +48,17 @@
     requestAnimationFrame(placeChatTab); // again once the new screen has been laid out
   }
 
+  // ── Removing an inactive player (✕ on their cards): always asks first ──
+  let kickTarget = null, wasIdleOut = false;
+  function askKick(p) {
+    kickTarget = p.id;
+    $('kickText').textContent = `Remove ${p.name} for being inactive? The game has played their last 5 turns. They can join again with the link.`;
+    $('kickConfirm').classList.remove('hidden');
+  }
+  function closeKick() { kickTarget = null; $('kickConfirm').classList.add('hidden'); }
+  $('kickNo').onclick = closeKick;
+  $('kickYes').onclick = () => { if (kickTarget) send({ t: 'kickidle', target: kickTarget }); closeKick(); };
+
   // ── Room chat: text for everyone in the room. Hidden at the edge while playing. ──
   let chatLog = [], chatOpen = false, chatUnread = false;
   function chatAvailable() { // in a room with other people (never in Play vs computer), on the waiting-room or game screen
@@ -158,6 +169,7 @@
       case 'watch': return `${e.p} is watching (joins next round)`;
       case 'leave': return `${e.p} left`;
       case 'kick': return `${e.p} was removed`;
+      case 'idle': return `${e.p} was removed for being inactive`;
       case 'start': return `Round ${e.r} started` + (e.decks > 1 ? ` (${e.decks} decks)` : '');
       case 'play': return `${e.p} played ${cardName(e.card)}` + (e.card.c === 'w' ? ` → ${COLOR_NAMES[e.col]}` : '');
       case 'draw': return e.forced ? `${e.p} picked up ${e.x}` : `${e.p} drew a card`;
@@ -247,6 +259,7 @@
     $('endOverlay').classList.add('hidden');
     $('colorPicker').classList.add('hidden');
     chatLog = []; chatUnread = false; setChatOpen(false); renderChat();
+    closeKick(); wasIdleOut = false;
     setNet();
     myName = $('nameInput').value.trim();
     inviteRoom = '';
@@ -397,6 +410,14 @@
       fan.setAttribute('aria-label', `${p.count} cards`);
       d.append(fan, el('div', 'sname', (p.bot ? '🤖 ' : '') + p.name));
       if (showScores) d.append(el('div', 'sscore', `${p.score} pts`));
+      // inactive: the timer has played 5 turns in a row for them, so any player may remove them
+      if (p.idleOut && !s.spectating) {
+        const x = el('button', 'seat-x', '✕');
+        x.setAttribute('aria-label', `Remove ${p.name} for being inactive`);
+        x.onclick = () => askKick(p);
+        d.classList.add('idle-out');
+        d.append(x);
+      }
       seats.append(d);
     });
 
@@ -412,6 +433,9 @@
     $('catchBtn').classList.toggle('hidden', s.spectating || s.phase !== 'playing');
     $('catchBtn').disabled = !canCatch;
     const mine = s.players.find(p => p.id === s.you);
+    if (mine?.idleOut && !wasIdleOut) toastLong('You have missed 5 turns in a row. Play your next turn, or the others can remove you.');
+    wasIdleOut = !!mine?.idleOut;
+    if (kickTarget && !s.players.some(p => p.id === kickTarget && p.idleOut)) closeKick(); // they came back, or someone else removed them
     $('myInfo').textContent = !mine || s.spectating ? '' : `${mine.count} card${mine.count === 1 ? '' : 's'}` + (showScores ? ` · ${mine.score} pts` : '');
     $('micBtn').classList.toggle('hidden', !!solo);
     $('reactBtn').classList.toggle('hidden', !s.settings.reactions || s.phase === 'lobby');

@@ -32,6 +32,7 @@
 - Round clock made a bold dark pill (it was faint grey text that got lost on the coloured table).
 - **Join stats** for the owner: name, approximate city and time of each room join, kept 90 days, shown on the password-protected `/stats.html`. Home screen notice added. Needs the `STATS_KEY` secret.
 - Round time limit now **defaults to 3 min** and offers 7 and 10 min as well.
+- **Inactive players:** after the timer has played 5 turns in a row for someone, any other player can remove them with the ✕ on their cards (asks to confirm).
 - **Table redesign:** opponents shown as fans of face-down cards with the name underneath (no circles, no seat for yourself), scores under names once anyone has points, new card back (Kannada ೧ on an orange disc).
 - **Buttons:** top row Catch! · Ondu! · Draw in three equal sizes; **Catch!** now has a fixed place and lights up red instead of popping up on a seat. Small buttons, your card count and the mic are on a second row.
 - **Room chat:** pull-out drawer at the edge with a dot for new messages; players and watchers; last 200 messages kept with the room and wiped when it empties. Not in Play vs computer.

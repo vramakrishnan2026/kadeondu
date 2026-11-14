@@ -22,9 +22,9 @@ const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x');
   // Test-only: pretend nobody has been connected to this room for ?min= minutes, then run the room's wake-up
   if(u.pathname==='/__test/chatempty'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); if(!r){res.writeHead(404);return res.end('no room')}
     r.chatEmptyAt=Date.now()-Number(u.searchParams.get('min')||6)*60000; return r.alarm().then(()=>{ res.writeHead(200); res.end(String(r.chat.length)) }) }
-  // Test-only: mark ?name= as having forgotten to call (so others can Catch! them), or give ?name= ?score= points
+  // Test-only: mark ?name= as having forgotten to call (so others can Catch! them), give ?name= ?score= points, or set their idle count with ?idle=
   if(u.pathname==='/__test/rig'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); const p=r&&r.room.players.find(x=>x.name===u.searchParams.get('name')); if(!p){res.writeHead(404);return res.end('no such player')}
-    if(u.searchParams.has('score')) p.score=Number(u.searchParams.get('score')); else r.room.vulnerable=p.id; r.broadcast(); res.writeHead(200); return res.end('ok') }
+    if(u.searchParams.has('score')) p.score=Number(u.searchParams.get('score')); else if(u.searchParams.has('idle')) p.idle=Number(u.searchParams.get('idle')); else r.room.vulnerable=p.id; r.broadcast(); res.writeHead(200); return res.end('ok') }
   // Test-only: pretend the next connections come from another place
   if(u.pathname==='/__test/geo'){ testGeo={city:u.searchParams.get('city')||'',region:u.searchParams.get('region')||'',country:u.searchParams.get('country')||''}; res.writeHead(200); return res.end('ok') }
   // Test-only shortcut (stand-in only, not in the real Worker): make a room's round time limit run out in ?ms= milliseconds

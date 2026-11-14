@@ -50,6 +50,10 @@ Guests see a one-line summary of the settings.
 
 A bar under the current player's name empties as time runs out, with the seconds shown next to "Your turn". It turns red in the last 5 seconds, and your phone buzzes. When time is up, the game makes the **simplest move** for that person: it plays the first card that fits (even a wild, with the colour taken from their hand), otherwise draws and plays the drawn card if it fits, or passes. It **never calls Ondu!** for them. The timer only applies to people, and it keeps a game moving if someone disconnects (as long as one person stays connected).
 
+## Inactive players
+
+If the turn timer has to play or draw for a person **5 turns in a row**, a red **✕** appears on their cards for every other player in the round (not for watchers, and never on computer players). Tapping it asks "Remove Priya for being inactive?" and, on **Remove**, takes them out: their cards go to the bottom of the draw pile and the round carries on. Any player can do this, not only the host. The count goes back to 0 the moment the person plays a turn themselves, and they are warned when they reach 5. A removed player can rejoin with the link like any new joiner (watching until the next round). With **Time per turn** set to Off there are no auto-moves, so this never applies.
+
 ## Round time limit
 
 **End round after** (Off, 3, 5, 7 or 10 min; **3 min by default**, at the owner's request) puts a clock on every round. The time left shows under the discard pile (⏳ 2:41) and turns red in the last 30 seconds. The clock restarts each round.

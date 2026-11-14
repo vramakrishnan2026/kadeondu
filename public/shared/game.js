@@ -137,6 +137,7 @@ function advance(s, k) {
 }
 
 export const TURN_TIMES = [0, 10, 15, 20, 30, 45, 60];
+export const IDLE_KICK = 5; // after this many turns in a row played for them by the timer, other players may remove a person
 export const ROUND_TIMES = [0, 3, 5, 7, 10]; // minutes; 0 = no limit (default is 3)
 
 // Start the clock whenever a new person's turn begins (computer players don't need one)
@@ -163,16 +164,21 @@ function firstColor(hand, played) {
   return hand.find(x => x !== played && x.c !== 'w')?.c || COLORS[randInt(4)];
 }
 
+let autoPlaying = false;
 export function timeoutMove(s, now = Date.now()) {
   if (s.phase !== 'playing' || !s.deadline || now < s.deadline) return false;
   const p = current(s);
   if (!p || p.bot) return false;
   log(s, { k: 'timeout', p: p.name });
   const turnNo = s.turnNo;
-  for (let i = 0; i < 3 && s.phase === 'playing' && s.turnNo === turnNo; i++) {
-    const r = handle(s, p.id, autoMove(s, p));
-    if (r.error) break;
-  }
+  autoPlaying = true; // these moves are the game's, not the player's: they must not reset the idle count
+  try {
+    for (let i = 0; i < 3 && s.phase === 'playing' && s.turnNo === turnNo; i++) {
+      const r = handle(s, p.id, autoMove(s, p));
+      if (r.error) break;
+    }
+  } finally { autoPlaying = false; }
+  p.idle = (p.idle || 0) + 1; // turns in a row the game has played for them (see IDLE_KICK)
   return true;
 }
 
@@ -371,6 +377,8 @@ function draw(s, p) {
 export function handle(s, pid, msg) {
   roundTimeUp(s); // a move that arrives after the round's time limit doesn't count
   const res = handleInner(s, pid, msg);
+  // playing a turn yourself clears the idle count
+  if (!res.error && !autoPlaying && ['play', 'draw', 'pass'].includes(msg?.t)) { const p = playerById(s, pid); if (p) p.idle = 0; }
   refreshDeadline(s);
   return res;
 }
@@ -421,6 +429,15 @@ function handleInner(s, pid, msg) {
     if (!playerById(s, msg.target) && !spectatorById(s, msg.target)) return { error: 'No such player' };
     removePlayer(s, msg.target, 'kick');
     return { kick: msg.target };
+  }
+  if (t === 'kickidle') {
+    // Any player at the table (not a watcher) may remove a person the timer has played for 5 turns running
+    if (watching) return { error: 'Only players in the round can do that' };
+    const v = playerById(s, msg.target);
+    if (!v || v.id === pid) return { error: 'No such player' };
+    if (v.bot || (v.idle || 0) < IDLE_KICK) return { error: `${v.name} is playing again` };
+    removePlayer(s, v.id, 'idle');
+    return { kick: v.id };
   }
   if (t === 'leave') {
     removePlayer(s, pid, 'leave');
@@ -497,6 +514,7 @@ export function viewFor(s, pid, online) {
       score: p.score,
       online: !!p.bot || online.has(p.id),
       bot: !!p.bot,
+      idleOut: !p.bot && (p.idle || 0) >= IDLE_KICK, // other players may remove them
     })),
     hand: me ? me.hand : [],
     playable: myTurn ? me.hand.filter(c => canPlay(s, c)).map(c => c.id) : [],

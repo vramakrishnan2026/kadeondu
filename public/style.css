@@ -554,3 +554,11 @@ body.lefty .chat.open { transform: none; }
 .ring.tight .seat { width: 84px; }
 .ring.tight .table { gap: clamp(.35rem, 2.2vw, 1rem); }
 @media (max-width: 380px) { .ring.tight { --fw: 16px; --fh: 24px; } .ring.tight .seat { width: 72px; } .ring.tight .sname { font-size: .72rem; } }
+
+/* Inactive player (the timer played 5 turns in a row for them): an ✕ any player can tap to remove them */
+.seat-x { position: absolute; top: -8px; left: 4px; z-index: 3; width: 28px; height: 28px; padding: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--red); color: #fff; font-size: .85rem; font-weight: 900; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.6); animation: pulse .9s infinite alternate; }
+.seat-x::before { content: ""; position: absolute; inset: -10px; } /* 48 px tap area */
+.seat.idle-out .fan { opacity: .55; }
+.seat.idle-out .sname { background: #5a2226; }
+button.danger { background: var(--red); }
