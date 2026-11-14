@@ -52,7 +52,7 @@ export function newRoom() {
     players: [],    // { id, token, name, hand, score, saidOndu } — dealt into the current round
     spectators: [], // same shape; joined mid-round, watching until the round ends
     hostId: null,
-    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, roundTime: 0, wd4Fx: false, private: false, reactions: false },
+    settings: { stacking: false, handSize: 7, botLevel: 'normal', turnTime: 15, roundTime: 3, wd4Fx: false, private: false, reactions: false },
     turnNo: 0,       // goes up every time the turn moves on
     deadline: null,  // ms timestamp when the current person's time runs out
     deadlineFor: -1,
@@ -137,7 +137,7 @@ function advance(s, k) {
 }
 
 export const TURN_TIMES = [0, 10, 15, 20, 30, 45, 60];
-export const ROUND_TIMES = [0, 3, 5]; // minutes; 0 = no limit
+export const ROUND_TIMES = [0, 3, 5, 7, 10]; // minutes; 0 = no limit (default is 3)
 
 // Start the clock whenever a new person's turn begins (computer players don't need one)
 export function refreshDeadline(s, now = Date.now()) {

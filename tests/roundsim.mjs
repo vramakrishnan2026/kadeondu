@@ -2,7 +2,7 @@
 import * as G from '../public/shared/game.js';
 const pts = p => p.hand.reduce((a, c) => a + G.cardPoints(c), 0);
 let games = 0, timeUps = 0, normalWins = 0;
-for (const mins of [3, 5]) for (const n of [2, 3, 6, 12]) for (const stacking of [false, true]) for (let g = 0; g < 50; g++) {
+for (const mins of [3, 5, 7, 10]) for (const n of [2, 3, 6, 12]) for (const stacking of [false, true]) for (let g = 0; g < 50; g++) {
   const s = G.newRoom(); s.settings.stacking = stacking; s.settings.turnTime = 0;
   for (let i = 0; i < n; i++) G.addPlayer(s, 'P' + i);
   G.addPlayer(s, G.botName(s), { bot: true, level: 'normal' });
@@ -46,11 +46,12 @@ for (const mins of [3, 5]) for (const n of [2, 3, 6, 12]) for (const stacking of
   const res = G.handle(s, cur.id, { t: 'draw' });
   if (!res.error || s.phase !== 'ended' || !s.lastRound.timeUp) throw new Error('late move was accepted');
 }
-// off by default, and only Off / 3 / 5 are accepted
+// 3 min by default, can be switched off, and only Off / 3 / 5 / 7 / 10 are accepted
 {
   const s = G.newRoom(); const a = G.addPlayer(s, 'A'); G.addPlayer(s, 'B');
-  if (s.settings.roundTime !== 0) throw new Error('not off by default');
-  G.handle(s, a.id, { t: 'settings', roundTime: 4 }); if (s.settings.roundTime !== 0) throw new Error('accepted 4');
+  if (s.settings.roundTime !== 3) throw new Error('default is not 3 min');
+  G.handle(s, a.id, { t: 'settings', roundTime: 4 }); if (s.settings.roundTime !== 3) throw new Error('accepted 4');
+  G.handle(s, a.id, { t: 'settings', roundTime: 0 }); if (s.settings.roundTime !== 0) throw new Error('cannot switch off');
   G.handle(s, a.id, { t: 'start' }); if (s.roundEndsAt !== null) throw new Error('off but has a limit');
   if (G.viewFor(s, a.id, new Set()).roundEndsIn !== null) throw new Error('view shows a limit');
 }

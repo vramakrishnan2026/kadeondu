@@ -1,4 +1,4 @@
-# Round time limit ("End round after"): off by default, 3 / 5 min, countdown under the discard pile,
+# Round time limit ("End round after"): 3 min by default, Off / 3 / 5 / 7 / 10 min, countdown under the discard pile,
 # lowest card points wins when it runs out. Needs the stand-in running (uses its /__test/roundends shortcut).
 import asyncio, re, urllib.request
 from playwright.async_api import async_playwright
@@ -11,13 +11,16 @@ async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch()
         a=await newpage(b); await a.goto(BASE); await a.fill('#nameInput','Arun'); await a.click('#nameGo'); await a.click('#createBtn'); await a.wait_for_selector('#lobby:not(.hidden)')
-        d=await a.input_value('#roundTimeInput'); print('default:', d); assert d=='0'
+        d=await a.input_value('#roundTimeInput'); print('default:', d); assert d=='3'
         print('options:', await a.locator('#roundTimeInput option').all_text_contents())
         code=(await a.text_content('#lobbyCode')).strip()
         q=await newpage(b); await q.goto(BASE+'?room='+code); await q.fill('#nameInput','Priya'); await q.click('#nameGo'); await q.wait_for_selector('#lobby:not(.hidden)')
+        g=await q.text_content('#guestSettings'); print('guest (default):', g); assert 'round ends after 3 min' in g
+        await a.select_option('#roundTimeInput','0'); await a.wait_for_timeout(300)
         g=await q.text_content('#guestSettings'); print('guest (off):', g); assert 'round ends' not in g
+        await a.select_option('#roundTimeInput','10'); await a.wait_for_timeout(300)
+        g=await q.text_content('#guestSettings'); print('guest (10 min):', g); assert 'round ends after 10 min' in g
         await a.select_option('#roundTimeInput','3'); await a.wait_for_timeout(300)
-        g=await q.text_content('#guestSettings'); print('guest (3 min):', g); assert 'round ends after 3 min' in g
         await a.select_option('#turnTimeInput','0'); await a.click('#startBtn'); await q.wait_for_selector('#game:not(.hidden)'); await a.wait_for_timeout(1200)
         ca=(await a.text_content('#roundClock')).strip(); cq=(await q.text_content('#roundClock')).strip(); print('clocks:', ca, '|', cq)
         assert re.match(r'⏳ 2:5\d$', ca) and re.match(r'⏳ 2:5\d$', cq)
