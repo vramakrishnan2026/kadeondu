@@ -562,3 +562,8 @@ body.lefty .chat.open { transform: none; }
 .seat.idle-out .fan { opacity: .55; }
 .seat.idle-out .sname { background: #5a2226; }
 button.danger { background: var(--red); }
+
+/* An invite that is ringing: the pop-up pulses until it is answered */
+#inviteModal.ringing .modal { animation: ring-pulse 1s ease-in-out infinite alternate; }
+@keyframes ring-pulse { from { box-shadow: 0 0 0 0 rgba(255,106,43,.0), 0 20px 60px rgba(0,0,0,.6); } to { box-shadow: 0 0 0 6px rgba(255,106,43,.55), 0 20px 60px rgba(0,0,0,.6); } }
+@media (prefers-reduced-motion: reduce) { #inviteModal.ringing .modal { animation: none; box-shadow: 0 0 0 4px rgba(255,106,43,.55); } }

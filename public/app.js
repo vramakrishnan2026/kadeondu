@@ -1092,6 +1092,7 @@
       else if (m.t === 'invited') showInvite(m);
       else if (m.t === 'invite-sent') toast(`Invite sent to ${m.to}`);
       else if (m.t === 'declined') toast(`${m.from} can't play right now`);
+      else if (m.t === 'no-answer') toast(`${m.from} didn't answer`);
       else if (m.t === 'error') toast(m.msg);
     };
     listWs.onclose = () => {
@@ -1186,9 +1187,50 @@
       ? `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`
       : `${m.roomHost}'s room · ${m.room}`;
     $('inviteModal').classList.remove('hidden');
-    try { navigator.vibrate?.([80, 60, 80]); } catch {}
+    startRinging();
+  }
+
+  // An invite rings (sound + buzz) every 3 s until it is answered, for up to 30 s. Then the inviter is told there was no answer.
+  const RING_EVERY_MS = 3000, RING_FOR_MS = 30000;
+  let ringTimer = null, ringStop = null;
+  function ringOnce() {
+    $('inviteModal').dataset.rings = String(Number($('inviteModal').dataset.rings || 0) + 1);
+    try { navigator.vibrate?.([120, 80, 120, 80, 200]); } catch {} // Android only: web pages can't buzz an iPhone
+    try {
+      if (!audioCtx) return;              // sound is only allowed once the page has been touched
+      audioCtx.resume?.();
+      const t0 = audioCtx.currentTime;
+      [[659, 0], [784, 0.16], [988, 0.32]].forEach(([hz, at]) => { // three rising notes
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.type = 'triangle'; osc.frequency.value = hz;
+        gain.gain.setValueAtTime(0.0001, t0 + at);
+        gain.gain.exponentialRampToValueAtTime(0.35, t0 + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.22);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0 + at); osc.stop(t0 + at + 0.25);
+      });
+    } catch {}
+  }
+  function stopRinging() {
+    clearInterval(ringTimer); clearTimeout(ringStop); ringTimer = ringStop = null;
+    $('inviteModal').classList.remove('ringing');
+  }
+  function startRinging() {
+    stopRinging();
+    $('inviteModal').dataset.rings = '0';
+    $('inviteModal').classList.add('ringing');
+    ringOnce();
+    ringStop = setTimeout(() => { // nobody tapped: close it and let the inviter know
+      stopRinging();
+      $('inviteModal').classList.add('hidden');
+      if (currentInvite && listWs?.readyState === 1) listWs.send(JSON.stringify({ t: 'noanswer', to: currentInvite.fromId }));
+      if (currentInvite) toast(`You missed an invite from ${currentInvite.from}`);
+      currentInvite = null;
+    }, RING_FOR_MS);
+    ringTimer = setInterval(ringOnce, RING_EVERY_MS); // set after the stop timer, so the last ring is at 27 s, not at the moment it gives up
   }
   $('acceptInvite').onclick = () => {
+    stopRinging();
     $('inviteModal').classList.add('hidden');
     if (!currentInvite) return;
     if (!$('nameInput').value.trim()) $('nameInput').value = myName || 'Player';
@@ -1197,6 +1239,7 @@
     currentInvite = null;
   };
   $('declineInvite').onclick = () => {
+    stopRinging();
     $('inviteModal').classList.add('hidden');
     if (currentInvite && listWs?.readyState === 1) listWs.send(JSON.stringify({ t: 'decline', to: currentInvite.fromId }));
     currentInvite = null;

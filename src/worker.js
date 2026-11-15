@@ -556,6 +556,11 @@ export class Lobby extends DurableObject {
       if (!me.cid || typeof m.to !== 'string') return;
       this.sendTo(m.to, { t: 'declined', from: me.name || 'Someone' });
     }
+
+    if (m.t === 'noanswer') { // the invite rang out without a tap
+      if (!me.cid || typeof m.to !== 'string') return;
+      this.sendTo(m.to, { t: 'no-answer', from: me.name || 'Someone' });
+    }
   }
 
   async webSocketClose(ws) {

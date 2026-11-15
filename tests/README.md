@@ -30,6 +30,7 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_bots.py` | solo vs computer to the end, room with computer players |
 | `ui_timer.py` | turn timer auto-moves (room and solo) |
 | `ui_table.py` | fans instead of circles, no own seat, scores under names, own card count, fixed Catch! button, button rows, left-handed |
+| `ui_invite.py` | invites ring every 3 s for up to 30 s, stop on Join / Not now, inviter told when there is no answer |
 | `ui_idle.py` | inactive player: ✕ after 5 missed turns (players only), confirm, removal, rejoin by link |
 | `ui_chat.py` | room chat: edge tab and dot, drawer, watchers, history for late joiners, refresh, wipe after 5 min empty, none in Play vs computer |
 | `ui_stats.py` | join stats: joins logged with name + city, reconnects not counted, stats page needs the password, home notice |

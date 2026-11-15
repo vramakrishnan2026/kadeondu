@@ -117,7 +117,7 @@ The 😄 button opens a tray of six stickers of the owner's friend: Nice play!, 
 ## Sharing and invites
 
 - The **share icon** in the top bar opens a panel: **Share to apps** (the phone's own share menu, listing every messaging app), **WhatsApp** (pre-filled), and **Copy link**. Inside a room it shares the room link ("Join my Kade Ondu game! Room ABCD"); elsewhere it shares the main link.
-- **Invites:** the **👤+** icon in a room (or the waiting-area button) lists people who are online. The invited person gets a pop-up with **Join** or **Not now**, and the inviter is told if they decline. You can't invite someone who's already in a room. At most one invite per person every 10 s.
+- **Invites:** the **👤+** icon in a room (or the waiting-area button) lists people who are online. The invited person gets a pop-up with **Join** or **Not now**, and the inviter is told if they decline. The invite **rings**: a short three-note tone and a buzz every 3 seconds until it is answered, for up to 30 seconds. Then the pop-up closes, the invited person sees "You missed an invite from Arun" and the inviter sees "Priya didn't answer". Limits: sound only plays once the page has been touched (browser rule), iPhones can't buzz from a web page, and it only reaches people who have the game open. You can't invite someone who's already in a room. At most one invite per person every 10 s.
 
 ## Round over
 
