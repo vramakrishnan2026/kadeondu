@@ -36,6 +36,9 @@ async def main():
         print('clock cleared:', repr((await a.text_content('#roundClock')).strip()))
         await a.click('#nextRoundBtn'); await a.wait_for_timeout(1200)
         c2=(await a.text_content('#roundClock')).strip(); print('round 2 clock:', c2); assert re.match(r'⏳ 2:5\d$', c2)
+        # drawing the same state again (closing a pop-up, rotating the phone) must not wind the clock back up
+        await a.wait_for_timeout(2500); await a.set_viewport_size({'width':391,'height':780}); await a.wait_for_timeout(600)
+        c3=(await a.text_content('#roundClock')).strip(); print('after a redraw 3 s later:', c3); assert re.match(r'⏳ 2:5[4-6]$', c3)
         # solo: 5 min, jump the phone's clock forward, the next move ends the round
         s=await newpage(b); await s.clock.install(); await s.goto(BASE); await s.fill('#nameInput','Vinay'); await s.click('#nameGo'); await s.click('#soloBtn')
         print('solo default:', await s.input_value('#soloRoundTime'))

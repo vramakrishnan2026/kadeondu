@@ -498,9 +498,12 @@
     }
 
     st.dataset.base = st.textContent;
-    deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? Date.now() + s.deadlineIn : null;
+    // "time left" numbers count from the moment this state arrived, not from now: the same state is
+    // drawn again on a rotate, a pop-up closing and so on, and must not wind the clocks back up
+    const at = s._at ?? (s._at = Date.now());
+    deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? at + s.deadlineIn : null;
     turnLength = (s.settings.turnTime || 0) * 1000;
-    roundEndAt = s.phase === 'playing' && s.roundEndsIn != null ? Date.now() + s.roundEndsIn : null;
+    roundEndAt = s.phase === 'playing' && s.roundEndsIn != null ? at + s.roundEndsIn : null;
     buzzed = false;
     tickClock();
 
