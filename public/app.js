@@ -323,7 +323,7 @@
     const fresh = s.log.filter(e => e.n > lastSeq);
     if (!firstState) {
       for (const e of fresh) {
-        if (e.k === 'play' && e.card?.v === 'wd4' && s.settings.wd4Fx) setTimeout(showDrawFour, 550); // let the +4 land first
+        if (e.k === 'play' && e.card?.v === 'wd4' && s.settings.wd4Fx && FX.enabled) setTimeout(showDrawFour, 550); // let the +4 land first
         if (e.k === 'call') toast(logText(e), true);
         else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
@@ -356,6 +356,9 @@
       $('hostSettings').classList.toggle('hidden', !isHost);
       $('stackingInput').checked = s.settings.stacking;
       $('wd4FxInput').checked = !!s.settings.wd4Fx;
+      // effect switched off in config.js: no setting to show, and a room that still has it on is turned off
+      $('wd4FxInput').closest('label').classList.toggle('hidden', !FX.enabled);
+      if (!FX.enabled && s.settings.wd4Fx && isHost && !wd4OffSent) { wd4OffSent = true; send({ t: 'settings', wd4Fx: false }); }
       $('privateInput').checked = !!s.settings.private;
       $('reactionsInput').checked = !!s.settings.reactions;
       $('botLevelInput').value = s.settings.botLevel || 'normal';
@@ -367,7 +370,7 @@
         (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
         ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
         (s.settings.roundTime ? ` · round ends after ${s.settings.roundTime} min` : '') +
-        (s.settings.wd4Fx ? ' · Wild +4 laugh on' : '') + (s.settings.reactions ? ' · 😄 stickers on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
+        (s.settings.wd4Fx && FX.enabled ? ' · Wild +4 laugh on' : '') + (s.settings.reactions ? ' · 😄 reactions on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
       $('startBtn').classList.toggle('hidden', !isHost);
       $('startBtn').disabled = s.players.length < 2;
       $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players…' : `Start game (${s.players.length} players)`;
@@ -570,11 +573,13 @@
 
   // ── Wild +4 effect: Mani grows over the deck with an evil laugh ──
   const FX = CFG.drawFourEffect || {};
+  let wd4OffSent = false;
+  $('soloWd4Fx').closest('label').classList.toggle('hidden', !FX.enabled);
   if (FX.enabled && FX.image) { const pre = new Image(); pre.src = FX.image; }
   let fxNode = null;
   let laughBuf = null;
   async function loadLaugh() { // decoded once after the first tap, so it plays instantly (and on iPhone)
-    if (laughBuf || typeof FX.sound !== 'string' || !audioCtx) return;
+    if (!FX.enabled || laughBuf || typeof FX.sound !== 'string' || !audioCtx) return;
     try { laughBuf = await audioCtx.decodeAudioData(await (await fetch(FX.sound)).arrayBuffer()); } catch {}
   }
   function evilLaugh() {
@@ -648,23 +653,21 @@
     resizeRaf = requestAnimationFrame(() => { if (S && !$('game').classList.contains('hidden')) render(S); });
   });
 
-  // ── Sticker reactions ─────────────────────────────────────
-  const REACTS = (CFG.reactions || []).map(r => ({ ...r, src: `fx/reactions/${r.id}.webp` }));
-  REACTS.forEach(r => { const i = new Image(); i.src = r.src; }); // preload so they pop instantly
+  // ── Emoji reactions ───────────────────────────────────────
+  const REACTS = (CFG.reactions || []).filter(r => r.emoji);
   (function buildTray() {
     const tray = $('reactTray');
     for (const r of REACTS) {
       const b = el('button', 'react-pick');
-      b.setAttribute('aria-label', r.label || r.id.replace('_', ' '));
-      const img = el('img'); img.src = r.src; img.alt = ''; b.append(img);
-      if (r.label) b.append(el('span', '', r.label));
+      b.setAttribute('aria-label', r.label || r.id);
+      b.append(el('span', 'em', r.emoji));
       b.onclick = () => { sendReaction(r.id); tray.classList.add('hidden'); };
       tray.append(b);
     }
   })();
   let lastReactAt = 0;
   function sendReaction(id) {
-    if (Date.now() - lastReactAt < 1200) return toast('One sticker at a time');
+    if (Date.now() - lastReactAt < 1200) return toast('One reaction at a time');
     lastReactAt = Date.now();
     if (solo) {
       const me = solo.s.players.find(p => p.id === solo.me);
@@ -677,9 +680,10 @@
     if (!$('reactTray').classList.contains('hidden') && !e.target.closest('#reactTray, #reactBtn')) $('reactTray').classList.add('hidden');
   });
   // Reactions float up the side of the screen (right side; left when left-handed),
-  // the sent sticker first, followed by a trail of smaller copies.
+  // the sent emoji first, followed by a trail of smaller copies.
   function floatUp(node, { x, startY, endY, size, delay, dur, sway, fadeFrom = .7 }) {
     node.style.width = `${size}px`;
+    node.style.fontSize = `${Math.round(size * 0.78)}px`; // the emoji fills its box
     node.style.left = `${x}px`;
     node.style.top = `${startY}px`;
     document.body.append(node);
@@ -703,18 +707,16 @@
     const startY = (actions && actions.top > 0 ? actions.top : innerHeight * 0.7) - 70;
     const endY = Math.max(70, innerHeight * 0.14);
     const isMe = name === S?.players.find(p => p.id === S.you)?.name;
-    // the sticker itself, with caption and sender
+    // the emoji itself, with the sender's name
     const main = el('div', 'react-float main');
-    const img = el('img'); img.src = r.src; img.alt = r.label || id; main.append(img);
-    if (r.label) main.append(el('div', 'react-cap', r.label));
-    main.append(el('div', 'react-who', isMe ? 'You' : name));
+    main.append(el('span', 'em', r.emoji), el('div', 'react-who', isMe ? 'You' : name));
     floatUp(main, { x: baseX - (lefty ? -1 : 1) * 8, startY, endY, size: Math.min(96, innerWidth * 0.24), delay: 0, dur: 3000, sway: 10 });
     // a steady stream of small copies: even timing + fixed lanes so they stay spaced out
     const lanes = [0, -34, 30, -16, 16, -40, 38];
     const count = 14, gap = 150, flight = 1900;
     for (let i = 0; i < count; i++) {
       const small = el('div', 'react-float');
-      const im = el('img'); im.src = r.src; im.alt = ''; small.append(im);
+      small.append(el('span', 'em', r.emoji));
       const lane = lanes[i % lanes.length] * (lefty ? -1 : 1);
       floatUp(small, {
         x: baseX + lane, startY: startY + 30, endY: endY + 20 + (i % 3) * 30,
@@ -1452,7 +1454,7 @@
     s.settings.botLevel = $('soloLevel').value;
     s.settings.turnTime = Number($('soloTime').value);
     s.settings.roundTime = Number($('soloRoundTime').value);
-    s.settings.wd4Fx = $('soloWd4Fx').checked;
+    s.settings.wd4Fx = !!FX.enabled && $('soloWd4Fx').checked;
     s.settings.reactions = $('soloReactions').checked;
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
     for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });

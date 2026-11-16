@@ -30,8 +30,8 @@
 | Time per turn | **15 s** | Off, 10, 15, 20, 30, 45 or 60 |
 | End round after | **3 min** | Off, 3, 5, 7 or 10 min |
 | Computer players | Normal | Easy or Normal level for players added with 🤖 Add computer player |
-| Wild +4 laugh animation | **off** | Mani appears with the evil laugh |
-| 😄 Sticker reactions | **off** | Shows the 😄 button and sticker tray |
+| Wild +4 laugh animation | hidden | Switched off for now (`drawFourEffect.enabled: false` in `config.js`); the setting is not shown |
+| 😄 Emoji reactions | **off** | Shows the 😄 button and the emoji tray |
 | 🔒 Private room | off | Hidden from Open rooms; join only with the link or code |
 
 Guests see a one-line summary of the settings.
@@ -70,7 +70,7 @@ City is approximate: mobile data often shows the carrier's hub city, and a VPN s
 
 ## Computer players
 
-- **🤖 Play vs computer** (solo): 1–9 computer players, Easy/Normal, cards per hand, time per turn, stacking, Wild +4 laugh and stickers. It runs entirely in the browser (no room, nothing on the server).
+- **🤖 Play vs computer** (solo): 1–9 computer players, Easy/Normal, cards per hand, time per turn, stacking, and emoji reactions. It runs entirely in the browser (no room, nothing on the server).
 - **🤖 Add computer player** in rooms: up to 20, before a round or between rounds. They show as 🤖 and **COMPUTER**, and can be removed like anyone else.
 - **Easy:** plays a random card that fits, picks a random colour, calls Ondu! only about 55% of the time, and rarely catches people.
 - **Normal:** saves wilds, plays its strongest colour, dumps high cards, aims action cards and +4 at whoever is about to win, always calls, and catches people about 75% of the time.
@@ -82,7 +82,7 @@ City is approximate: mobile data often shows the carrier's hub city, and a VPN s
 - Players sit in a circle around the piles, with you at the bottom and the others clockwise in turn order. Seats shrink past 8 and 14 players, and 20 players still fit on a phone.
 - The game screen fits the phone exactly: no scrolling, and seats never go under the top bar. It re-lays out when the phone rotates.
 - Played cards fly from the player's seat (or your hand) to the pile, and drawn cards fly from the deck to the seat. Animations are skipped if the phone has "reduce motion" on.
-- **Wild +4 effect** (setting): the +4 lands first, then Mani rises, centred on the screen, grows, bobs while laughing ("MWA-HA-HA!"), the screen glows red and the phone buzzes. It lasts 3 s with `fx/evil-laugh.mp3`. Configured under `drawFourEffect` in `config.js`.
+- **Wild +4 effect:** switched off at the owner's request (Nov 2026). A Wild +4 now lands like any other card. The code and files are still there; setting `drawFourEffect.enabled: true` in `config.js` brings back the room setting and the effect (photo rising centred on the screen with a laugh).
 
 ## Controls (bottom bar, built for thumbs)
 
@@ -110,9 +110,9 @@ Two rows. **Top row: Catch! · Ondu! · Draw**, three equal buttons 54 px tall (
 - **🎙 Turn on voice notes** button: brings up the microphone permission pop-up with one tap. If the mic is blocked, it turns red ("Mic blocked: how to fix") and opens step-by-step instructions for that browser (iPhone + Brave / Safari / Chrome, Android).
 - iPhone details: sound is unlocked on the first tap; the mic stays open once allowed (orange dot) so Safari doesn't ask on every hold; recording prefers MP4/AAC, which every phone can play.
 
-## Sticker reactions (setting)
+## Emoji reactions (setting)
 
-The 😄 button opens a tray of six stickers of the owner's friend: Nice play!, Really?, What's next?, Oh no!, Angry!, Evil!. The sent sticker floats up the right side of everyone's screen (the left side in left-handed mode) with its caption and the sender's name, followed by 14 smaller copies in 7 lanes. It lasts about 3 s and each player can send one every 1.2 s. Never stored. The pictures are in `public/fx/reactions/` and the captions in `config.js`.
+The 😄 button opens a tray of eight ordinary emoji: 👍 😂 😮 😢 😡 😈 👏 🔥. The one you send floats up the right side of everyone's screen (left side in left-handed mode) with your name under it, followed by a trail of smaller copies. One reaction every 1.2 seconds per player; they are passed along and never stored. The emoji are the phone's own, so they look slightly different on Android and iPhone. (Until Nov 2026 these were six photo stickers; the owner asked for normal emoji instead.)
 
 ## Sharing and invites
 

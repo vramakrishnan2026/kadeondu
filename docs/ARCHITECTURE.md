@@ -24,7 +24,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
   - `afterChange()` calls both.
 - **Room chat (stored with the room):** `chat` `{text}` from any player or watcher → cleaned (control characters out, 200 chars, 1 s gap per person) and appended to `this.chat` (last 200, saved under the storage key `chat`), then sent to every socket as `{t:'chat', m:{id, at, from, name, text, w?}}`. On join the socket gets `{t:'chatlog', list}`. Wiped by `wipeChat()` when no person is left in the room, when nobody has been connected for 5 minutes (`chatEmptyAt` + the object's alarm, also checked on the next join), and by the 24 h idle clean-up. Chat is not part of the game state (`viewFor`).
 - **Inactive players:** `timeoutMove()` counts `player.idle` (turns in a row the timer played for them; a `play` / `draw` / `pass` of their own resets it). At `IDLE_KICK` (5) `viewFor` sets `idleOut` on them and any player (not a watcher) may send `kickidle` `{target}`, which removes them like a host kick (log entry `idle`).
-- **Relays (never stored):** `voice` (max 300,000 chars of data URL, `data:audio/*;base64,`, 2.5 s gap per player) and `react` (sticker id from a fixed list, only when `settings.reactions` is on, 1.2 s gap).
+- **Relays (never stored):** `voice` (max 300,000 chars of data URL, `data:audio/*;base64,`, 2.5 s gap per player) and `react` (emoji reaction id from a fixed list, only when `settings.reactions` is on, 1.2 s gap).
 - **report():** sends `G.summary(room, code, onlineCount)` to the Lobby whenever it changes.
 
 ## Lobby (single instance)

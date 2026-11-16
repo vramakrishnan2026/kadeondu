@@ -1,3 +1,4 @@
+# Emoji reactions (they replaced the photo stickers): room setting, off by default; tray of 8 emoji; float up for everyone.
 import asyncio
 from playwright.async_api import async_playwright
 BASE='http://localhost:8788/'
@@ -8,7 +9,7 @@ async def main():
             x=await (await b.new_context(viewport={'width':390,'height':780}, device_scale_factor=2)).new_page()
             x.on('pageerror', lambda e: errs.append(str(e))); return x
         a=await page(); await a.goto(BASE); await a.fill('#nameInput','Arun'); await a.click('#nameGo'); await a.click('#createBtn'); await a.wait_for_selector('#lobby:not(.hidden)')
-        print('stickers off by default:', not await a.is_checked('#reactionsInput'))
+        print('reactions off by default:', not await a.is_checked('#reactionsInput'))
         code=(await a.text_content('#lobbyCode')).strip()
         q=await page(); await q.goto(BASE+'?room='+code); await q.fill('#nameInput','Priya'); await q.click('#nameGo'); await q.wait_for_selector('#lobby:not(.hidden)')
         await a.select_option('#turnTimeInput','0'); await a.click('#startBtn'); await q.wait_for_selector('#game:not(.hidden)'); await q.wait_for_timeout(300)
@@ -23,11 +24,12 @@ async def main():
         await a2.click('#startBtn'); await g.wait_for_selector('#game:not(.hidden)'); await g.wait_for_timeout(300)
         print('button visible when on:', await g.is_visible('#reactBtn'))
         await g.click('#reactBtn'); await g.wait_for_timeout(200); await g.screenshot(path='react_tray.png')
-        print('tray stickers:', await g.locator('#reactTray .react-pick').count())
+        tray=await g.locator('#reactTray .react-pick .em').all_text_contents(); print('tray:', tray, '| pictures in the tray:', await g.locator('#reactTray img').count()); assert tray==['👍','😂','😮','😢','😡','😈','👏','🔥'] and await g.locator('#reactTray img').count()==0
+        box=await g.evaluate("(()=>{const r=document.getElementById('reactTray').getBoundingClientRect(); return r.left>=0&&r.right<=innerWidth&&[...document.querySelectorAll('.react-pick')].every(b=>b.getBoundingClientRect().height>=48)})()"); print('tray fits the screen, buttons 48 px or more:', box); assert box
         await g.locator('#reactTray .react-pick').nth(5).click(); await a2.wait_for_timeout(500)
-        print('host sees pop:', await a2.locator('.react-float.main').count(), '| who:', await a2.locator('.react-float.main .react-who').first.text_content())
+        print('host sees pop:', await a2.locator('.react-float.main').count(), '| emoji:', await a2.locator('.react-float.main .em').first.text_content(), '| who:', await a2.locator('.react-float.main .react-who').first.text_content()); assert await a2.locator('.react-float.main .em').first.text_content()=='😈' and await a2.locator('.react-float img').count()==0
         await a2.screenshot(path='react_pop.png')
         print('sender sees own pop:', await g.locator('.react-float.main').count())
         await g.wait_for_timeout(2800); print('pop gone after ~3 s:', await g.locator('.react-float.main').count()==0)
-        print('errors', errs); await b.close()
+        print('errors', errs); assert not errs; await b.close()
 asyncio.run(main())

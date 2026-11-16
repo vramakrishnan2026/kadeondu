@@ -8,26 +8,30 @@ window.GAME_CONFIG = {
   tagline: 'Race to your last card. Anyone with the link can play.',
   credits: 'Created by Vinay Ramakrishnan',   // shown at the bottom of the home screen
 
-  // Shown over the table whenever someone plays a Wild +4.
+  // The custom Wild +4 effect (photo + laugh). SWITCHED OFF at the owner's request (Nov 2026):
+  // with enabled: false the effect never plays and the "Wild +4 laugh animation" setting is hidden.
+  // Set enabled: true to bring both back.
   // Swap the picture by replacing public/fx/mani.webp (or point to another file).
   // sound: a sound file to play, false = silent, true = the phone speaks "mwa ha ha"
   drawFourEffect: {
-    enabled: true,
+    enabled: false,
     image: 'fx/mani.webp',
     text: 'MWA-HA-HA!',
     sound: 'fx/evil-laugh.mp3',   // your own recording works too, e.g. 'fx/mani-laugh.mp3'
     durationMs: 3000,
   },
 
-  // Sticker reactions (room setting, off by default). Pictures live in public/fx/reactions/.
-  // label: caption shown under the sticker ('' when the picture already has its own text)
+  // Reactions (room setting, off by default): ordinary emoji that float up the side of the screen.
+  // The ids must match the REACTIONS list in src/worker.js. (Photo stickers were used here until Nov 2026.)
   reactions: [
-    { id: 'nice_play',  label: 'Nice play!' },
-    { id: 'really',     label: 'Really?' },
-    { id: 'whats_next', label: "What's next?" },
-    { id: 'oh_no',      label: 'Oh no!' },
-    { id: 'angry',      label: '' },
-    { id: 'evil',       label: '' },
+    { id: 'up',    emoji: '👍', label: 'Thumbs up' },
+    { id: 'lol',   emoji: '😂', label: 'Laughing' },
+    { id: 'wow',   emoji: '😮', label: 'Surprised' },
+    { id: 'sad',   emoji: '😢', label: 'Sad' },
+    { id: 'angry', emoji: '😡', label: 'Angry' },
+    { id: 'evil',  emoji: '😈', label: 'Evil grin' },
+    { id: 'clap',  emoji: '👏', label: 'Clapping' },
+    { id: 'fire',  emoji: '🔥', label: 'Fire' },
   ],
 
   // Colours of the four suits and the app accent

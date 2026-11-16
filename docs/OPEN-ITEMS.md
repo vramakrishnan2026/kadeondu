@@ -12,7 +12,7 @@
    - iPhone Brave (friend): worked after **manually enabling the mic** (Brave Shields / iOS Settings → Brave → Microphone). The game now explains this when the mic is blocked.
 3. **Custom domain `ondu.goarena.in`:** pending. The domain is in another Cloudflare account; see [DEPLOYMENT.md](DEPLOYMENT.md).
 4. **Mani photo looking straight:** needs a front-facing photo from the owner (replace `public/fx/mani.webp`, about 640 px wide, soft-edged PNG/WebP).
-5. **Consent:** Mani's photo and the sticker friend's photos are visible to anyone with the link, and in the repo if it's public. The owner was asked to make sure the friends are fine with this.
+5. **Photos still in the repo:** the Wild +4 photo, the laugh sound and the six photo stickers (`public/fx/mani.webp`, `public/fx/evil-laugh.mp3`, `public/fx/reactions/`) are no longer used or downloaded by the game (Nov 2026), but the files are still in the public repo and reachable by direct link. Deleting them is the owner's call.
 
 6. **Stats password:** the owner must add the `STATS_KEY` secret in Cloudflare before `/stats.html` shows anything (steps in [DEPLOYMENT.md](DEPLOYMENT.md)). Joins are logged from the moment the feature is deployed, with or without the password.
 

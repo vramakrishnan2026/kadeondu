@@ -35,12 +35,12 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_chat.py` | room chat: edge tab and dot, drawer, watchers, history for late joiners, refresh, wipe after 5 min empty, none in Play vs computer |
 | `ui_stats.py` | join stats: joins logged with name + city, reconnects not counted, stats page needs the password, home notice |
 | `ui_roundtime.py` | round time limit: setting, countdown, time-up result (room, via the stand-in's `/__test/roundends` shortcut) and solo |
-| `ui_fx.py`, `ui_fx_off.py` | Wild +4 effect on (centred, sound loaded) and off by default |
+| `ui_fx_off.py` | Wild +4 effect switched off: no setting shown, nothing plays, photo / laugh / sticker files never downloaded. (`ui_fx.py`, which tested the effect when on, was removed; it is in the git history if the effect comes back) |
 | `ui_tablecolor.py` | table felt matches the colour being played (solo game, all four colours when they come up) |
 | `ui_ring.py`, `ui_fit.py` | round table at 4/10/20 players; no scrolling at several screen sizes |
 | `ui_controls.py` | private room hidden from the list; button sizes and positions for both hands |
 | `ui_voice.py`, `ui_voice_touch.py`, `ui_micperm.py` | voice notes (mouse and touch hold), mute, mic allowed and blocked |
-| `ui_react.py` | stickers off by default, tray, both phones see the float |
+| `ui_react.py` | emoji reactions off by default, tray of 8 emoji, both phones see the float |
 | `ui_endclose.py`, `ui_share.py`, `ui_install.py` | round-over close/reopen, share panel and copy, installability and iPhone steps |
 | `ui_vtest.py` | the temporary voice test page (delete with that page) |
 

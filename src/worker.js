@@ -6,7 +6,7 @@ const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it 
 const MAX_SOCKETS = 300;
 const MAX_VOICE_CHARS = 300000; // 5 s of speech, with room for iPhone recordings
 const VOICE_GAP_MS = 2500;      // one voice note every 2.5 s per player
-const REACTIONS = ['nice_play', 'really', 'whats_next', 'oh_no', 'angry', 'evil'];
+const REACTIONS = ['up', 'lol', 'wow', 'sad', 'angry', 'evil', 'clap', 'fire']; // emoji reactions; ids match public/config.js
 const REACT_GAP_MS = 1200;
 const CHAT_KEEP = 200;                    // room chat: the last 200 messages are kept, oldest dropped first
 const CHAT_MAX_CHARS = 200;
@@ -341,7 +341,7 @@ export class GameRoom extends DurableObject {
     await this.ctx.storage.setAlarm(this.chatEmptyAt + CHAT_EMPTY_MS);
   }
 
-  // Sticker reactions: shown to everyone (sender included), never stored.
+  // Emoji reactions: shown to everyone (sender included), never stored.
   relayReaction(ws, att, msg) {
     const s = this.room;
     if (!att.pid || !s.settings.reactions || !REACTIONS.includes(msg.id)) return;

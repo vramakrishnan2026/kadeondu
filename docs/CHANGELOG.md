@@ -33,6 +33,9 @@
 - **Join stats** for the owner: name, approximate city and time of each room join, kept 90 days, shown on the password-protected `/stats.html`. Home screen notice added. Needs the `STATS_KEY` secret.
 - Round time limit now **defaults to 3 min** and offers 7 and 10 min as well.
 
+## 2026-11-16
+- **Wild +4 photo effect switched off** and its setting hidden (owner's request). **Reactions are now ordinary emoji** (👍 😂 😮 😢 😡 😈 👏 🔥) instead of the photo stickers. The photo and laugh files are no longer downloaded or kept for offline use.
+
 ## 2026-11-15
 - Fix: the round clock and the turn clock jumped back up whenever the screen was redrawn without new data (rotating the phone, closing a pop-up). They now count from when the data arrived.
 - **Invites ring** (tone + buzz every 3 s, up to 30 s) until answered; the inviter is told when there is no answer.

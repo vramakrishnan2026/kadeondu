@@ -567,3 +567,8 @@ button.danger { background: var(--red); }
 #inviteModal.ringing .modal { animation: ring-pulse 1s ease-in-out infinite alternate; }
 @keyframes ring-pulse { from { box-shadow: 0 0 0 0 rgba(255,106,43,.0), 0 20px 60px rgba(0,0,0,.6); } to { box-shadow: 0 0 0 6px rgba(255,106,43,.55), 0 20px 60px rgba(0,0,0,.6); } }
 @media (prefers-reduced-motion: reduce) { #inviteModal.ringing .modal { animation: none; box-shadow: 0 0 0 4px rgba(255,106,43,.55); } }
+
+/* Emoji reactions (they replaced the photo stickers): tray of emoji, and emoji floating up the side */
+.react-pick .em { font-size: 2.1rem; line-height: 1.15; pointer-events: none; }
+.react-float .em { line-height: 1.1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
+.react-tray { grid-template-columns: repeat(4, 1fr); }
