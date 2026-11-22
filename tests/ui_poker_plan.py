@@ -59,11 +59,12 @@ async def main():
                     await a.click('#pkCall'); break
                 await a.click('#pkFold') if await a.is_enabled('#pkFold') else await a.click('#pkCall')
             elif await a.is_visible('#pkNext'): await a.click('#pkNext')
-        for _ in range(60):
+        for _ in range(120):
             if await a.is_visible('#pkNext'): break
             if await a.is_visible('#pkFold') and await a.is_enabled('#pkFold'): await a.click('#pkFold')
             elif await a.is_enabled('#pkCall'): await a.click('#pkCall')
             await a.wait_for_timeout(300)
+        await a.wait_for_selector('#pkCoach[data-mode="review"]:not(.hidden)', timeout=20000)   # (the review strip appears once the hand is over)
         await a.click('#pkCoach'); await a.wait_for_timeout(200); print('review marks the slip:', await a.locator('#pkReviewList .rv-habit').count()>=1, '| nudge shown', nudged)
         saved=await a.evaluate("JSON.parse(localStorage.getItem('ko-poker')).play"); print('counted on the phone:', saved['dec']>20, saved['slip'])
         await a.click('#pkReviewClose'); await a.click('#leaveBtn'); await a.wait_for_selector('#home:not(.hidden)')
