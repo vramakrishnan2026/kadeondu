@@ -11,7 +11,7 @@
   // What is remembered on the phone (nothing here is sent anywhere, except numbers for the AI note when asked):
   // done: best quiz score per lesson · miss: questions answered wrong and not yet put right · drills: per drill
   // play: decisions at coached tables next to the coach's advice · ai: the last AI note and how many were asked today
-  const blankProg = () => ({ level: 'beginner', done: {}, miss: {}, drills: {}, play: { dec: 0, match: 0, opp: {}, slip: {} }, ai: {} });
+  const blankProg = () => ({ level: 'beginner', done: {}, miss: {}, drills: {}, play: { dec: 0, match: 0, opp: {}, slip: {}, saved: 0 }, ai: {}, guard: 'clear' });
   let prog = blankProg();
   const save = () => KO.store.set(KEY, prog);
   const level = () => (LEVELS.includes(prog.level) ? prog.level : 'beginner');
@@ -162,7 +162,7 @@
     if (n.kind === 'lesson') openLesson(n.ref);
     else if (n.kind === 'drill') openDrill(n.ref);
     else if (n.kind === 'revise') openRevision();
-    else if (n.kind === 'table') $('pokerSoloModal').classList.remove('hidden');
+    else if (n.kind === 'table') window.KOPoker.soloOpen();
     else if (n.kind === 'level') { prog.level = n.ref.id; save(); renderHome(); window.scrollTo(0, 0); }
   }
   function renderPlan() {
@@ -175,6 +175,7 @@
     if (A.quizPct != null) chips.push(`Quizzes ${A.quizPct}%`);
     if (A.drillPct != null) chips.push(`Drills ${A.drillPct}%`);
     if (A.matchPct != null) chips.push(`Table: ${A.matchPct}% with the coach`);
+    if (prog.play.saved) chips.push(`Mistakes taken back: ${prog.play.saved}`);
     $('pkStats').replaceChildren(...chips.map(t => el('span', '', t)));
     $('pkHabit').classList.toggle('hidden', !A.habit);
     if (A.habit) $('pkHabit').textContent = `At the table: ${A.habit.text(A.habit.n, A.habit.m)} ${A.habit.tip}`;
@@ -496,7 +497,8 @@
   function reset() {
     T = null;
     for (const id of ['pkSeats', 'pkBoard', 'pkMe', 'pkMsg']) $(id)?.replaceChildren();
-    for (const id of ['pkAdvice', 'pkRaise', 'pkEndOverlay', 'pkReview']) $(id)?.classList.add('hidden');
+    for (const id of ['pkAdvice', 'pkRaise', 'pkEndOverlay', 'pkReview', 'pkGuard']) $(id)?.classList.add('hidden');
+    try { if (KO && document.body.dataset.tab === 'poker') renderHome(); } catch {} // back from a table: the plan shows the new numbers
   }
   const coachOn = s => KO.isSolo() || !!s.settings.coach;
   const liveCount = s => s.players.filter(p => p.inHand && !p.folded).length;
@@ -552,7 +554,7 @@
     if (myTurn && T.prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
     T.prevTurn = s.turnId;
     if (s.round !== T.round) { T.round = s.round; T.boardLen = 0; T.raiseOpen = false; if (T.reviewRound !== s.round) { T.reviewRound = s.round; T.review = []; } $('pkReview').classList.add('hidden'); }
-    if (!myTurn) T.raiseOpen = false;
+    if (!myTurn) { T.raiseOpen = false; T.pending = null; $('pkGuard').classList.add('hidden'); } // (a stopped move lapses if the turn has gone)
 
     // news
     if (!firstState) for (const e of fresh) {
@@ -746,11 +748,43 @@
     if (!hurry) T.buzzed = false;
   }
 
+  // The coach watches each move. Is this one a mistake worth stopping for? ('clear' = only the costly kinds)
+  function mistake(s, me, a, msg) {
+    const mine = msg.t === 'call' && s.toCall === 0 ? 'check' : msg.t;
+    if (mine === a.act) return null;
+    if (prog.guard === 'every') return 'differs';
+    const pre = s.board.length === 0, score = pre ? P.chen(me.cards) : 0;
+    if (a.act === 'fold') return 'loose';                                                       // paying when the coach would fold
+    if (mine === 'fold' && s.toCall > 0) {                                                       // folding a hand worth playing
+      if (a.act === 'raise') return 'tight';
+      if (pre ? score >= 9 : a.eq != null && a.need != null && a.eq - 0.07 - a.need >= 0.12) return 'tight';
+    }
+    if (a.act === 'raise' && (mine === 'check' || mine === 'call') && (pre ? score >= 10 : (a.eq ?? 0) >= 0.8)) return 'passive'; // a very strong hand not raised
+    return null;
+  }
+  function guardAsk(s, a, msg, kind) {
+    const word = msg.t === 'raise' ? (s.currentBet > 0 ? `raise to ${msg.to}` : `bet ${msg.to}`) : msg.t === 'call' ? `call ${s.toCall}` : msg.t;
+    T.pending = msg;
+    $('pkGuardSub').replaceChildren(document.createTextNode(`You chose to ${word}. The coach would `), el('b', '', a.head.toLowerCase()), document.createTextNode('.'));
+    const ul = $('pkGuardWhy');
+    ul.replaceChildren();
+    const h = habit();
+    if (h && h.kind === kind) ul.append(el('li', 'pk-watch', `This is your usual slip: ${h.short}.`));
+    for (const line of a.lines) ul.append(el('li', '', line));
+    $('pkGuard').classList.remove('hidden');
+  }
+
   // My move: note what the coach would have done, for the review after the hand
-  function act(msg) {
+  function act(msg, sure = false) {
     const s = KO.getS();
     if (!s || !T || T.waiting || s.turnId !== s.you) return;
     const me = s.players.find(p => p.id === s.you);
+    // the coach stops a mistake once, before it is played: take it back, or play it anyway
+    if (!sure && prog.guard !== 'off' && coachOn(s) && me?.cards?.length) {
+      const a0 = adviceFor(s, me);
+      const kind = a0 && T.guardKey !== T.coachKey ? mistake(s, me, a0, msg) : null;
+      if (kind) { T.guardKey = T.coachKey; return guardAsk(s, a0, msg, kind); }
+    }
     if (coachOn(s) && me?.cards?.length) {
       const a = adviceFor(s, me);
       if (a) {
@@ -839,6 +873,7 @@
     s.settings.botLevel = $('psoloLevel').value;
     s.settings.turnTime = Number($('psoloTime').value);
     s.settings.coach = true;
+    prog.guard = $('psoloGuard').value; save();
     const me = G.addPlayer(s, KO.name() || 'You');
     for (let i = 0; i < Number($('psoloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
     G.handle(s, me.id, { t: 'start' });
@@ -849,7 +884,7 @@
   function init(bridge) {
     KO = bridge; el = KO.el;
     const saved = KO.store.get(KEY);
-    if (saved && typeof saved === 'object') { const b = blankProg(); prog = { ...b, ...saved, play: { ...b.play, ...(saved.play || {}) }, ai: saved.ai || {}, miss: saved.miss || {}, done: saved.done || {}, drills: saved.drills || {} }; }
+    if (saved && typeof saved === 'object') { const b = blankProg(); prog = { ...b, ...saved, guard: ['clear', 'every', 'off'].includes(saved.guard) ? saved.guard : 'clear', play: { ...b.play, ...(saved.play || {}) }, ai: saved.ai || {}, miss: saved.miss || {}, done: saved.done || {}, drills: saved.drills || {} }; }
     $('scBack').onclick = closeSchool;
     $('pkFold').onclick = () => act({ t: 'fold' });
     $('pkCall').onclick = () => { const s = KO.getS(); act({ t: s?.toCall > 0 ? 'call' : 'check' }); };
@@ -882,6 +917,8 @@
     $('pkEndClose').onclick = () => { const s = KO.getS(); if (T && s) { T.endClosed = s.round; $('pkEndOverlay').classList.add('hidden'); controls(); } };
     $('pkCoach').onclick = showAdvice;
     $('pkReviewClose').onclick = () => $('pkReview').classList.add('hidden');
+    $('pkGuardBack').onclick = () => { $('pkGuard').classList.add('hidden'); if (T) { T.pending = null; T.raiseOpen = false; } prog.play.saved = (prog.play.saved || 0) + 1; save(); controls(); KO.toast('Taken back: choose again'); };
+    $('pkGuardGo').onclick = () => { $('pkGuard').classList.add('hidden'); const m = T?.pending; if (T) T.pending = null; if (m) act(m, true); };
     $('pkChipsInput').onchange = e => KO.send({ t: 'settings', startChips: Number(e.target.value) });
     $('pkBlindInput').onchange = e => KO.send({ t: 'settings', blind: Number(e.target.value) });
     $('pkCoachInput').onchange = e => KO.send({ t: 'settings', coach: e.target.checked });
@@ -891,7 +928,7 @@
 
   window.KOPoker = {
     init, onTab, render, tick, reset, lobby, controls,
-    soloOpen: () => $('pokerSoloModal').classList.remove('hidden'),
+    soloOpen: () => { $('psoloGuard').value = prog.guard || 'clear'; $('pokerSoloModal').classList.remove('hidden'); },
     logText(e) { // one line for the log under the table
       switch (e.k) {
         case 'pstart': return 'New game: cards are in the air';

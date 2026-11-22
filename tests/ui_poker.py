@@ -11,6 +11,7 @@ async def main():
         async def page(name, w=390, h=844):
             pg=await (await b.new_context(viewport={'width':w,'height':h}, device_scale_factor=2)).new_page()
             pg.on('pageerror', lambda e: errs.append(f'{name}: {e}')); pg.on('dialog', lambda d: asyncio.ensure_future(d.accept()))
+            await pg.add_init_script("try { if (!localStorage.getItem('ko-poker')) localStorage.setItem('ko-poker', JSON.stringify({ guard: 'off' })) } catch (e) {}")   # (the coach's stop-and-take-back has its own test: ui_poker_guard.py)
             await pg.goto(BASE); await pg.fill('#nameInput',name); await pg.click('#nameGo'); await pg.wait_for_timeout(250); return pg
         async def status(pg): return ' '.join((await pg.inner_text('#pkStatus')).split())
         TAB='.game-tab[data-game="poker"]'

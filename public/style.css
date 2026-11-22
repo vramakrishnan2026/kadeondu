@@ -894,3 +894,9 @@ body.lefty .cr-actions.with-chat .act-main { padding-right: 0; padding-left: 44p
 .pk-ai p { margin: 0; font-size: .93rem; line-height: 1.45; }
 .rv-habit { font-size: .82rem; color: #ffcf80; margin-top: .2rem; }
 .pk-advice li.pk-watch { color: #ffcf80; font-weight: 700; }
+
+/* Poker: the coach stopping a mistake */
+.pk-guard-sub { margin: 0; font-size: 1rem; line-height: 1.4; }
+.pk-guard-sub b { color: #ffd66b; }
+.pk-guard-why { margin: 0; padding-left: 1.1rem; text-align: left; display: flex; flex-direction: column; gap: .35rem; font-size: .92rem; line-height: 1.38; color: #e4e2ec; }
+.pk-guard-why li.pk-watch { color: #ffcf80; font-weight: 700; }

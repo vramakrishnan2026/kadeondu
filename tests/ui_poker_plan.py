@@ -9,6 +9,7 @@ async def main():
         b=await p.chromium.launch(); errs=[]
         a=await (await b.new_context(viewport={'width':390,'height':844})).new_page()
         a.on('pageerror', lambda e: errs.append(str(e))); a.on('dialog', lambda d: asyncio.ensure_future(d.accept()))
+        await a.add_init_script("try { if (!localStorage.getItem('ko-poker')) localStorage.setItem('ko-poker', JSON.stringify({ guard: 'off' })) } catch (e) {}")   # (the coach's stop-and-take-back has its own test: ui_poker_guard.py)
         hit('__test/ai?mode=on')
         TAB='.game-tab[data-game="poker"]'
         async def home():

@@ -55,9 +55,22 @@ The owner asked for AI features that analyse a learner and adjust the course, us
 - The note is labelled as written by AI and possibly wrong.
 - **Not yet seen live:** the test stand-in uses a pretend AI, so the real model's wording has not been checked. If the model name is retired, change `AI_MODEL`.
 
+## The coach stops a mistake (added 22 Nov 2026)
+The owner asked for the game to be watched and a mistaken move undone so the learner can correct it.
+
+- When a learner picks a move the coach counts as a mistake, the move is **held, not played**: a "Hold on" pop-up says what they chose, what the coach would do and why. **Take it back** returns to the same decision; **Play my move anyway** plays it.
+- It works as an undo for the learner, but nothing has been sent yet, so no other player sees the move or the change of mind, and no cards are revealed.
+- Asked once per decision. If they repeat the move after taking it back, it goes through.
+- Setting on the phone (`prog.guard`, chosen in the vs computer set-up): **On clear mistakes** (default), **Whenever I differ from the coach**, **Never**.
+- "Clear mistakes" (`mistake()` in `public/poker.js`): paying when the coach would fold; folding a hand the coach would raise or one comfortably worth the price; just calling or checking a very strong hand. Bet-size differences and bets where a check was better are left for the hand review.
+- At a friends' table it only applies when the host has coach hints on.
+- **This is the built-in coach, not the Cloudflare AI.** Checking every move with the AI would use the free allowance up within a few hands and add a wait to each move.
+- The plan shows "Mistakes taken back: N".
+
 ## Tests
 - `node tests/pokersim.mjs`: hand reading, coach sanity, side pots, 6,000 random hands with chip conservation, watchers, leaving.
 - `python3 tests/ui_poker_plan.py`: the plan, revision quiz, AI note (pretend AI: on, limit reached, off), habit counting, coach nudge, level up.
+- `python3 tests/ui_poker_guard.py`: the stop-and-take-back pop-up at a friends' table (fixed deal) and vs computer, each setting.
 - `python3 tests/ui_poker.py`: home tab, a lesson and quiz, every drill, vs computer with coach and review, a friends' table (hidden cards, showdown, watcher, timer), fit at five screen sizes.
 - The stand-in has `/__test/deck?room=CODE&cards=As,Kd,…` to fix the next deal.
 

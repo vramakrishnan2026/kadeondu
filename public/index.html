@@ -406,7 +406,10 @@
       <label class="field inline">Time per turn
         <select id="psoloTime"><option value="0" selected>Off (take your time)</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select>
       </label>
-      <p class="muted small-text">The coach is always on here: it advises at the level you picked, and reviews each hand with you. Play chips only.</p>
+      <label class="field inline">Coach stops me
+        <select id="psoloGuard"><option value="clear" selected>On clear mistakes</option><option value="every">Whenever I differ from the coach</option><option value="off">Never (review after the hand only)</option></select>
+      </label>
+      <p class="muted small-text">The coach is always on here: it advises at the level you picked, watches your moves, lets you take a mistake back, and reviews each hand with you. Play chips only.</p>
       <button id="psoloStart" class="primary big">Deal me in</button>
       <button id="psoloCancel" class="ghost">Cancel</button>
     </div>
@@ -421,6 +424,17 @@
       <button id="pkEndAgain" class="primary big hidden">Play again</button>
       <p id="pkEndWait" class="muted hidden">Waiting for the host to start a new game…</p>
       <button id="pkEndClose" class="ghost">Close</button>
+    </div>
+  </div>
+
+  <!-- Poker: the coach stops a mistake before it is played, so the learner can take it back -->
+  <div id="pkGuard" class="overlay hidden">
+    <div class="modal">
+      <h3 id="pkGuardTitle">✋ Hold on</h3>
+      <p id="pkGuardSub" class="pk-guard-sub"></p>
+      <ul id="pkGuardWhy" class="pk-guard-why"></ul>
+      <button id="pkGuardBack" class="primary big">Take it back</button>
+      <button id="pkGuardGo" class="ghost">Play my move anyway</button>
     </div>
   </div>
 
