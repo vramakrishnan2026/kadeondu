@@ -25,6 +25,7 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 |---|---|
 | `ui_test.py` | 4-player game to the end, reload rejoin, late joiner, leave, bad code |
 | `ui_landing.py` | first visit, invited newcomer one-tap join, returning player invite card, change name |
+| `ui_tabs.py` | game tabs on the home screen: Ludo and Ondu Ruthless show "Brewing…" with the steaming cup, back to the game by button or tab, tabs fit a 320 px phone, invite links open on the game |
 | `ui_rooms.py` | open rooms list, watching mid-round, dealt in next round |
 | `ui_invite.py` | Online now, invite/accept/decline, invite from home, invite mid-game |
 | `ui_bots.py` | solo vs computer to the end, room with computer players |

@@ -1,5 +1,9 @@
 # Features
 
+## Game tabs (home screen)
+
+A row of tabs at the top of the home screen: **Kade Ondu** (this game), **Ludo** and **Ondu Ruthless**. The last two are marked "Soon" and are not built yet. Tapping one shows the game's name, a **"Brewing…"** notice with a steaming coffee cup, and a **Back to Kade Ondu** button. Joining a room (for example from an invite) always returns to the Kade Ondu tab. The tabs and their names come from `games` in `public/config.js`.
+
 ## Getting into a game (home screen)
 
 1. **First visit:** only "What should we call you?" plus a 3-line "how it works" guide. Tap **Let's play**.

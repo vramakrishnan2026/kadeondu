@@ -16,6 +16,11 @@
 
 6. **Stats password:** the owner must add the `STATS_KEY` secret in Cloudflare before `/stats.html` shows anything (steps in [DEPLOYMENT.md](DEPLOYMENT.md)). Joins are logged from the moment the feature is deployed, with or without the password.
 
+7. **Two games to build behind the new tabs** (Nov 2026: tabs only, at the owner's request):
+   - **Ludo.**
+   - **Ondu Ruthless:** the owner asked for an equivalent of a tougher commercial edition of this kind of game. Rules, artwork and name must be original (see `DESIGN.md` and rule 1 in `CLAUDE.md`). "Ondu Ruthless" is a working name chosen by the assistant; **the owner has not confirmed it**.
+   - Until each is built its tab shows the "Brewing…" notice. To open one, build the game and set `ready: true` for it in `games` in `public/config.js`. Ask the owner about rules and layout before building.
+
 ## Known limitations
 - A website can't re-open the microphone pop-up after the user has blocked it. The game shows per-browser steps instead.
 - Older iPhones may not play some formats. Recording prefers MP4/AAC to avoid this.

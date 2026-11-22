@@ -572,3 +572,41 @@ button.danger { background: var(--red); }
 .react-pick .em { font-size: 2.1rem; line-height: 1.15; pointer-events: none; }
 .react-float .em { line-height: 1.1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
 .react-tray { grid-template-columns: repeat(4, 1fr); }
+
+/* ── Game tabs on the home screen, and the "Brewing…" notice for games not built yet ── */
+.game-tabs { display: flex; gap: .3rem; padding: .3rem; background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 99px; }
+.game-tab { flex: 1 1 auto; min-width: 0; min-height: 48px; padding: .25rem .5rem; border-radius: 99px; background: transparent; color: var(--muted);
+  font-weight: 800; font-size: clamp(.74rem, 3.5vw, .9rem); line-height: 1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; }
+.game-tab span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-tab small { font-size: .58rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.game-tab[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(255,106,43,.45); }
+.game-tab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.home-card.brewing-on > .step, .home-card.brewing-on > .tagline, .home-card.brewing-on > .voicetest-link, .home-card.brewing-on > .privacy-note { display: none !important; }
+
+.brewing { display: flex; flex-direction: column; align-items: center; gap: .5rem; text-align: center; padding: .6rem 0 .4rem; }
+.brewing .cup { width: min(52vw, 190px); height: auto; overflow: visible; }
+.brewing .mug { fill: #fdfbf6; }
+.brewing .rim { fill: #e9e3d6; }
+.brewing .coffee { fill: #5a3418; }
+.brewing .band { fill: var(--accent); }
+.brewing .handle { stroke: #fdfbf6; }
+.brewing .saucer { fill: rgba(253,251,246,.22); }
+.brewing .steam path { stroke: rgba(255,255,255,.75); opacity: 0; transform-box: fill-box; transform-origin: 50% 100%; animation: brew-steam 2.8s ease-in-out infinite; }
+.brewing .steam .s2 { animation-delay: .9s; }
+.brewing .steam .s3 { animation-delay: 1.8s; }
+@keyframes brew-steam {
+  0%   { opacity: 0; transform: translateY(14px) scaleY(.7); }
+  30%  { opacity: .85; }
+  100% { opacity: 0; transform: translateY(-16px) scaleY(1.1); }
+}
+.brew-title { margin: .3rem 0 0; font-family: "KO Numbers", system-ui, sans-serif; font-style: italic; font-weight: 900; font-size: 1.9rem; color: var(--accent); }
+.brew-title .dots i { font-style: inherit; animation: brew-dot 1.5s infinite; }
+.brew-title .dots i:nth-child(2) { animation-delay: .25s; }
+.brew-title .dots i:nth-child(3) { animation-delay: .5s; }
+@keyframes brew-dot { 0%, 60%, 100% { opacity: .2; } 30% { opacity: 1; } }
+.brew-text { margin: 0 0 .6rem; color: var(--muted); max-width: 30ch; }
+.brew-text b { color: var(--text); }
+@media (prefers-reduced-motion: reduce) {
+  .brewing .steam path { animation: none; opacity: .7; }
+  .brew-title .dots i { animation: none; opacity: 1; }
+}

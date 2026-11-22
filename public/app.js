@@ -21,6 +21,54 @@
   }
   if (th.background) document.querySelector('meta[name=theme-color]').content = th.background;
 
+  // ── Game tabs on the home screen ──────────────────────────
+  // Built from `games` in config.js. The first tab is this game. A tab that isn't ready shows
+  // the "Brewing…" notice (coffee cup) in place of the name and menu steps.
+  const GAMES = (Array.isArray(CFG.games) ? CFG.games : []).filter(g => g && g.id).map((g, i) => ({ ...g, label: g.label || CFG.name, ready: i === 0 || !!g.ready }));
+  let currentGame = GAMES.length ? GAMES[0].id : '';
+  function selectGame(id) {
+    if (GAMES.length < 2) return;
+    const g = GAMES.find(x => x.id === id) || GAMES[0];
+    currentGame = g.id;
+    const brewing = !g.ready;
+    document.querySelectorAll('#gameTabs .game-tab').forEach(b => {
+      const on = b.dataset.game === g.id;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    document.querySelector('.home-card').classList.toggle('brewing-on', brewing);
+    $('brewing').classList.toggle('hidden', !brewing);
+    $('homeTitle').textContent = g.label;
+    $('brewGame').textContent = g.label;
+    if (brewing) window.scrollTo(0, 0);
+  }
+  if (GAMES.length > 1) {
+    const tabs = $('gameTabs');
+    tabs.innerHTML = '';
+    for (const g of GAMES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'game-tab';
+      b.dataset.game = g.id;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', g.ready ? 'home' : 'brewing');
+      const label = document.createElement('span');
+      label.textContent = g.label;
+      b.append(label);
+      if (!g.ready) {
+        const soon = document.createElement('small');
+        soon.textContent = 'Soon';
+        b.append(soon);
+      }
+      b.addEventListener('click', () => selectGame(g.id));
+      tabs.append(b);
+    }
+    tabs.classList.remove('hidden');
+    $('brewBack').textContent = 'Back to ' + GAMES[0].label;
+    $('brewBack').addEventListener('click', () => selectGame(GAMES[0].id));
+    selectGame(currentGame);
+  }
+
   // ── Small helpers ─────────────────────────────────────────
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
@@ -43,6 +91,7 @@
   }
   function show(screen) {
     for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
+    if (screen !== 'home' && GAMES.length && currentGame !== GAMES[0].id) selectGame(GAMES[0].id); // joined a room from a "Brewing" tab (an invite): come back to this game's home
     document.body.classList.toggle('in-game', screen === 'game'); // game screen fits the phone, no scrolling
     placeChatTab();
     requestAnimationFrame(placeChatTab); // again once the new screen has been laid out

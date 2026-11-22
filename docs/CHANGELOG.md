@@ -33,6 +33,9 @@
 - **Join stats** for the owner: name, approximate city and time of each room join, kept 90 days, shown on the password-protected `/stats.html`. Home screen notice added. Needs the `STATS_KEY` secret.
 - Round time limit now **defaults to 3 min** and offers 7 and 10 min as well.
 
+## 2026-11-22
+- **Game tabs on the home screen:** Kade Ondu, **Ludo** and **Ondu Ruthless** (a tougher version of this game). The two new games are not built yet: tapping either tab shows a **"Brewing…"** notice with a steaming coffee cup and a button back to Kade Ondu. Tabs and their names are set in `games` in `public/config.js`.
+
 ## 2026-11-16
 - **Wild +4 photo effect switched off** and its setting hidden (owner's request). **Reactions are now ordinary emoji** (👍 😂 😮 😢 😡 😈 👏 🔥) instead of the photo stickers. The photo and laugh files are no longer downloaded or kept for offline use.
 

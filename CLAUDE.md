@@ -26,7 +26,7 @@ Read `README.md` and the `docs/` folder first. This file covers how to work on t
 ## Where to change things
 | Change | File |
 |---|---|
-| Game name / call word / colours / reaction emoji / Wild +4 effect on-off | `public/config.js` (+ `manifest.webmanifest` for the installed app name) |
+| Game name / call word / colours / reaction emoji / Wild +4 effect on-off / game tabs on the home screen (`games`) | `public/config.js` (+ `manifest.webmanifest` for the installed app name) |
 | Rules, computer players, turn timer, settings defaults | `public/shared/game.js` |
 | Server: rooms, relays, lobby, presence, invites | `src/worker.js` |
 | Screens and markup | `public/index.html` |

@@ -8,6 +8,15 @@ window.GAME_CONFIG = {
   tagline: 'Race to your last card. Anyone with the link can play.',
   credits: 'Created by Vinay Ramakrishnan',   // shown at the bottom of the home screen
 
+  // Game tabs at the top of the home screen. The first one is this game (it uses `name` above).
+  // A tab with ready: false shows a "Brewing…" notice with a steaming coffee cup instead of a game.
+  // Rename a tab by changing its label. Set ready: true only once that game has been built.
+  games: [
+    { id: 'ondu', ready: true },
+    { id: 'ludo', label: 'Ludo', ready: false },
+    { id: 'ruthless', label: 'Ondu Ruthless', ready: false },   // the tougher, no-holds-barred version of this game
+  ],
+
   // The custom Wild +4 effect (photo + laugh). SWITCHED OFF at the owner's request (Nov 2026):
   // with enabled: false the effect never plays and the "Wild +4 laugh animation" setting is hidden.
   // Set enabled: true to bring both back.

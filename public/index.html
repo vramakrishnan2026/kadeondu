@@ -33,8 +33,30 @@
   <!-- Home -->
   <main id="home" class="screen">
     <div class="home-card">
-      <h1 data-name>Game</h1>
+      <!-- Game tabs: built from `games` in config.js. Tabs that aren't ready show the Brewing notice below. -->
+      <nav id="gameTabs" class="game-tabs hidden" role="tablist" aria-label="Games"></nav>
+      <h1 id="homeTitle" data-name>Game</h1>
       <p class="tagline" data-tagline></p>
+
+      <!-- Shown for a game that isn't built yet -->
+      <section id="brewing" class="brewing hidden" role="tabpanel" aria-live="polite">
+        <svg class="cup" viewBox="0 0 160 170" role="img" aria-label="A cup of coffee with steam rising">
+          <g class="steam" fill="none" stroke-linecap="round" stroke-width="6">
+            <path class="s1" d="M56 62c-9-11 9-17 0-29s9-17 0-27"/>
+            <path class="s2" d="M80 62c-9-11 9-17 0-29s9-17 0-27"/>
+            <path class="s3" d="M104 62c-9-11 9-17 0-29s9-17 0-27"/>
+          </g>
+          <ellipse class="saucer" cx="76" cy="154" rx="62" ry="9"/>
+          <path class="handle" d="M116 92h10a18 18 0 0 1 0 36h-12" fill="none" stroke-width="10" stroke-linecap="round"/>
+          <path class="mug" d="M30 76h92v36a40 40 0 0 1-40 40H70a40 40 0 0 1-40-40z"/>
+          <ellipse class="rim" cx="76" cy="76" rx="46" ry="9"/>
+          <ellipse class="coffee" cx="76" cy="77" rx="39" ry="6"/>
+          <path class="band" d="M31 104h90v8a40 40 0 0 1-1.3 10H32.3A40 40 0 0 1 31 112z"/>
+        </svg>
+        <h2 class="brew-title">Brewing<span class="dots"><i>.</i><i>.</i><i>.</i></span></h2>
+        <p class="brew-text"><b id="brewGame">This game</b> is still on the stove. It will be served here when it's ready.</p>
+        <button id="brewBack" class="secondary big">Back to the game</button>
+      </section>
 
       <!-- Step 1: just the name (first visit, or when changing it) -->
       <section id="nameStep" class="step">
