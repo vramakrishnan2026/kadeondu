@@ -43,3 +43,4 @@
 ## Carrom (22 Nov 2026)
 - **Not tried on real phones.** The feel of aiming and the power range need the owner's judgement.
 - Ideas: boards played to 25 points, dues, stronger computer player, sounds.
+- **AI coach's note not yet seen live.** After deploy, the owner should tap "✨ AI coach's note" in Poker School and check the wording reads well. Usage shows in the Cloudflare dashboard under Workers AI.

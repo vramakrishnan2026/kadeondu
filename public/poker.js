@@ -8,7 +8,11 @@
   let KO = null, el = null, P = null;
   const KEY = 'ko-poker';
   const LEVELS = LEARN.levels.map(l => l.id);
-  let prog = { level: 'beginner', done: {}, drills: {} };
+  // What is remembered on the phone (nothing here is sent anywhere, except numbers for the AI note when asked):
+  // done: best quiz score per lesson · miss: questions answered wrong and not yet put right · drills: per drill
+  // play: decisions at coached tables next to the coach's advice · ai: the last AI note and how many were asked today
+  const blankProg = () => ({ level: 'beginner', done: {}, miss: {}, drills: {}, play: { dec: 0, match: 0, opp: {}, slip: {} }, ai: {} });
+  let prog = blankProg();
   const save = () => KO.store.set(KEY, prog);
   const level = () => (LEVELS.includes(prog.level) ? prog.level : 'beginner');
 
@@ -66,6 +70,7 @@
       chips.append(b);
     }
     $('pkLevelAbout').textContent = LEARN.levels.find(l => l.id === lv).about;
+    renderPlan();
     const ul = $('pkLessons');
     ul.replaceChildren();
     lessonsOf().forEach((ls, i) => {
@@ -99,6 +104,153 @@
     set('#createBtn .t-sub', on ? 'Practise together' : 'Play with friends');
     set('#soloBtn .t-sub', on ? 'With coach hints' : 'Practise on your own');
     if (on) { renderHome(); engine().catch(() => {}); }
+  }
+
+  // ── Your plan: what the phone works out from your results ──
+  function noteAnswer(lessonId, q, right) { // a wrong answer stays on the list until it is answered right
+    const list = prog.miss[lessonId] || [];
+    const i = list.indexOf(q);
+    if (right && i >= 0) list.splice(i, 1);
+    if (!right && i < 0) list.push(q);
+    if (list.length) prog.miss[lessonId] = list; else delete prog.miss[lessonId];
+    save();
+  }
+  // Slips at the table, by what the coach advised: fold → paying anyway; raise → not raising; call → folding; check → betting
+  const HABITS = {
+    loose: { short: 'paying to stay in with hands the coach would fold', text: (n, m) => `You paid to stay in ${n} of the ${m} times the coach said fold.`, tip: 'Folding costs nothing more: when the coach says fold, try it and watch what you save.', lesson: { beginner: 'b6', intermediate: 'i4', advanced: 'a1' } },
+    passive: { short: 'checking or calling with hands worth a raise', text: (n, m) => `You checked or called ${n} of the ${m} times the coach wanted a bet or raise.`, tip: 'With a strong hand, bet: weaker hands pay you and draws pay to chase.', lesson: { beginner: 'b4', intermediate: 'i5', advanced: 'a3' } },
+    tight: { short: 'folding hands that were worth continuing', text: (n, m) => `You folded ${n} of the ${m} times the coach would have carried on.`, tip: 'Compare the price with your chances before you fold a decent hand.', lesson: { beginner: 'b5', intermediate: 'i4', advanced: 'a5' } },
+    wild: { short: 'betting when checking was the better play', text: (n, m) => `You bet ${n} of the ${m} times the coach would have checked.`, tip: 'A free card is often worth more than a bet with a weak hand.', lesson: { beginner: 'b4', intermediate: 'i6', advanced: 'a4' } },
+  };
+  function habit() {
+    let best = null;
+    for (const k of Object.keys(HABITS)) {
+      const m = prog.play.opp[k] || 0, n = prog.play.slip[k] || 0;
+      if (m >= 8 && n / m >= 0.3 && (!best || n > best.n)) best = { kind: k, n, m, ...HABITS[k] };
+    }
+    return best;
+  }
+  function analyse() {
+    const lv = level(), list = lessonsOf(lv), drills = LEARN.drills[lv] || [];
+    const done = list.filter(x => prog.done[x.id] != null);
+    const asked = done.reduce((a, x) => a + x.quiz.length, 0), right = done.reduce((a, x) => a + prog.done[x.id], 0);
+    const missed = list.flatMap(x => (prog.miss[x.id] || []).map(q => ({ ls: x, q })));
+    const dAsked = drills.reduce((a, d) => a + (prog.drills[d.id]?.asked || 0), 0), dRight = drills.reduce((a, d) => a + (prog.drills[d.id]?.right || 0), 0);
+    const tried = drills.filter(d => (prog.drills[d.id]?.asked || 0) >= 10).map(d => ({ d, pct: prog.drills[d.id].right / prog.drills[d.id].asked })).sort((a, b) => a.pct - b.pct);
+    const weakDrill = tried[0] && tried[0].pct < 0.6 ? tried[0] : null;
+    const fresh = drills.find(d => !(prog.drills[d.id]?.played));
+    const h = habit();
+    const ready = done.length === list.length && list.every(x => prog.done[x.id] >= Math.ceil(x.quiz.length * 2 / 3)) && drills.every(d => (prog.drills[d.id]?.best || 0) >= 7);
+    const nextLevel = LEARN.levels[LEVELS.indexOf(lv) + 1] || null;
+    const todo = list.find(x => prog.done[x.id] == null);
+    let next;
+    if (!done.length) next = { kind: 'lesson', ref: list[0], title: `Lesson 1: ${list[0].title}`, why: 'The best place to start at this level.', go: 'Start' };
+    else if (missed.length >= 3) next = { kind: 'revise', title: `Revision quiz: ${missed.length} questions`, why: 'The questions you got wrong, so they stick before you move on.', go: 'Revise now' };
+    else if (todo) next = { kind: 'lesson', ref: todo, title: `Lesson ${list.indexOf(todo) + 1}: ${todo.title}`, why: `You have finished ${done.length} of ${list.length} lessons at this level.`, go: 'Continue' };
+    else if (weakDrill) next = { kind: 'drill', ref: weakDrill.d, title: `Drill: ${weakDrill.d.title}`, why: `Your weakest drill so far: ${Math.round(weakDrill.pct * 100)}% right. Ten more questions will move it.`, go: 'Practise' };
+    else if (missed.length) next = { kind: 'revise', title: `Revision quiz: ${missed.length} question${missed.length > 1 ? 's' : ''}`, why: 'Put right what you missed in the lesson quizzes.', go: 'Revise now' };
+    else if (fresh) next = { kind: 'drill', ref: fresh, title: `Drill: ${fresh.title}`, why: 'You have not tried this drill yet.', go: 'Try it' };
+    else if (h) next = { kind: 'lesson', ref: list.find(x => x.id === h.lesson[lv]) || list[0], title: `Reread: ${(list.find(x => x.id === h.lesson[lv]) || list[0]).title}`, why: `It deals with your most common slip at the table: ${h.short}.`, go: 'Open' };
+    else if (prog.play.dec < 20) next = { kind: 'table', title: 'Play a few hands against the computer', why: 'Lessons are done: now use them. The coach reviews every hand with you.', go: 'Deal me in' };
+    else if (ready && nextLevel) next = { kind: 'level', ref: nextLevel, title: `Move up to ${nextLevel.label}`, why: 'Every lesson and drill at this level is in good shape.', go: `Go to ${nextLevel.label}` };
+    else next = { kind: 'drill', ref: (tried[0] || { d: drills[0] }).d, title: `Keep sharp: ${(tried[0] || { d: drills[0] }).d.title}`, why: 'Everything here is done. A round of drills keeps it fresh.', go: 'Practise' };
+    return { lv, list, done, asked, right, missed, drills, dAsked, dRight, weakDrill, habit: h, ready, nextLevel, next,
+      quizPct: asked ? Math.round(right / asked * 100) : null, drillPct: dAsked ? Math.round(dRight / dAsked * 100) : null,
+      matchPct: prog.play.dec ? Math.round(prog.play.match / prog.play.dec * 100) : null };
+  }
+  function goNext(n) {
+    if (n.kind === 'lesson') openLesson(n.ref);
+    else if (n.kind === 'drill') openDrill(n.ref);
+    else if (n.kind === 'revise') openRevision();
+    else if (n.kind === 'table') $('pokerSoloModal').classList.remove('hidden');
+    else if (n.kind === 'level') { prog.level = n.ref.id; save(); renderHome(); window.scrollTo(0, 0); }
+  }
+  function renderPlan() {
+    const A = analyse();
+    $('pkNextTitle').textContent = A.next.title;
+    $('pkNextWhy').textContent = A.next.why;
+    $('pkNextGo').textContent = A.next.go;
+    $('pkNextGo').onclick = () => goNext(A.next);
+    const chips = [`Lessons ${A.done.length}/${A.list.length}`];
+    if (A.quizPct != null) chips.push(`Quizzes ${A.quizPct}%`);
+    if (A.drillPct != null) chips.push(`Drills ${A.drillPct}%`);
+    if (A.matchPct != null) chips.push(`Table: ${A.matchPct}% with the coach`);
+    $('pkStats').replaceChildren(...chips.map(t => el('span', '', t)));
+    $('pkHabit').classList.toggle('hidden', !A.habit);
+    if (A.habit) $('pkHabit').textContent = `At the table: ${A.habit.text(A.habit.n, A.habit.m)} ${A.habit.tip}`;
+    const rv = $('pkRevise');
+    rv.classList.toggle('hidden', !A.missed.length || A.next.kind === 'revise');
+    rv.textContent = `Revision quiz (${A.missed.length})`;
+    rv.onclick = openRevision;
+    const up = $('pkLevelUp');
+    up.classList.toggle('hidden', !(A.ready && A.nextLevel) || A.next.kind === 'level');
+    if (A.nextLevel) { up.textContent = `Ready for ${A.nextLevel.label} →`; up.onclick = () => goNext({ kind: 'level', ref: A.nextLevel }); }
+    // the AI note: offered once there is something to go on
+    const enough = A.done.length > 0 || A.dAsked >= 10 || prog.play.dec >= 10;
+    $('pkAiBtn').classList.toggle('hidden', !enough);
+    $('pkAiBtn').onclick = () => askAi(A);
+    const key = aiKey(A);
+    const shown = prog.ai.text && prog.ai.key === key;
+    $('pkAi').classList.toggle('hidden', !shown);
+    if (shown) { $('pkAiText').textContent = prog.ai.text; $('pkAiBy').textContent = 'Written by AI from your results. It can be wrong: the plan above is the one to trust.'; }
+  }
+  // The AI coach's note. Only numbers and lesson titles are sent (never a name). Cloudflare's free daily allowance is
+  // shared by everyone, so: one note per set of results, a few a day per phone, and a plain message when it is used up.
+  const AI_PER_DAY = 4;
+  function aiPayload(A) {
+    return { level: A.lv, lessonsDone: A.done.length, lessonsTotal: A.list.length, quizPct: A.quizPct ?? 0,
+      weakLessons: [...new Set(A.missed.map(m => m.ls.title))], drillAsked: A.dAsked, drillPct: A.drillPct ?? 0,
+      weakDrill: A.weakDrill ? A.weakDrill.d.title : '', decisions: prog.play.dec, matchPct: A.matchPct ?? 0, habit: A.habit ? A.habit.short : '', next: A.next.title };
+  }
+  const aiKey = A => JSON.stringify(aiPayload(A));
+  async function askAi(A) {
+    const box = $('pkAi'), txt = $('pkAiText'), by = $('pkAiBy'), b = $('pkAiBtn');
+    const say = (t, note = '') => { box.classList.remove('hidden'); txt.textContent = t; by.textContent = note; };
+    const key = aiKey(A), today = new Date().toISOString().slice(0, 10);
+    if (prog.ai.text && prog.ai.key === key) return say(prog.ai.text, 'Written by AI from your results. Nothing has changed since this note, so it is the same one.');
+    if (prog.ai.day !== today) { prog.ai.day = today; prog.ai.n = 0; }
+    if ((prog.ai.n || 0) >= AI_PER_DAY) return say('You have had today\'s AI notes. The plan above is always up to date, and the AI coach is back tomorrow.');
+    b.disabled = true;
+    say('The AI coach is reading your results…');
+    try {
+      const r = await fetch('/api/poker-coach', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(aiPayload(A)) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.text) throw new Error(j.error || 'failed');
+      prog.ai = { day: today, n: (prog.ai.n || 0) + 1, key, text: String(j.text).slice(0, 700) };
+      save();
+      say(prog.ai.text, 'Written by AI from your results. It can be wrong: the plan above is the one to trust.');
+    } catch (e) {
+      say(e.message === 'limit' ? 'The AI coach has used up its free allowance for today. The plan above is worked out on your phone and is always up to date.'
+        : 'The AI coach cannot be reached just now. The plan above is worked out on your phone and is always up to date.');
+    } finally { b.disabled = false; }
+  }
+  // Revision quiz: the questions you got wrong at this level, until each is answered right
+  function openRevision() {
+    const items = analyse().missed.slice(0, 8);
+    if (!items.length) return;
+    SC = { kind: 'revise', items, q: 0, right: 0 };
+    openSchool('Revision quiz');
+    reviseNext();
+  }
+  function reviseNext() {
+    const { items, q } = SC;
+    if (q >= items.length) {
+      bar(1, 1);
+      $('scStep').textContent = 'Done';
+      const left = analyse().missed.length;
+      $('scBody').replaceChildren(el('div', 'sc-score', SC.right === items.length ? '🎉' : '👍'), el('h2', 'sc-h center', `${SC.right} of ${items.length} put right`),
+        rich(left ? `**${left}** still to fix. They stay on your list until you get them right.` : 'Nothing left to revise at this level.'));
+      return foot(btn('ghost', 'Poker School', closeSchool), left ? btn('primary big', 'Go again', openRevision) : btn('primary big', 'Finish', closeSchool));
+    }
+    bar(q, items.length);
+    $('scStep').textContent = `${q + 1} of ${items.length} · from "${items[q].ls.title}"`;
+    const item = items[q].ls.quiz[items[q].q];
+    ask({ q: item.q, groups: item.cards ? parseGroups(item.cards) : null, options: item.options, answer: item.answer, why: item.why }, right => {
+      if (right) SC.right++;
+      noteAnswer(items[q].ls.id, items[q].q, right);
+      SC.q++;
+      foot(btn('primary big', SC.q >= items.length ? 'See how I did' : 'Next question', reviseNext));
+    });
   }
 
   // ── Lessons, quizzes and drills (the "school" screen) ─────
@@ -140,6 +292,7 @@
     const item = ls.quiz[q];
     ask({ q: item.q, groups: item.cards ? parseGroups(item.cards) : null, options: item.options, answer: item.answer, why: item.why }, right => {
       if (right) SC.right++;
+      noteAnswer(ls.id, q, right);
       const last = q === ls.quiz.length - 1;
       foot(btn('primary big', last ? 'See my score' : 'Next question', () => { if (last) lessonDone(); else { SC.q++; lessonQuiz(); } }));
     });
@@ -308,6 +461,9 @@
     $('scStep').textContent = `${SC.n + 1} of ${DRILL_LEN} · ${SC.right} right`;
     ask(DRILLS[d.id](), right => {
       if (right) SC.right++;
+      const rec = prog.drills[d.id] || (prog.drills[d.id] = { best: 0, played: 0 });
+      rec.asked = (rec.asked || 0) + 1; rec.right = (rec.right || 0) + (right ? 1 : 0);
+      save();
       SC.n++;
       foot(btn('primary big', SC.n >= DRILL_LEN ? 'See my score' : 'Next', drillNext));
     });
@@ -600,7 +756,15 @@
       if (a) {
         const word = msg.t === 'raise' ? (s.currentBet > 0 ? `Raise to ${msg.to}` : `Bet ${msg.to}`) : msg.t === 'call' ? `Call ${s.toCall}` : msg.t === 'check' ? 'Check' : 'Fold';
         const mine = msg.t === 'call' && s.toCall === 0 ? 'check' : msg.t;
-        T.review.push({ street: { preflop: 'Before the flop', flop: 'Flop', turn: 'Turn', river: 'River' }[s.street], did: word, coach: a.head, match: mine === a.act, lines: a.lines });
+        // which kind of spot was it, and did I slip? (kept on the phone for "Your plan")
+        const kinds = a.act === 'fold' ? ['loose'] : a.act === 'check' ? ['wild'] : a.act === 'call' ? ['tight'] : s.toCall > 0 ? ['passive', 'tight'] : ['passive'];
+        const slip = a.act === 'fold' && mine !== 'fold' ? 'loose' : a.act === 'check' && mine === 'raise' ? 'wild' : a.act !== 'fold' && s.toCall > 0 && mine === 'fold' ? 'tight' : a.act === 'raise' && (mine === 'check' || mine === 'call') ? 'passive' : null;
+        const P0 = prog.play;
+        P0.dec++; if (mine === a.act) P0.match++;
+        for (const k of kinds) P0.opp[k] = (P0.opp[k] || 0) + 1;
+        if (slip) P0.slip[slip] = (P0.slip[slip] || 0) + 1;
+        save();
+        T.review.push({ street: { preflop: 'Before the flop', flop: 'Flop', turn: 'Turn', river: 'River' }[s.street], did: word, coach: a.head, match: mine === a.act, lines: a.lines, slip });
       }
     }
     T.waiting = true; T.raiseOpen = false;
@@ -642,6 +806,10 @@
     else if (!box.classList.contains('hidden')) { box.classList.add('hidden'); return; }
     box.replaceChildren(el('div', 'pk-adv-head', `Coach (${LEARN.levels.find(l => l.id === level()).label}): ${a.head}`));
     const ul = el('ul');
+    // the coach knows your habits: a nudge when this is the kind of spot where you usually slip
+    const h = habit();
+    const spot = a.act === 'fold' ? 'loose' : a.act === 'check' ? 'wild' : a.act === 'call' ? 'tight' : 'passive';
+    if (h && h.kind === spot) ul.append(el('li', 'pk-watch', `Watch out, this is your usual slip: ${h.short}.`));
     for (const line of a.lines) ul.append(el('li', '', line));
     const x = el('button', 'ghost small', 'Got it');
     x.onclick = () => box.classList.add('hidden');
@@ -655,6 +823,7 @@
       const li = el('li', r.match ? 'same' : 'diff');
       li.append(el('div', 'rv-top', `${r.street}: you chose ${r.did}`), el('div', 'rv-coach', (r.match ? '✓ Coach agrees: ' : '✗ Coach: ') + r.coach));
       if (!r.match) li.append(el('div', 'rv-why', r.lines.join(' ')));
+      if (r.slip && habit()?.kind === r.slip) li.append(el('div', 'rv-habit', `⚠ Your most common slip: ${HABITS[r.slip].short}.`));
       list.append(li);
     }
     $('pkReview').classList.remove('hidden');
@@ -680,7 +849,7 @@
   function init(bridge) {
     KO = bridge; el = KO.el;
     const saved = KO.store.get(KEY);
-    if (saved && typeof saved === 'object') prog = { level: saved.level || 'beginner', done: saved.done || {}, drills: saved.drills || {} };
+    if (saved && typeof saved === 'object') { const b = blankProg(); prog = { ...b, ...saved, play: { ...b.play, ...(saved.play || {}) }, ai: saved.ai || {}, miss: saved.miss || {}, done: saved.done || {}, drills: saved.drills || {} }; }
     $('scBack').onclick = closeSchool;
     $('pkFold').onclick = () => act({ t: 'fold' });
     $('pkCall').onclick = () => { const s = KO.getS(); act({ t: s?.toCall > 0 ? 'call' : 'check' }); };

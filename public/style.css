@@ -878,3 +878,19 @@ body.lefty .cr-actions.with-chat .act-main { padding-right: 0; padding-left: 44p
 @media (prefers-reduced-motion: reduce) { .timing .cr-clock { transition: none; } }
 .cr-plates:has(.cr-plate:nth-child(3)) { gap: .25rem; }
 .cr-plates:has(.cr-plate:nth-child(3)) .cr-plate { padding: 0 .4rem; gap: .2rem; font-size: clamp(.68rem, 3.3cqw, .84rem); flex: 1 1 0; justify-content: center; }
+
+/* Poker School: your plan (next step, numbers, habit, AI note) */
+.pk-plan { display: flex; flex-direction: column; gap: .45rem; background: linear-gradient(135deg, rgba(255,106,43,.16), rgba(120,60,200,.14)); border: 1px solid rgba(255,106,43,.45); border-radius: 18px; padding: .8rem .85rem; }
+.pk-plan-tag { font-size: .68rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.pk-next-title { font-weight: 800; font-size: 1.12rem; line-height: 1.2; }
+.pk-next-why { font-size: .9rem; color: #e4e2ec; line-height: 1.35; }
+.pk-plan > button.primary { align-self: flex-start; min-height: 48px; padding: 0 1.4em; }
+.pk-stats { display: flex; flex-wrap: wrap; gap: .3rem .4rem; }
+.pk-stats span { font-size: .76rem; font-weight: 700; background: rgba(0,0,0,.3); border-radius: 99px; padding: .15em .65em; white-space: nowrap; }
+.pk-habit { font-size: .88rem; line-height: 1.35; border-left: 3px solid #ffb020; padding: .1rem 0 .1rem .6rem; color: #ffe9c2; }
+.pk-plan-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.pk-plan-row button { min-height: 44px; }
+.pk-ai { background: rgba(0,0,0,.28); border-radius: 12px; padding: .6rem .7rem; display: flex; flex-direction: column; gap: .3rem; }
+.pk-ai p { margin: 0; font-size: .93rem; line-height: 1.45; }
+.rv-habit { font-size: .82rem; color: #ffcf80; margin-top: .2rem; }
+.pk-advice li.pk-watch { color: #ffcf80; font-weight: 700; }

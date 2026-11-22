@@ -54,3 +54,7 @@ The join stats page (`/stats.html`) only works once a secret called `STATS_KEY` 
 3. **Deploy**. Then open `https://kadeondu.goarena.workers.dev/stats.html` and type the password.
 
 Use the type **Secret**, not plain text: secrets stay in place when GitHub deploys a new version. Never put the password in the repo (it is public). To change it, edit the secret; every device then has to type the new one.
+
+## Workers AI (Poker School's AI note)
+
+The `ai` binding in `wrangler.jsonc` gives the Worker Cloudflare's built-in AI. Nothing needs switching on in the dashboard. The free allowance is 10,000 neurons a day and resets at midnight UTC; on the free plan, requests beyond it fail and the app falls back to its own report. Usage is shown in the Cloudflare dashboard under Workers AI.

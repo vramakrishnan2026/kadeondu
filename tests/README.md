@@ -31,6 +31,7 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_tabs.py` | game tabs on the home screen: Ludo has its own home; Ondu Ruthless shows "Brewing…" with the steaming cup; back to the game by button or tab; tabs fit a 320 px phone; invite links open on the game |
 | `ui_ludo.py` | Ludo in a room: settings, rolling, choosing a token, capture, reactions, chat, a watcher, finishing, playing again, fit at five screen sizes, turn timer, left-handed, vs computer (uses the stand-in's `/__test/die` and `/__test/ludo`) |
 | `ui_carrom.py` | Carrom: tab, vs computer with pull-back aiming, a room with shot replay, queen, win, doubles, fit at five screen sizes |
+| `ui_poker_plan.py` | Poker School's plan: next step, revision quiz, AI note with a pretend AI, habits, coach nudge, level up |
 | `ui_poker.py` | Poker School: home tab and levels, a lesson and quiz, every drill, vs computer with coach and review, a friends' table, fit at five screen sizes |
 | `ui_back.py` | the phone's Back button: pop-ups, chat, lessons, asking before leaving a room, leaving the app only from home |
 | `ui_ludo_voice.py` | voice notes and reactions on the Ludo screen; the buttons row returns to the card game afterwards |

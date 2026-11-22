@@ -15,7 +15,8 @@ function makeCtx(){ const store=new Map(); const sockets=new Set();
       delete:async k=>{ for(const x of [].concat(k)) store.delete(x) },
       list:async({prefix='',end,reverse,limit=Infinity}={})=>{ let ks=[...store.keys()].filter(k=>k.startsWith(prefix)&&(end===undefined||k<end)).sort(); if(reverse) ks.reverse(); return new Map(ks.slice(0,limit).map(k=>[k,structuredClone(store.get(k))])) } },
     blockConcurrencyWhile:async fn=>fn(), acceptWebSocket:ws=>sockets.add(ws), getWebSockets:()=>[...sockets].filter(w=>w.open), setWebSocketAutoResponse(){} }; }
-let lobby; const env={ LOBBY:{ idFromName:n=>n, get:()=>lobby }, STATS_KEY:'test-stats-key-123' };
+let aiMode='on'; const aiSeen=[]; // /__test/ai?mode=on|limit|off ; aiSeen = what was sent to the model
+let lobby; const env={ LOBBY:{ idFromName:n=>n, get:()=>lobby }, STATS_KEY:'test-stats-key-123', AI:{ run: async (model, o) => { aiSeen.push(o.messages[1].content); if (aiMode==='limit') throw new Error('daily limit'); return { response: '**Test note:** you are doing well on lessons. Work on calling less. Tip: count the pot odds first.' } } } };
 let testGeo={city:'Bengaluru',region:'Karnataka',country:'IN'}; // stand-in for Cloudflare's location; change with /__test/geo
 lobby=new Lobby(makeCtx(),env);
 function getRoom(code){ if(!rooms.has(code)){ const ctx=makeCtx(); ctx.storage.put('code',code); const r=new GameRoom(ctx,env); rooms.set(code,r); } return rooms.get(code); }
@@ -26,6 +27,8 @@ class MockWS { constructor(sock){ this.sock=sock; this.open=true; this.att=null;
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.woff':'font/woff','.mp3':'audio/mpeg'};
 const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x'); 
   // The real front door answers /api/stats (password check included)
+  if(u.pathname==='/api/poker-coach'){ let body=''; req.on('data',c=>body+=c); req.on('end',async()=>{ const e2 = aiMode==='off' ? {...env, AI: undefined} : env; const r=await worker.fetch(new Request('http://x/api/poker-coach',{method:req.method, body: req.method==='POST'?body:undefined}),e2); res.writeHead(r.status,{'content-type':'application/json'}); res.end(await r.text()) }); return }
+  if(u.pathname==='/__test/ai'){ if(u.searchParams.get('mode')) aiMode=u.searchParams.get('mode'); res.writeHead(200,{'content-type':'application/json'}); return res.end(JSON.stringify({mode:aiMode, seen:aiSeen})) }
   if(u.pathname==='/api/stats'){ return worker.fetch(new Request('http://x/api/stats',{headers:{'x-stats-key':req.headers['x-stats-key']||''}}),env).then(async r=>{ res.writeHead(r.status,{'content-type':r.headers.get('content-type')||'text/plain'}); res.end(await r.text()) }) }
   // Test-only: pretend nobody has been connected to this room for ?min= minutes, then run the room's wake-up
   if(u.pathname==='/__test/chatempty'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); if(!r){res.writeHead(404);return res.end('no room')}

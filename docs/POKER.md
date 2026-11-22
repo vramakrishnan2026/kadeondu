@@ -37,8 +37,27 @@ Progress (level, quiz scores, drill bests) is in `localStorage` under `ko-poker`
 - The computer players use the same advice with habits added (Easy: calls too much, rarely raises; Normal: occasional bluff or slow-play).
 - It is a teaching guide, not a solver. Lesson text says so where it matters.
 
+## Your plan and the AI coach (added 22 Nov 2026)
+The owner asked for AI features that analyse a learner and adjust the course, using Cloudflare's free AI.
+
+**Worked out on the phone** (`analyse()` in `public/poker.js`; works offline and vs computer):
+- **Next for you:** one suggestion at the top of the tab. Order: first lesson → revision quiz (3+ wrong answers waiting) → next lesson → weakest drill (under 60%) → remaining wrong answers → untried drill → reread the lesson for a table habit → play hands → move up a level → keep sharp.
+- **Revision quiz:** the quiz questions answered wrong at this level. Each stays on the list until answered right.
+- **Habits at the table:** every decision at a coached table is compared with the coach's advice and counted by kind: paying when the coach would fold, not raising strong hands, folding hands worth continuing, betting when a check was better. A habit shows once there are 8+ such spots and the slip happens in 30% or more of them.
+- **The coach adapts:** when the current spot is the learner's usual slip, the "why" panel opens with a warning, and the hand review marks it.
+- **Level up:** offered when every lesson is done with two thirds or more right and every drill has a best of 7+. The learner still chooses.
+
+**The AI coach's note** (optional button):
+- `POST /api/poker-coach` in `src/worker.js` calls Cloudflare Workers AI through the `ai` binding in `wrangler.jsonc` (model `AI_MODEL`, currently `@cf/meta/llama-3.1-8b-instruct-fp8-fast`).
+- Only numbers and lesson or drill titles are sent, never a name. The server rebuilds the text from known fields, so free text from a phone never reaches the model.
+- Free allowance: 10,000 neurons a day for the whole Cloudflare account; a note costs roughly 5 to 10. Guards: one note per set of results, 4 a day per phone, `AI_DAILY_CAP` (600) a day overall, counted in the Lobby object.
+- When the cap or allowance is reached, or the phone is offline, the app says so and the on-phone plan carries on.
+- The note is labelled as written by AI and possibly wrong.
+- **Not yet seen live:** the test stand-in uses a pretend AI, so the real model's wording has not been checked. If the model name is retired, change `AI_MODEL`.
+
 ## Tests
 - `node tests/pokersim.mjs`: hand reading, coach sanity, side pots, 6,000 random hands with chip conservation, watchers, leaving.
+- `python3 tests/ui_poker_plan.py`: the plan, revision quiz, AI note (pretend AI: on, limit reached, off), habit counting, coach nudge, level up.
 - `python3 tests/ui_poker.py`: home tab, a lesson and quiz, every drill, vs computer with coach and review, a friends' table (hidden cards, showdown, watcher, timer), fit at five screen sizes.
 - The stand-in has `/__test/deck?room=CODE&cards=As,Kd,…` to fix the next deal.
 

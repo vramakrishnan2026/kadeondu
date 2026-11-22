@@ -5,6 +5,9 @@
   "main": "src/worker.js",
   "compatibility_date": "2025-10-01",
 
+  // Cloudflare's built-in AI (free allowance: 10,000 neurons a day). Poker School uses it for the coach's note.
+  "ai": { "binding": "AI" },
+
   // The game page (HTML, CSS, JS) is served straight from this folder
   "assets": { "directory": "./public" },
 
