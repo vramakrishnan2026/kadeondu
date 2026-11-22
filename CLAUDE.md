@@ -11,8 +11,8 @@ Read `README.md` and the `docs/` folder first. This file covers how to work on t
 ## Rules
 1. **Original artwork only.** Never copy UNO/Mattel card designs, logos or naming, even if asked "with a different font". Decline in one line and offer an original alternative. (See `docs/DESIGN.md`.)
 2. **New toggles default to off** unless the owner says otherwise (emoji reactions and private rooms are off by default; the custom Wild +4 effect is switched off entirely in `config.js`; the round time limit defaults to 3 min because the owner asked for that).
-3. **The game screen must fit the phone with no scrolling.** Check with `tests/ui_fit.py` after layout changes.
-4. **Controls:** two rows. Top: `Catch! · Ondu! · Draw` (three equal buttons, each always in the same place; Draw is the main one). Bottom: `😄 🔈 … card count … 🎙` (mic at the far end). Left-handed mirrors both rows. Tap targets of 48 px or more.
+3. **The game screen must fit the phone with no scrolling.** Check with `tests/ui_fit.py` after layout changes (and `tests/ui_ludo.py` for the Ludo board).
+4. **Controls (card game):** two rows. Top: `Catch! · Ondu! · Draw` (three equal buttons, each always in the same place; Draw is the main one). Bottom: `😄 🔈 … card count … 🎙` (mic at the far end). Left-handed mirrors both rows. Tap targets of 48 px or more. Ludo uses the same bottom row (it is the same element, moved under the board) with the die and one **Roll** button above it.
 5. Voice notes and emoji reactions are **relayed, never stored**. Keep it that way. Room chat is the one exception: the last 200 messages are kept with the room and wiped when it empties (see `docs/FEATURES.md`).
 6. Don't edit existing Durable Object migrations in `wrangler.jsonc`; only append. Don't rename the Worker (`kadeondu`); the GitHub auto-deploy is tied to it.
 7. When adding assets that should work offline, add them to `SHELL` in `public/sw.js` and bump `CACHE`.
@@ -27,7 +27,7 @@ Read `README.md` and the `docs/` folder first. This file covers how to work on t
 | Change | File |
 |---|---|
 | Game name / call word / colours / reaction emoji / Wild +4 effect on-off / game tabs on the home screen (`games`) | `public/config.js` (+ `manifest.webmanifest` for the installed app name) |
-| Rules, computer players, turn timer, settings defaults | `public/shared/game.js` |
+| Rules, computer players, turn timer, settings defaults | `public/shared/game.js` (card game), `public/shared/ludo.js` (Ludo; see `docs/LUDO.md`) |
 | Server: rooms, relays, lobby, presence, invites | `src/worker.js` |
 | Screens and markup | `public/index.html` |
 | Behaviour in the browser | `public/app.js` |

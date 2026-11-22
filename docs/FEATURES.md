@@ -2,7 +2,12 @@
 
 ## Game tabs (home screen)
 
-A row of tabs at the top of the home screen: **Kade Ondu** (this game), **Ludo** and **Ondu Ruthless**. The last two are marked "Soon" and are not built yet. Tapping one shows the game's name, a **"Brewing…"** notice with a steaming coffee cup, and a **Back to Kade Ondu** button. Joining a room (for example from an invite) always returns to the Kade Ondu tab. The tabs and their names come from `games` in `public/config.js`.
+A row of tabs at the top of the home screen: **Kade Ondu** (the card game), **Ludo** and **Ondu Ruthless**.
+
+- **Kade Ondu and Ludo** each have their own home: title, tagline, the list of that game's open rooms, New room and Vs computer. Everything below in this file is about the card game unless it says otherwise; **Ludo is described in [LUDO.md](LUDO.md)**.
+- **Ondu Ruthless** is marked "Soon" and is not built. Tapping it shows a **"Brewing…"** notice with a steaming coffee cup and a **Back to Kade Ondu** button.
+- Being in a room switches the tab to that room's game, so Leave brings you back to the right home.
+- The tabs and their names come from `games` in `public/config.js`.
 
 ## Getting into a game (home screen)
 

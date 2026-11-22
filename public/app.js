@@ -40,8 +40,12 @@
     $('brewing').classList.toggle('hidden', !brewing);
     $('homeTitle').textContent = g.label;
     $('brewGame').textContent = g.label;
+    document.querySelector('.home-card .tagline').textContent = (g === GAMES[0] ? CFG.tagline : g.tagline) || '';
+    document.body.dataset.tab = g.id; // the home screen's per-game lines follow this (style.css)
     if (brewing) window.scrollTo(0, 0);
+    try { renderRooms(lastRooms); } catch {} // the list shows this game's rooms (not ready yet during start-up)
   }
+  const tabGame = () => (currentGame === 'ludo' ? 'ludo' : ''); // what the room server calls the game on the open tab
   if (GAMES.length > 1) {
     const tabs = $('gameTabs');
     tabs.innerHTML = '';
@@ -90,9 +94,12 @@
     toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 7000);
   }
   function show(screen) {
-    for (const id of ['home', 'lobby', 'game']) $(id).classList.toggle('hidden', id !== screen);
-    if (screen !== 'home' && GAMES.length && currentGame !== GAMES[0].id) selectGame(GAMES[0].id); // joined a room from a "Brewing" tab (an invite): come back to this game's home
-    document.body.classList.toggle('in-game', screen === 'game'); // game screen fits the phone, no scrolling
+    for (const id of ['home', 'lobby', 'game', 'ludo']) $(id).classList.toggle('hidden', id !== screen);
+    if (screen !== 'home' && GAMES.length && !GAMES.find(g => g.id === currentGame)?.ready) selectGame(GAMES[0].id); // joined a room from a "Brewing" tab (an invite): come back to a real game's home
+    document.body.classList.toggle('in-game', screen === 'game' || screen === 'ludo'); // game screens fit the phone, no scrolling
+    // the small-buttons row (reactions, mute, skip, scores, mic) is shared: it sits under whichever game is on screen
+    const side = document.querySelector('.act-side'), host = $(screen === 'ludo' ? 'ludoActions' : 'gameActions');
+    if (side.parentNode !== host) { host.append(side); host.after($('micEnable')); }
     placeChatTab();
     requestAnimationFrame(placeChatTab); // again once the new screen has been laid out
   }
@@ -116,12 +123,17 @@
   function placeChatTab() {
     const tab = $('chatTab');
     const on = chatAvailable();
+    $('ludoActions').classList.toggle('with-chat', on); // the Roll row leaves room for the tab at the edge
     tab.classList.toggle('hidden', !on || chatOpen);
     if (!on) { if (chatOpen) setChatOpen(false); return; }
     // on the game screen it sits in the table's empty bottom corner; in the waiting room, mid-screen
     if (!$('game').classList.contains('hidden')) {
       const r = $('ring').getBoundingClientRect();
       tab.style.top = `${Math.max(60, r.bottom - tab.offsetHeight - 2)}px`;
+    } else if (!$('ludo').classList.contains('hidden')) {
+      // at the end of the Roll row, like one more button (the board fills the rest of the screen)
+      const r = $('ludoActions').querySelector('.act-main').getBoundingClientRect();
+      tab.style.top = `${Math.max(60, r.top + (r.height - tab.offsetHeight) / 2)}px`;
     } else tab.style.top = '42%';
     $('chatDot').classList.toggle('hidden', !chatUnread);
     tab.setAttribute('aria-label', chatUnread ? 'Open room chat (new messages)' : 'Open room chat');
@@ -212,10 +224,11 @@
   const VORDER = v => (/^\d$/.test(v) ? Number(v) : { skip: 10, rev: 11, d2: 12, wild: 13, wd4: 14 }[v]);
   const sortHand = h => [...h].sort((a, b) => ORDER[a.c] - ORDER[b.c] || VORDER(a.v) - VORDER(b.v));
 
+  const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || (n % 100 > 10 && n % 100 < 14) ? 0 : n % 10]}`;
   function logText(e) {
     switch (e.k) {
       case 'join': return `${e.p} joined`;
-      case 'watch': return `${e.p} is watching (joins next round)`;
+      case 'watch': return e.full ? `${e.p} is watching (all 4 seats are taken)` : S?.game === 'ludo' ? `${e.p} is watching` : `${e.p} is watching (joins next round)`;
       case 'leave': return `${e.p} left`;
       case 'kick': return `${e.p} was removed`;
       case 'idle': return `${e.p} was removed for being inactive`;
@@ -232,6 +245,14 @@
       case 'toofew': return 'Not enough players, back to the lobby';
       case 'timeout': return `Time's up for ${e.p}. Auto-move`;
       case 'timeup': return "Round time is up. Lowest card points wins";
+      // Ludo
+      case 'lstart': return `Game ${e.r} started. ${e.p} rolls first`;
+      case 'roll': return `${e.p} rolled ${e.d}`;
+      case 'nomove': return `${e.p} rolled ${e.d}: no move`;
+      case 'three6': return `${e.p} rolled three 6s: turn lost`;
+      case 'lmove': return e.cap ? `${e.p} sent ${e.cap[0].q} back home!` : e.home ? `${e.p} got a token home` : e.from === -1 ? `${e.p} brought a token out` : `${e.p} moved ${e.d}`;
+      case 'done': return `${e.p} finished ${ordinal(e.x)}!`;
+      case 'lend': return e.p ? `${e.p} wins the game` : 'Game over';
       default: return '';
     }
   }
@@ -270,6 +291,7 @@
         name: $('nameInput').value.trim() || store.get(NAME_KEY) || 'Player',
         playerId: s?.playerId, token: s?.token,
         create: !s && joinIntent.create, joinOnly: !joinIntent.create,
+        ...(joinIntent.create && joinIntent.game ? { game: joinIntent.game } : {}), // which game a new room plays
       }));
       clearInterval(pingTimer);
       pingTimer = setInterval(() => { if (ws?.readyState === 1) ws.send('ping'); }, 25000);
@@ -309,6 +331,7 @@
     $('colorPicker').classList.add('hidden');
     chatLog = []; chatUnread = false; setChatOpen(false); renderChat();
     closeKick(); wasIdleOut = false;
+    ludoReset();
     setNet();
     myName = $('nameInput').value.trim();
     inviteRoom = '';
@@ -333,7 +356,7 @@
     } else if (m.t === 'state') {
       render(m);
     } else if (m.t === 'error') {
-      if (m.code === 'taken' && createTries++ < 6) return connect(newCode(), { create: true });
+      if (m.code === 'taken' && createTries++ < 6) return connect(newCode(), { create: true, game: joinIntent.game });
       if (m.code === 'noroom') return goHome('No room with that code');
       toast(m.msg);
     } else if (m.t === 'kicked') {
@@ -367,6 +390,10 @@
     const me = s.players.find(p => p.id === s.you);
     const isHost = s.hostId === s.you;
     const name = id => s.players.find(p => p.id === id)?.name ?? '?';
+    const ludo = s.game === 'ludo';
+    // the home tab follows the game of the room you are in, so Leave brings you back to that game's home
+    const tab = ludo ? 'ludo' : GAMES[0]?.id;
+    if (GAMES.length > 1 && tab && currentGame !== tab && GAMES.some(g => g.id === tab)) selectGame(tab);
 
     // log + toasts for new events
     const fresh = s.log.filter(e => e.n > lastSeq);
@@ -374,7 +401,7 @@
       for (const e of fresh) {
         if (e.k === 'play' && e.card?.v === 'wd4' && s.settings.wd4Fx && FX.enabled) setTimeout(showDrawFour, 550); // let the +4 land first
         if (e.k === 'call') toast(logText(e), true);
-        else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast("Time's up! A move was made for you");
+        else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast(ludo ? "Time's up! The game played for you" : "Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
       }
     }
@@ -403,6 +430,32 @@
         ul.append(li);
       }
       $('hostSettings').classList.toggle('hidden', !isHost);
+      // which game this room plays decides which settings are shown
+      document.querySelectorAll('#lobby .only-ondu').forEach(x => x.classList.toggle('hidden', ludo));
+      document.querySelectorAll('#lobby .only-ludo').forEach(x => x.classList.toggle('hidden', !ludo));
+      $('lobbyGame').classList.toggle('hidden', !ludo);
+      $('lobbyGame').textContent = ludo ? '· 🎲 Ludo' : '';
+      const watching = s.spectators || [];
+      $('lobbyWatchers').classList.toggle('hidden', !watching.length);
+      $('lobbyWatchers').textContent = watching.length ? `👀 Watching (all 4 seats are taken): ${watching.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
+      if (ludo) {
+        for (const [id, key] of LUDO_RULES) $(id).checked = !!s.settings[key];
+        $('privateInput').checked = !!s.settings.private;
+        $('reactionsInput').checked = !!s.settings.reactions;
+        $('botLevelInput').value = s.settings.botLevel || 'normal';
+        $('turnTimeInput').value = String(s.settings.turnTime || 0);
+        $('addBotBtn').disabled = s.players.length >= 4;
+        $('guestSettings').textContent = isHost ? '' : ludoRulesText(s.settings) +
+          (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') +
+          ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
+          (s.settings.reactions ? ' · 😄 reactions on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
+        $('startBtn').classList.toggle('hidden', !isHost);
+        $('startBtn').disabled = s.players.length < 2;
+        $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players… (2 to 4)' : `Start Ludo (${s.players.length} players)`;
+        $('waitHost').classList.toggle('hidden', isHost);
+        return;
+      }
+      $('addBotBtn').disabled = false;
       $('stackingInput').checked = s.settings.stacking;
       $('wd4FxInput').checked = !!s.settings.wd4Fx;
       // effect switched off in config.js: no setting to show, and a room that still has it on is turned off
@@ -427,6 +480,8 @@
       return;
     }
 
+    if (ludo) return renderLudo(s, fresh, firstState);
+    $('nextRoundBtn').textContent = 'Next round'; // (the Ludo screen borrows this pop-up and renames the button)
     show('game');
     const myTurn = s.phase === 'playing' && s.turnId === s.you;
     if (myTurn && prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
@@ -620,6 +675,460 @@
     if (s.phase !== 'playing') $('colorPicker').classList.add('hidden');
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // Ludo. The rules live in shared/ludo.js (room server, and here for Play vs computer).
+  // This part draws the board, moves the tokens and runs the Roll button.
+  // ═══════════════════════════════════════════════════════════
+  const LUDO_RULES = [['ludoReleaseOne', 'releaseOne'], ['ludoCaptureBonus', 'captureBonus'], ['ludoHomeBonus', 'homeBonus'], ['ludoThreeSixes', 'threeSixes'], ['ludoBlocks', 'blocks']];
+  for (const [id, key] of LUDO_RULES) $(id).onchange = e => send({ t: 'settings', [key]: e.target.checked });
+  function ludoRulesText(st) {
+    return `out on a ${st.releaseOne ? '1 or 6' : '6'}` + (st.captureBonus ? ' · capture rolls again' : '') + (st.homeBonus ? ' · home rolls again' : '') +
+      (st.threeSixes ? ' · three 6s lose the turn' : '') + (st.blocks ? ' · blocks on' : '');
+  }
+
+  // The board is a 15 × 15 grid. Seat 0's yard is top left, then clockwise: 1 top right, 2 bottom right, 3 bottom left.
+  // LUDO_TRACK lists the 52 squares of the loop as [column, row], starting at seat 0's start square.
+  const LUDO_TRACK = (() => {
+    const P = [];
+    for (let c = 1; c <= 5; c++) P.push([c, 6]);
+    for (let r = 5; r >= 0; r--) P.push([6, r]);
+    P.push([7, 0]);
+    for (let r = 0; r <= 5; r++) P.push([8, r]);
+    for (let c = 9; c <= 14; c++) P.push([c, 6]);
+    P.push([14, 7]);
+    for (let c = 14; c >= 9; c--) P.push([c, 8]);
+    for (let r = 9; r <= 14; r++) P.push([8, r]);
+    P.push([7, 14]);
+    for (let r = 14; r >= 9; r--) P.push([6, r]);
+    for (let c = 5; c >= 0; c--) P.push([c, 8]);
+    P.push([0, 7], [0, 6]);
+    return P;
+  })();
+  const LUDO_START = [0, 13, 26, 39], LUDO_STARS = [8, 21, 34, 47];
+  const LUDO_COL = [
+    [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]], [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
+    [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]], [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],
+  ];
+  const LUDO_YARD = [[0, 0], [9, 0], [9, 9], [0, 9]];
+  const LUDO_HOME = [[6.55, 7.5], [7.5, 6.55], [8.45, 7.5], [7.5, 8.45]];
+  const LUDO_TRI = [[[6, 6], [6, 9]], [[6, 6], [9, 6]], [[9, 6], [9, 9]], [[6, 9], [9, 9]]]; // each seat's side of the centre
+  let ludoTurns = 0; // quarter turns clockwise, so that your own yard is bottom left
+  const ludoRot = (x, y) => { for (let k = 0; k < ludoTurns; k++) [x, y] = [15 - y, x]; return [x, y]; };
+  // Centre of the spot where a token stands, in board units (0–15), as shown on this phone
+  function ludoSpot(seat, t, i) {
+    let x, y;
+    if (t < 0) { const [ox, oy] = LUDO_YARD[seat]; x = ox + (i % 2 ? 4.05 : 1.95); y = oy + (i < 2 ? 1.95 : 4.05); }
+    else if (t <= 50) { const [c, r] = LUDO_TRACK[(LUDO_START[seat] + t) % 52]; x = c + .5; y = r + .5; }
+    else if (t <= 55) { const [c, r] = LUDO_COL[seat][t - 51]; x = c + .5; y = r + .5; }
+    else [x, y] = LUDO_HOME[seat];
+    return ludoRot(x, y);
+  }
+  function ludoStar(cx, cy, R = 3.1, r = 1.35) {
+    let d = '';
+    for (let k = 0; k < 10; k++) {
+      const a = -Math.PI / 2 + (k * Math.PI) / 5, rad = k % 2 ? r : R;
+      d += `${k ? 'L' : 'M'}${(cx + rad * Math.cos(a)).toFixed(2)} ${(cy + rad * Math.sin(a)).toFixed(2)}`;
+    }
+    return d + 'Z';
+  }
+  // Draw the board (original artwork: plain shapes in the game's four colours)
+  function ludoBuild() {
+    const U = 10, f = n => (n * U).toFixed(1);
+    const cell = (c, r, cls) => { const [x, y] = ludoRot(c + .5, r + .5); return `<rect class="${cls}" x="${f(x - .5)}" y="${f(y - .5)}" width="${U}" height="${U}"/>`; };
+    let h = '<rect class="lb-base" x="0" y="0" width="150" height="150" rx="6"/>';
+    for (let s = 0; s < 4; s++) {
+      const [ox, oy] = LUDO_YARD[s];
+      const [cx, cy] = ludoRot(ox + 3, oy + 3);
+      h += `<rect class="lb-yard ls${s}" x="${f(cx - 3)}" y="${f(cy - 3)}" width="60" height="60" rx="6"/>`;
+      h += `<rect class="lb-yard-in" x="${f(cx - 2.2)}" y="${f(cy - 2.2)}" width="44" height="44" rx="9"/>`;
+      for (let i = 0; i < 4; i++) { const [x, y] = ludoSpot(s, -1, i); h += `<circle class="lb-spot ls${s}" cx="${f(x)}" cy="${f(y)}" r="6.4"/>`; }
+    }
+    LUDO_TRACK.forEach(([c, r], k) => {
+      const s = LUDO_START.indexOf(k);
+      h += cell(c, r, s >= 0 ? `lb-cell lb-fill ls${s}` : 'lb-cell');
+    });
+    for (let s = 0; s < 4; s++) for (const [c, r] of LUDO_COL[s]) h += cell(c, r, `lb-cell lb-fill ls${s}`);
+    // centre: four triangles, one per colour, where the tokens finish
+    const [mx, my] = [75, 75];
+    for (let s = 0; s < 4; s++) {
+      const [a, b] = LUDO_TRI[s].map(([x, y]) => ludoRot(x, y));
+      h += `<path class="lb-tri ls${s}" d="M${f(a[0])} ${f(a[1])}L${f(b[0])} ${f(b[1])}L${mx} ${my}Z"/>`;
+    }
+    h += `<rect class="lb-mid" x="60" y="60" width="30" height="30"/>`;
+    // stars: safe squares (start squares are safe too, so they get a small one)
+    for (const k of LUDO_STARS) { const [x, y] = ludoRot(LUDO_TRACK[k][0] + .5, LUDO_TRACK[k][1] + .5); h += `<path class="lb-star" d="${ludoStar(x * U, y * U)}"/>`; }
+    for (const k of LUDO_START) { const [x, y] = ludoRot(LUDO_TRACK[k][0] + .5, LUDO_TRACK[k][1] + .5); h += `<path class="lb-star on-fill" d="${ludoStar(x * U, y * U, 2.6, 1.1)}"/>`; }
+    // a small arrow on the square where each colour turns into its home column
+    for (let s = 0; s < 4; s++) {
+      const [c, r] = LUDO_TRACK[(LUDO_START[s] + 50) % 52], [c2, r2] = LUDO_COL[s][0];
+      const [x, y] = ludoRot(c + .5, r + .5), [x2, y2] = ludoRot(c2 + .5, r2 + .5);
+      const ang = (Math.atan2(y2 - y, x2 - x) * 180) / Math.PI;
+      h += `<path class="lb-arrow ls${s}" transform="translate(${f(x)} ${f(y)}) rotate(${ang.toFixed(0)})" d="M-2.6 -2.8L2.8 0L-2.6 2.8Z"/>`;
+    }
+    $('ludoSvg').innerHTML = h;
+  }
+
+  // What the Ludo screen remembers between updates
+  let LU = null;
+  const ludoFresh = () => ({ turns: -1, pos: new Map(), els: new Map(), queue: [], busy: false, waiting: false, die: null, dieSeat: null, moving: null });
+  function ludoReset() {
+    LU = null;
+    $('ludoTokens').replaceChildren();
+    $('ludoTop').replaceChildren(); $('ludoBottom').replaceChildren();
+    $('scoresBtn').classList.add('hidden');
+    $('addBotEndBtn').disabled = false;
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const tokKey = (seat, i) => `${seat}-${i}`;
+
+  // Put every token on its spot. Tokens sharing a spot shrink and sit side by side.
+  function ludoPlace() {
+    const L = LU; if (!L) return;
+    const groups = new Map();
+    for (const [key, t] of L.pos) {
+      const node = L.els.get(key); if (!node) continue;
+      const [seat, i] = key.split('-').map(Number);
+      const [x, y] = ludoSpot(seat, t, i);
+      const g = key === L.moving ? 'moving' : `${x.toFixed(1)},${y.toFixed(1)}`;
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push({ node, x, y });
+    }
+    for (const [g, list] of groups) {
+      const n = list.length;
+      const sc = g === 'moving' ? 1.18 : n === 1 ? 1 : n === 2 ? .8 : n === 3 ? .72 : .64;
+      list.forEach((tk, k) => {
+        let dx = 0, dy = 0;
+        if (n === 2) dx = k ? .2 : -.2;
+        else if (n === 3) { dx = [-.2, .2, 0][k]; dy = [-.16, -.16, .2][k]; }
+        else if (n >= 4) { dx = k % 2 ? .21 : -.21; dy = (Math.floor(k / 2) - (Math.ceil(n / 2) - 1) / 2) * .4; }
+        tk.node.style.left = `${((tk.x + dx) / 15) * 100}%`;
+        tk.node.style.top = `${((tk.y + dy) / 15) * 100}%`;
+        tk.node.style.setProperty('--sc', sc);
+        tk.node.style.zIndex = g === 'moving' ? 30 : 10 + k;
+      });
+    }
+  }
+  // Show the board exactly as the game says it is (no animation)
+  function ludoSync(s) {
+    const L = LU; if (!L) return;
+    const want = new Set();
+    for (const p of s.players) {
+      if (p.seat == null) continue;
+      p.tokens.forEach((t, i) => {
+        const key = tokKey(p.seat, i);
+        want.add(key);
+        if (!L.els.has(key)) {
+          const b = el('button', `ltok ls${p.seat}`);
+          b.type = 'button';
+          b.dataset.seat = p.seat; b.dataset.i = i;
+          b.append(el('i'));
+          L.els.set(key, b);
+          $('ludoTokens').append(b);
+        }
+        L.pos.set(key, t);
+      });
+    }
+    for (const [key, node] of L.els) if (!want.has(key)) { node.remove(); L.els.delete(key); L.pos.delete(key); }
+    L.moving = null;
+    ludoPlace();
+    const lastRoll = [...s.log].reverse().find(e => e.k === 'roll');
+    ludoDie(s.phase === 'lobby' ? null : s.dice, lastRoll ? lastRoll.c : null);
+  }
+  function ludoDie(value, seat, rolling = false) {
+    const d = $('ludoDie');
+    d.className = 'die' + (seat != null ? ` ls${seat}` : '') + (rolling ? ' rolling' : '') + (value ? '' : ' blank');
+    d.dataset.v = value || '';
+    d.setAttribute('aria-label', value ? `Dice: ${value}` : 'Dice');
+    if (d.childElementCount !== 9) { d.replaceChildren(); for (let k = 0; k < 9; k++) d.append(el('i')); }
+  }
+  async function ludoRollAnim(e) {
+    for (let k = 0; k < 7; k++) { ludoDie(1 + Math.floor(Math.random() * 6), e.c, true); await sleep(75); }
+    ludoDie(e.d, e.c);
+    await sleep(220);
+  }
+  async function ludoMoveAnim(e) {
+    const L = LU; if (!L) return;
+    const key = tokKey(e.c, e.i), node = L.els.get(key);
+    if (!node) return;
+    L.moving = key;
+    if (e.from === -1) { L.pos.set(key, 0); ludoPlace(); await sleep(280); }
+    else for (let t = e.from + 1; t <= e.to; t++) { L.pos.set(key, t); ludoPlace(); await sleep(120); if (LU !== L) return; }
+    L.moving = null;
+    ludoPlace();
+    if (e.cap) {
+      for (const c of e.cap) {
+        const k2 = tokKey(c.c, c.i);
+        L.els.get(k2)?.classList.add('sent');
+        L.pos.set(k2, -1);
+      }
+      ludoPlace();
+      toast(logText(e));
+      const mine = S?.players.find(p => p.id === S.you);
+      if (mine && e.cap.some(c => c.c === mine.seat)) { try { navigator.vibrate?.([80, 60, 80]); } catch {} }
+      await sleep(450);
+      for (const c of e.cap) L.els.get(tokKey(c.c, c.i))?.classList.remove('sent');
+    }
+    if (e.home) { node.classList.add('arrived'); if (S?.phase !== 'ended') toast(logText(e)); await sleep(350); node.classList.remove('arrived'); } // (at the very end the pop-up says it)
+    await sleep(120);
+  }
+  // Play the new events one after another, then settle on the latest state
+  async function ludoRun() {
+    const L = LU;
+    if (!L || L.busy) return;
+    L.busy = true;
+    ludoControls();
+    while (LU === L && L.queue.length) {
+      const e = L.queue.shift();
+      if (e.k === 'sync') { ludoSync(e.s); continue; }
+      if (e.k === 'roll') await ludoRollAnim(e);
+      else if (e.k === 'lmove') await ludoMoveAnim(e);
+      else if (e.k === 'nomove' || e.k === 'three6') {
+        // your own "no move" is worth a word; other people's would be a toast on almost every roll early on
+        const mine = e.p === S?.players.find(p => p.id === S.you)?.name;
+        if (e.k === 'three6' || mine) toast(e.k === 'nomove' ? `No move with a ${e.d}` : logText(e));
+        await sleep(450);
+      }
+      else if (e.k === 'done') { if (S?.phase !== 'ended') { toast(logText(e), true); await sleep(550); } } // at the very end the pop-up says it
+    }
+    if (LU !== L) return;
+    L.busy = false;
+    ludoControls();
+  }
+
+  // Name plates in the four corners, next to each player's yard
+  function ludoPlates(s) {
+    const corners = [null, null, null, null]; // 0 top left, 1 top right, 2 bottom right, 3 bottom left
+    for (const p of s.players) if (p.seat != null) corners[(p.seat + ludoTurns) % 4] = p;
+    const plate = p => {
+      if (!p) return el('div', 'lplate empty');
+      const d = el('div', `lplate ls${p.seat}` + (p.id === s.turnId ? ' turn' : '') + (p.online ? '' : ' away') + (p.id === s.you ? ' me' : '') + (p.place ? ' done' : ''));
+      d.dataset.id = p.id;
+      const home = p.tokens.filter(t => t === 56).length;
+      const pips = el('span', 'lp-home');
+      for (let k = 0; k < 4; k++) pips.append(el('i', k < home ? 'in' : ''));
+      pips.setAttribute('aria-label', `${home} of 4 home`);
+      d.append(el('i', 'lp-dot'), el('span', 'lp-name', (p.bot ? '🤖 ' : '') + p.name), pips);
+      if (p.place) d.append(el('span', 'lp-place', ordinal(p.place)));
+      else if (p.wins) d.append(el('span', 'lp-wins', `🏆${p.wins}`));
+      if (p.idleOut && !s.spectating && p.id !== s.you) {
+        const x = el('button', 'lp-x', '✕');
+        x.setAttribute('aria-label', `Remove ${p.name} for being inactive`);
+        x.onclick = () => askKick(p);
+        d.append(x);
+      }
+      d.append(el('i', 'lp-clock'));
+      return d;
+    };
+    $('ludoTop').replaceChildren(plate(corners[0]), plate(corners[1]));
+    $('ludoBottom').replaceChildren(plate(corners[3]), plate(corners[2]));
+  }
+
+  function renderLudo(s, fresh, firstState) {
+    const L = LU || (LU = ludoFresh());
+    show('ludo');
+    L.waiting = false;
+    const mine = s.players.find(p => p.id === s.you);
+    const seated = !!mine && mine.seat != null && !s.spectating;
+    const isHost = s.hostId === s.you;
+    const myTurn = s.phase === 'playing' && s.turnId === s.you && seated;
+    if (myTurn && prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
+    prevTurn = s.turnId;
+
+    // your own yard is always bottom left
+    const turns = seated ? (3 - mine.seat + 4) % 4 : 0;
+    const rebuilt = turns !== L.turns || !$('ludoSvg').childElementCount;
+    if (rebuilt) { ludoTurns = L.turns = turns; ludoBuild(); }
+    ludoPlates(s);
+
+    const w = $('ludoWatchers');
+    w.classList.toggle('hidden', !s.spectators.length);
+    w.textContent = s.spectators.length ? `👀 Watching: ${s.spectators.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
+
+    // the shared small-buttons row
+    if (mine?.idleOut && !wasIdleOut) toastLong('You have missed 5 turns in a row. Play your next turn, or the others can remove you.');
+    wasIdleOut = !!mine?.idleOut;
+    if (kickTarget && !s.players.some(p => p.id === kickTarget && p.idleOut)) closeKick();
+    const home = seated ? mine.tokens.filter(t => t === 56).length : 0;
+    $('myInfo').textContent = seated ? `${home} of 4 home` + (mine.wins ? ` · 🏆 ${mine.wins}` : '') : '';
+    $('micBtn').classList.toggle('hidden', !!solo);
+    $('muteBtn').classList.toggle('hidden', !!solo);
+    $('reactBtn').classList.toggle('hidden', !s.settings.reactions);
+    if (!s.settings.reactions) $('reactTray').classList.add('hidden');
+    updateMicEnable();
+    const turnPlayer = s.players.find(p => p.id === s.turnId);
+    $('skipTurnBtn').classList.toggle('hidden', !(isHost && s.phase === 'playing' && turnPlayer && !turnPlayer.online && turnPlayer.id !== s.you));
+
+    // clocks count from the moment this state arrived (see the card game's render)
+    const at = s._at ?? (s._at = Date.now());
+    deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? at + s.deadlineIn : null;
+    turnLength = (s.settings.turnTime || 0) * 1000;
+    roundEndAt = null;
+    buzzed = false;
+
+    // what just happened: play it step by step, unless there is nothing to show or too much has piled up
+    const evs = firstState || rebuilt || reduceMotion || document.hidden ? [] : fresh.filter(e => ['roll', 'lmove', 'nomove', 'three6', 'done'].includes(e.k));
+    if (L.queue.length > 14) L.queue.length = 0;
+    if (!evs.length && !L.busy) ludoSync(s);
+    else L.queue.push(...evs, { k: 'sync', s });
+    ludoRun();
+    ludoControls();
+    tickLudoClock();
+  }
+
+  // Roll button, status line, which tokens can be tapped, and the game-over pop-up.
+  // Called again when the animations finish, so nothing is offered before the board has caught up.
+  function ludoControls() {
+    const s = S, L = LU;
+    if (!s || s.game !== 'ludo' || !L || s.phase === 'lobby') return;
+    const busy = L.busy;
+    const mine = s.players.find(p => p.id === s.you);
+    const seated = !!mine && mine.seat != null && !s.spectating;
+    const isHost = s.hostId === s.you;
+    const playing = s.phase === 'playing';
+    const myTurn = playing && s.turnId === s.you && seated;
+    const canRoll = myTurn && s.step === 'roll' && !busy && !L.waiting;
+    const choosing = myTurn && s.step === 'move' && !busy && !L.waiting;
+    const who = s.players.find(p => p.id === s.turnId)?.name ?? '?';
+
+    const roll = $('ludoRoll');
+    roll.classList.toggle('hidden', !playing || !seated);
+    roll.disabled = !canRoll;
+    roll.classList.toggle('go', canRoll);
+    roll.textContent = choosing ? 'Tap a token' : 'Roll';
+    $('ludoDie').classList.toggle('hidden', s.phase === 'ended' && !busy);
+
+    for (const [key, node] of L.els) {
+      const [seat, i] = key.split('-').map(Number);
+      const can = choosing && seat === mine.seat && s.movable.includes(i);
+      node.classList.toggle('can', can);
+      node.disabled = !can;
+      node.setAttribute('aria-label', can ? `Move this token ${s.dice}` : 'Token');
+    }
+
+    $('ludo').classList.toggle('busy', busy); // (the browser tests wait on this)
+    // The status line changes only once the board has caught up, so it never gives a roll away early
+    const st = $('ludoStatus');
+    if (!busy || !st.textContent) {
+      st.querySelector('.secs')?.remove();
+      st.classList.toggle('mine', myTurn);
+      st.textContent = s.phase === 'ended' ? 'Game over'
+        : !seated ? `Watching · ${who}'s turn`
+        : myTurn ? (s.step === 'move' ? `You rolled ${s.dice}: tap a token to move` : s.sixes ? 'Roll again!' : 'Your turn: roll the dice')
+        : `${who}'s turn`;
+    }
+
+    // game over: the places, once the last move has been shown
+    const over = s.phase === 'ended' && !!s.lastRound && !busy;
+    if (s.phase !== 'ended') endClosedRound = null;
+    if (!over) $('endOverlay').classList.add('hidden');
+    const closed = over && endClosedRound === s.round;
+    $('scoresBtn').classList.toggle('hidden', !closed);
+    $('ludoAgain').classList.toggle('hidden', !(closed && isHost));
+    $('ludoAgain').disabled = s.players.length < 2;
+    if (over) {
+      $('endOverlay').classList.toggle('hidden', closed);
+      const name = id => s.players.find(p => p.id === id)?.name ?? '?';
+      const w = s.lastRound.winnerId;
+      $('endTitle').textContent = w === s.you ? 'You win! 🎉' : `${name(w)} wins!`;
+      $('endPoints').textContent = 'Final places';
+      const ol = $('scoreList');
+      ol.replaceChildren();
+      s.lastRound.places.filter(id => s.players.some(p => p.id === id)).forEach((id, k) => {
+        const li = el('li', '', `${['🥇', '🥈', '🥉'][k] || '🎲'} ${name(id)}` + (id === s.you ? ' (you)' : ''));
+        const wins = s.players.find(p => p.id === id)?.wins || 0;
+        li.append(el('span', '', wins ? `🏆 ${wins}` : '')); // games won in this room
+        ol.append(li);
+      });
+      $('nextRoundBtn').textContent = 'Play again';
+      $('nextRoundBtn').classList.toggle('hidden', !isHost);
+      $('nextRoundBtn').disabled = s.players.length < 2;
+      $('addBotEndBtn').classList.toggle('hidden', !isHost);
+      $('addBotEndBtn').disabled = s.players.length >= 4;
+      $('endWait').classList.toggle('hidden', isHost);
+    }
+    placeChatTab();
+  }
+
+  function tickLudoClock() {
+    const st = $('ludoStatus');
+    st.querySelector('.secs')?.remove();
+    document.querySelectorAll('.lplate.timing').forEach(x => x.classList.remove('timing', 'hurry'));
+    if (!deadlineAt || !S || S.phase !== 'playing' || LU?.busy) return;
+    const left = Math.max(0, deadlineAt - Date.now());
+    const secs = Math.ceil(left / 1000);
+    const hurry = secs <= 5;
+    const plate = [...document.querySelectorAll('.lplate')].find(x => x.dataset.id === S.turnId);
+    if (plate) {
+      plate.classList.add('timing');
+      plate.classList.toggle('hurry', hurry);
+      plate.style.setProperty('--left', turnLength ? Math.min(1, left / turnLength).toFixed(3) : 1);
+    }
+    st.append(el('span', 'secs' + (hurry ? ' hurry' : ''), `${Math.min(secs, Math.round(turnLength / 1000) || secs)}s`));
+    if (hurry && !buzzed && S.turnId === S.you) { buzzed = true; try { navigator.vibrate?.([60, 60, 60]); } catch {} }
+  }
+
+  $('ludoRoll').onclick = () => {
+    if (!LU || LU.busy || LU.waiting) return;
+    LU.waiting = true; // one tap, one roll: wait for the answer
+    ludoControls();
+    send({ t: 'roll' });
+  };
+  $('ludoAgain').onclick = () => send({ t: 'start' });
+  // Tapping the board picks the nearest token that can move, so small tokens are still easy to hit
+  $('ludoBoard').addEventListener('click', ev => {
+    const s = S, L = LU;
+    if (!s || s.game !== 'ludo' || !L || L.busy || L.waiting || s.turnId !== s.you || s.step !== 'move' || !s.movable?.length) return;
+    const mine = s.players.find(p => p.id === s.you);
+    if (!mine || mine.seat == null) return;
+    let pick = null;
+    const hit = ev.target.closest?.('.ltok.can');
+    if (hit) pick = Number(hit.dataset.i);
+    else {
+      const r = $('ludoBoard').getBoundingClientRect();
+      const x = ((ev.clientX - r.left) / r.width) * 15, y = ((ev.clientY - r.top) / r.height) * 15;
+      let best = 1.7; // within about one and a half squares
+      for (const i of s.movable) {
+        const [tx, ty] = ludoSpot(mine.seat, mine.tokens[i], i);
+        const dist = Math.hypot(tx - x, ty - y);
+        if (dist < best) { best = dist; pick = i; }
+      }
+    }
+    if (pick === null) return;
+    L.waiting = true;
+    ludoControls();
+    send({ t: 'move', token: pick });
+  });
+
+  // Ludo vs computer: the whole game runs here on the phone (same idea as the card game's solo mode)
+  async function startSoloLudo() {
+    let G;
+    try { G = await import('./shared/ludo.js'); }
+    catch { return toast("Couldn't load the game. Check your connection and try again"); }
+    const s = G.newRoom();
+    s.settings.releaseOne = $('lsoloReleaseOne').checked;
+    s.settings.captureBonus = $('lsoloCaptureBonus').checked;
+    s.settings.homeBonus = $('lsoloHomeBonus').checked;
+    s.settings.threeSixes = $('lsoloThreeSixes').checked;
+    s.settings.blocks = $('lsoloBlocks').checked;
+    s.settings.botLevel = $('lsoloLevel').value;
+    s.settings.turnTime = Number($('lsoloTime').value);
+    s.settings.reactions = $('lsoloReactions').checked;
+    const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
+    for (let i = 0; i < Number($('lsoloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
+    G.handle(s, me.id, { t: 'start' });
+    solo = { G, s, me: me.id, timer: null };
+    S = null; lastSeq = 0; prevTurn = null;
+    ludoReset();
+    $('roomChip').textContent = 'VS COMPUTER';
+    $('roomChip').classList.remove('hidden');
+    $('leaveBtn').classList.remove('hidden');
+    $('inviteTopBtn').classList.add('hidden');
+    soloRender();
+    soloKick();
+  }
+  $('lsoloCancel').onclick = () => $('ludoSoloModal').classList.add('hidden');
+  $('lsoloStart').onclick = () => { $('ludoSoloModal').classList.add('hidden'); startSoloLudo(); };
+
   // ── Wild +4 effect: Mani grows over the deck with an evil laugh ──
   const FX = CFG.drawFourEffect || {};
   let wd4OffSent = false;
@@ -699,7 +1208,7 @@
   let resizeRaf = 0;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(resizeRaf);
-    resizeRaf = requestAnimationFrame(() => { if (S && !$('game').classList.contains('hidden')) render(S); });
+    resizeRaf = requestAnimationFrame(() => { if (S && !($('game').classList.contains('hidden') && $('ludo').classList.contains('hidden'))) render(S); });
   });
 
   // ── Emoji reactions ───────────────────────────────────────
@@ -752,7 +1261,7 @@
     const lefty = document.body.classList.contains('lefty');
     const edge = Math.min(64, innerWidth * 0.16);
     const baseX = lefty ? edge : innerWidth - edge;
-    const actions = document.querySelector('.actions')?.getBoundingClientRect();
+    const actions = document.querySelector('.screen:not(.hidden) .actions')?.getBoundingClientRect();
     const startY = (actions && actions.top > 0 ? actions.top : innerHeight * 0.7) - 70;
     const endY = Math.max(70, innerHeight * 0.14);
     const isMe = name === S?.players.find(p => p.id === S.you)?.name;
@@ -787,6 +1296,7 @@
     rc.classList.toggle('hurry', secs <= 30);
   }
   function tickClock() {
+    if (S?.game === 'ludo') return tickLudoClock();
     tickRoundClock();
     const st = $('status');
     st.querySelector('.secs')?.remove();
@@ -1157,8 +1667,9 @@
     };
   }
 
-  function renderRooms(rooms) {
-    lastRooms = rooms;
+  function renderRooms(all) {
+    lastRooms = all;
+    const rooms = all.filter(r => (r.game || '') === tabGame()); // each game's home lists its own rooms
     $('roomsCount').textContent = rooms.length ? `${rooms.length} open` : '';
     updateInviteCard();
     const ul = $('roomList');
@@ -1172,7 +1683,7 @@
         el('div', 'rmeta', `${r.code} · ${r.players} playing` + (r.watching ? ` · ${r.watching} watching` : '')),
       );
       const live = r.phase === 'playing';
-      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? 'Between rounds' : 'Waiting');
+      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? (r.game === 'ludo' ? 'Game over' : 'Between rounds') : 'Waiting');
       const btn = el('button', live ? 'ghost small' : 'primary small', live ? 'Watch' : 'Join');
       btn.onclick = () => {
         if (needName()) return;
@@ -1204,7 +1715,7 @@
           pendingInvites = [p.id];
           createTries = 0;
           session = null;
-          connect(newCode(), { create: true });
+          connect(newCode(), { create: true, game: tabGame() });
         } else {
           sendInvite(p.id);
         }
@@ -1236,9 +1747,10 @@
   function showInvite(m) {
     if (inRoom() || solo) return; // already playing somewhere
     currentInvite = m;
-    $('inviteTitle').textContent = `${m.from} invited you to play ${CFG.name}`;
+    const ludoInvite = m.game === 'ludo';
+    $('inviteTitle').textContent = `${m.from} invited you to play ${ludoInvite ? (GAMES.find(g => g.id === 'ludo')?.label || 'Ludo') : CFG.name}`;
     $('inviteSub').textContent = m.phase === 'playing'
-      ? `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`
+      ? (ludoInvite ? `${m.roomHost}'s room (${m.room}) is in the middle of a game. You can watch.` : `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`)
       : `${m.roomHost}'s room · ${m.room}`;
     $('inviteModal').classList.remove('hidden');
     startRinging();
@@ -1366,7 +1878,7 @@
     if (needName()) return;
     createTries = 0;
     session = null;
-    connect(newCode(), { create: true });
+    connect(newCode(), { create: true, game: tabGame() });
   };
   function joinFromInput() {
     if (needName()) return;
@@ -1443,7 +1955,7 @@
   $('skipTurnBtn').onclick = () => send({ t: 'skipturn' });
   $('leaveBtn').onclick = () => {
     if (solo) { if (confirm('Quit this game?')) goHome(); return; }
-    if (!confirm('Leave this room? Your cards go back in the deck.')) return;
+    if (!confirm(S?.game === 'ludo' ? 'Leave this room? Your tokens come off the board.' : 'Leave this room? Your cards go back in the deck.')) return;
     leaving = true;
     if (ws?.readyState === 1) send({ t: 'leave' }); else goHome();
   };
@@ -1519,7 +2031,7 @@
   }
   $('soloBtn').onclick = () => {
     if (needName()) return;
-    $('soloModal').classList.remove('hidden');
+    $(currentGame === 'ludo' ? 'ludoSoloModal' : 'soloModal').classList.remove('hidden');
   };
   $('soloCancel').onclick = () => $('soloModal').classList.add('hidden');
   $('soloStart').onclick = () => { $('soloModal').classList.add('hidden'); startSolo(); };

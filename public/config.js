@@ -8,12 +8,13 @@ window.GAME_CONFIG = {
   tagline: 'Race to your last card. Anyone with the link can play.',
   credits: 'Created by Vinay Ramakrishnan',   // shown at the bottom of the home screen
 
-  // Game tabs at the top of the home screen. The first one is this game (it uses `name` above).
+  // Game tabs at the top of the home screen. The first one is this game (it uses `name` and `tagline` above).
   // A tab with ready: false shows a "Brewing…" notice with a steaming coffee cup instead of a game.
   // Rename a tab by changing its label. Set ready: true only once that game has been built.
+  // (The id 'ludo' is what the room server knows the Ludo game by: don't change it.)
   games: [
     { id: 'ondu', ready: true },
-    { id: 'ludo', label: 'Ludo', ready: false },
+    { id: 'ludo', label: 'Ludo', ready: true, tagline: 'Roll, race and send them home. 2 to 4 players, anyone with the link can play.' },
     { id: 'ruthless', label: 'Ondu Ruthless', ready: false },   // the tougher, no-holds-barred version of this game
   ],
 

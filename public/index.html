@@ -68,7 +68,8 @@
         <ol class="how">
           <li><b>Join</b> a friend's game, or start your own room</li>
           <li><b>Share</b> the link so others can join</li>
-          <li><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
+          <li class="tab-ondu"><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
+          <li class="tab-ludo"><b>Roll</b> the dice and race all four tokens home</li>
         </ol>
       </section>
 
@@ -127,7 +128,7 @@
   <!-- Lobby -->
   <main id="lobby" class="screen hidden">
     <div class="lobby-card">
-      <p class="muted">Room code</p>
+      <p class="muted">Room code <span id="lobbyGame" class="lobby-game hidden"></span></p>
       <div id="lobbyCode" class="big-code"></div>
       <div class="share-row">
         <button id="shareBtn" class="secondary">Share link</button>
@@ -136,18 +137,25 @@
       <button id="inviteLobbyBtn" class="secondary">👥 Invite people who are online</button>
       <h3>Players <span id="playerCount" class="muted"></span></h3>
       <ul id="lobbyPlayers" class="lobby-players"></ul>
+      <p id="lobbyWatchers" class="muted small-text hidden"></p>
       <div id="hostSettings" class="settings hidden">
-        <label class="toggle"><input type="checkbox" id="stackingInput"> Allow stacking +2 / +4</label>
-        <label class="toggle"><input type="checkbox" id="wd4FxInput"> Wild +4 laugh animation</label>
+        <label class="toggle only-ondu"><input type="checkbox" id="stackingInput"> Allow stacking +2 / +4</label>
+        <label class="toggle only-ondu"><input type="checkbox" id="wd4FxInput"> Wild +4 laugh animation</label>
+        <!-- Ludo house rules (classic by default) -->
+        <label class="toggle only-ludo"><input type="checkbox" id="ludoReleaseOne"> A 1 also brings a token out</label>
+        <label class="toggle only-ludo"><input type="checkbox" id="ludoCaptureBonus"> Capturing gives another roll</label>
+        <label class="toggle only-ludo"><input type="checkbox" id="ludoHomeBonus"> Getting a token home gives another roll</label>
+        <label class="toggle only-ludo"><input type="checkbox" id="ludoThreeSixes"> Three 6s in a row lose the turn</label>
+        <label class="toggle only-ludo"><input type="checkbox" id="ludoBlocks"> Two tokens on a square form a block</label>
         <label class="toggle"><input type="checkbox" id="reactionsInput"> 😄 Emoji reactions</label>
         <label class="toggle"><input type="checkbox" id="privateInput"> 🔒 Private room <span class="muted small-text">(hidden from Open rooms; join only with the link or code)</span></label>
-        <label class="field inline">Cards per hand
+        <label class="field inline only-ondu">Cards per hand
           <select id="handSizeInput"><option>5</option><option selected>7</option><option>10</option></select>
         </label>
         <label class="field inline">Time per turn
           <select id="turnTimeInput"><option value="0">Off</option><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select>
         </label>
-        <label class="field inline">End round after
+        <label class="field inline only-ondu">End round after
           <select id="roundTimeInput"><option value="0">Off</option><option value="3" selected>3 min</option><option value="5">5 min</option><option value="7">7 min</option><option value="10">10 min</option></select>
         </label>
         <label class="field inline">Computer players
@@ -181,7 +189,7 @@
     <div id="watchers" class="watchers hidden"></div>
     <div id="status" class="status"></div>
     <!-- Controls. Top row: the three game buttons, always in the same place. Bottom row: the small ones, mic at the far end. -->
-    <div class="actions">
+    <div id="gameActions" class="actions">
       <div class="act-main">
         <button id="catchBtn" class="catch-btn" disabled title="Catch a player who forgot to call">Catch!</button>
         <button id="callBtn" class="call" data-call disabled>Call</button>
@@ -203,6 +211,55 @@
     <div id="watchNote" class="watch-note hidden">👀 You're watching this round. You'll be dealt in when it ends.</div>
     <div id="logLine" class="log-line"></div>
   </main>
+
+  <!-- Ludo board. Your own colour is always bottom left. The small-buttons row (😄 🔈 … 🎙) is the same
+       one the card game uses: app.js moves it here while a Ludo game is on screen. -->
+  <main id="ludo" class="screen hidden">
+    <div class="ludo-wrap">
+      <div class="ludo-stack">
+        <div id="ludoTop" class="lplates"></div>
+        <div id="ludoBoard" class="ludo-board">
+          <svg id="ludoSvg" viewBox="0 0 150 150" aria-hidden="true"></svg>
+          <div id="ludoTokens" class="ludo-tokens"></div>
+        </div>
+        <div id="ludoBottom" class="lplates"></div>
+      </div>
+    </div>
+    <div id="ludoWatchers" class="watchers hidden"></div>
+    <div id="ludoStatus" class="status" aria-live="polite"></div>
+    <div id="ludoActions" class="actions ludo-actions">
+      <div class="act-main">
+        <div id="ludoDie" class="die" role="img" aria-label="Dice"></div>
+        <button id="ludoRoll" class="roll-btn" disabled>Roll</button>
+        <button id="ludoAgain" class="primary hidden">Play again</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Ludo: play vs computer set-up -->
+  <div id="ludoSoloModal" class="overlay hidden">
+    <div class="modal">
+      <h3>🤖 Ludo vs computer</h3>
+      <label class="field inline">Computer players
+        <select id="lsoloCount"><option>1</option><option>2</option><option selected>3</option></select>
+      </label>
+      <label class="field inline">Level
+        <select id="lsoloLevel"><option value="easy">Easy</option><option value="normal" selected>Normal</option></select>
+      </label>
+      <label class="field inline">Time per turn
+        <select id="lsoloTime"><option value="0">Off</option><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select>
+      </label>
+      <label class="toggle"><input type="checkbox" id="lsoloReleaseOne"> A 1 also brings a token out</label>
+      <label class="toggle"><input type="checkbox" id="lsoloCaptureBonus" checked> Capturing gives another roll</label>
+      <label class="toggle"><input type="checkbox" id="lsoloHomeBonus" checked> Getting a token home gives another roll</label>
+      <label class="toggle"><input type="checkbox" id="lsoloThreeSixes" checked> Three 6s in a row lose the turn</label>
+      <label class="toggle"><input type="checkbox" id="lsoloBlocks"> Two tokens on a square form a block</label>
+      <label class="toggle"><input type="checkbox" id="lsoloReactions"> 😄 Emoji reactions</label>
+      <p class="muted small-text">Just you and the computer. No room, nobody else can see it.</p>
+      <button id="lsoloStart" class="primary big">Start</button>
+      <button id="lsoloCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
 
   <!-- Round over -->
   <div id="endOverlay" class="overlay hidden">

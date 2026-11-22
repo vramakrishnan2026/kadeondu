@@ -1,4 +1,4 @@
-# Game tabs on the home screen: Kade Ondu (the game), plus Ludo and Ondu Ruthless, which show "Brewing…" until built.
+# Game tabs on the home screen: Kade Ondu and Ludo are games; Ondu Ruthless shows "Brewing…" until it is built.
 import asyncio
 from playwright.async_api import async_playwright
 BASE='http://localhost:8788/'
@@ -13,7 +13,12 @@ async def main():
         print('tabs:', tabs)
         print('first tab selected, game shown:', await a.get_attribute('.game-tab >> nth=0','aria-selected'), await a.is_visible('#nameStep'), not await a.is_visible('#brewing'), '| title:', await a.text_content('#homeTitle'))
         await a.screenshot(path='tabs1_home.png')
-        for i,name in ((1,'Ludo'),(2,'Ondu Ruthless')):
+        # Ludo is a real game: its own title, tagline and "how it works" line, no Brewing notice
+        await a.click('.game-tab >> nth=1'); await a.wait_for_timeout(300)
+        print('Ludo: title', await a.text_content('#homeTitle'), '| no brewing', not await a.is_visible('#brewing'), '| name step', await a.is_visible('#nameStep'), '| tagline:', await a.text_content('.home-card .tagline'),
+              '| how:', await a.locator('.how li:visible').last.inner_text())
+        await a.screenshot(path='tabs2_ludo.png')
+        for i,name in ((2,'Ondu Ruthless'),):
             await a.click(f'.game-tab >> nth={i}'); await a.wait_for_timeout(900)
             print(f'{name}: brewing shown', await a.is_visible('#brewing'), '| cup', await a.is_visible('#brewing .cup'), '| text:', ' '.join((await a.inner_text('#brewing')).split()),
                   '| game hidden', not await a.is_visible('#nameStep') and not await a.is_visible('#menu'), '| title:', await a.text_content('#homeTitle'),
@@ -27,7 +32,7 @@ async def main():
         await a.click('#brewBack'); await a.wait_for_timeout(200)
         print('Back button:', await a.is_visible('#nameStep'), not await a.is_visible('#brewing'), await a.text_content('#homeTitle'), '| tagline back', await a.is_visible('.tagline'))
         await a.fill('#nameInput','Arun'); await a.click('#nameGo'); await a.wait_for_timeout(300)
-        await a.click('.game-tab >> nth=1'); print('menu hidden while brewing:', not await a.is_visible('#menu'))
+        await a.click('.game-tab >> nth=2'); print('menu hidden while brewing:', not await a.is_visible('#menu'))
         await a.click('.game-tab >> nth=0'); print('menu back:', await a.is_visible('#menu'))
         await a.screenshot(path='tabs4_menu.png')
         await a.click('#createBtn'); await a.wait_for_selector('#lobby:not(.hidden)'); print('new room still works: True')

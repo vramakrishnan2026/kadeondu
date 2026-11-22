@@ -1,6 +1,6 @@
 # Kade Ondu
 
-A multiplayer last-card game for friends, played in the browser and installable as a phone app.
+Multiplayer games for friends, played in the browser and installable as a phone app: **Kade Ondu**, a last-card game, and **Ludo**.
 **Live:** https://kadeondu.goarena.workers.dev
 
 Created by **Vinay Ramakrishnan**.
@@ -12,7 +12,8 @@ The game supports any number of players: an extra deck is added for every 10 pla
 
 | File | What's in it |
 |---|---|
-| [docs/FEATURES.md](docs/FEATURES.md) | Everything the game does, every setting and its default |
+| [docs/FEATURES.md](docs/FEATURES.md) | Everything the card game does, every setting and its default |
+| [docs/LUDO.md](docs/LUDO.md) | Ludo: rules, house-rule settings, how it is built and tested |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: Cloudflare Worker, room servers, message protocol, files |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Accounts, how deploys work, domains, free-plan limits, troubleshooting |
 | [docs/DESIGN.md](docs/DESIGN.md) | Look and feel, design decisions, and the feedback behind them |
@@ -36,7 +37,8 @@ public/            the game page (served as static files)
   app.js           the browser side: screens, rendering, animations, voice, stickers, solo games
   style.css        all styling
   config.js        name, call word, colours, Wild +4 effect, sticker captions  ← rename / tweak here
-  shared/game.js   the rules engine and computer players (used by the server AND by Play vs computer)
+  shared/game.js   the card game's rules engine and computer players (used by the server AND by Play vs computer)
+  shared/ludo.js   the same for Ludo
   sw.js            offline helper (network first). Bump CACHE when adding new assets
   manifest.webmanifest, icons/, favicon.png    installable app
   fonts/           Inter Black Italic (subset, open licence) for card numbers

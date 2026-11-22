@@ -1,7 +1,10 @@
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto';
 import worker, { GameRoom, Lobby } from './mock/worker.js';
+import * as LudoRules from './mock/ludo.js'; // the same copy the mock room server uses, so tests can fix the dice
 const PUB = path.resolve(new URL('../public', import.meta.url).pathname);
 const rooms = new Map();
+const fixedDice = new Map(); // room code -> rolls still to come (see /__test/die)
+LudoRules._test.die = state => { for (const [code, r] of rooms) if (r.room === state) { const q = fixedDice.get(code); if (q?.length) return q.shift(); } return 1 + Math.floor(Math.random() * 6); };
 function makeCtx(){ const store=new Map(); const sockets=new Set();
   return { sockets, storage:{ get:async k=>store.has(k)?structuredClone(store.get(k)):undefined, put:async(k,v)=>store.set(k,structuredClone(v)), setAlarm:async()=>{}, deleteAll:async()=>store.clear(),
       delete:async k=>{ for(const x of [].concat(k)) store.delete(x) },
@@ -25,6 +28,11 @@ const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x');
   // Test-only: mark ?name= as having forgotten to call (so others can Catch! them), give ?name= ?score= points, or set their idle count with ?idle=
   if(u.pathname==='/__test/rig'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); const p=r&&r.room.players.find(x=>x.name===u.searchParams.get('name')); if(!p){res.writeHead(404);return res.end('no such player')}
     if(u.searchParams.has('score')) p.score=Number(u.searchParams.get('score')); else if(u.searchParams.has('idle')) p.idle=Number(u.searchParams.get('idle')); else r.room.vulnerable=p.id; r.broadcast(); res.writeHead(200); return res.end('ok') }
+  // Test-only (Ludo): put ?name='s tokens at ?tokens=a,b,c,d (progress values, -1 = yard, 56 = home), or set their idle count with ?idle=
+  if(u.pathname==='/__test/ludo'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); const p=r&&r.room.players.find(x=>x.name===u.searchParams.get('name')); if(!p||r.room.game!=='ludo'){res.writeHead(404);return res.end('no such Ludo player')}
+    if(u.searchParams.has('idle')) p.idle=Number(u.searchParams.get('idle')); else p.tokens=u.searchParams.get('tokens').split(',').map(Number); r.broadcast(); res.writeHead(200); return res.end('ok') }
+  // Test-only (Ludo): the next rolls in ?room= come up as ?seq=6,3,… (then that room's dice are random again). Other rooms are not affected.
+  if(u.pathname==='/__test/die'){ const code=(u.searchParams.get('room')||'').toUpperCase(); fixedDice.set(code,(u.searchParams.get('seq')||'').split(',').filter(Boolean).map(Number)); res.writeHead(200); return res.end('ok') }
   // Test-only: pretend the next connections come from another place
   if(u.pathname==='/__test/geo'){ testGeo={city:u.searchParams.get('city')||'',region:u.searchParams.get('region')||'',country:u.searchParams.get('country')||''}; res.writeHead(200); return res.end('ok') }
   // Test-only shortcut (stand-in only, not in the real Worker): make a room's round time limit run out in ?ms= milliseconds

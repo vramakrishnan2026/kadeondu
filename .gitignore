@@ -2,6 +2,7 @@ node_modules/
 .wrangler/
 .dev.vars
 tests/mock/game.js
+tests/mock/ludo.js
 tests/mock/worker.js
 tests/*.png
 tests/*.mp4

@@ -1,5 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import * as G from '../public/shared/game.js';
+import * as L from '../public/shared/ludo.js';
+
+// A room plays one game, chosen when it is created: Kade Ondu (the card game, the default) or Ludo.
+// Both rules engines offer the same functions, so the room server below works for either.
+const engineFor = game => (game === 'ludo' ? L : G);
+const E = room => engineFor(room?.game);
 
 const IDLE_CLEANUP_MS = 24 * 60 * 60 * 1000; // forget a room 24 h after its last activity
 const LIST_STALE_MS = 6 * 60 * 60 * 1000;    // drop a room from the list if it hasn't reported for 6 h
@@ -145,14 +151,14 @@ export class GameRoom extends DurableObject {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === except) continue;
       const a = ws.deserializeAttachment();
-      if (a?.pid) this.send(ws, G.viewFor(this.room, a.pid, online));
+      if (a?.pid) this.send(ws, E(this.room).viewFor(this.room, a.pid, online));
     }
   }
 
   // Tell the room list about us, only when something it shows has changed
   async report(except) {
     if (!this.code || !this.env.LOBBY) return;
-    const sum = G.summary(this.room, this.code, this.online(except).size);
+    const sum = E(this.room).summary(this.room, this.code, this.online(except).size);
     const key = JSON.stringify(sum);
     if (key === this.lastSummary) return;
     this.lastSummary = key;
@@ -163,7 +169,7 @@ export class GameRoom extends DurableObject {
   // Only runs while at least one person is connected.
   kickBots() {
     if (this.botTimer || this.online().size === 0) return;
-    const a = G.nextBotAction(this.room);
+    const a = E(this.room).nextBotAction(this.room);
     if (!a) return;
     this.botTimer = setTimeout(() => this.botTick(), a.delay);
   }
@@ -180,7 +186,7 @@ export class GameRoom extends DurableObject {
 
   async onTurnTimeout() {
     this.turnTimer = null;
-    if (G.roundTimeUp(this.room) || G.timeoutMove(this.room)) {
+    if (E(this.room).roundTimeUp(this.room) || E(this.room).timeoutMove(this.room)) {
       await this.save();
       this.broadcast();
       await this.report();
@@ -196,9 +202,9 @@ export class GameRoom extends DurableObject {
   async botTick() {
     this.botTimer = null;
     if (this.room.roundEndsAt && Date.now() >= this.room.roundEndsAt) return this.onTurnTimeout();
-    const a = G.nextBotAction(this.room);
+    const a = E(this.room).nextBotAction(this.room);
     if (!a) return;
-    const res = G.handle(this.room, a.pid, a.msg);
+    const res = E(this.room).handle(this.room, a.pid, a.msg);
     if (!res.error) {
       await this.save();
       this.broadcast();
@@ -232,14 +238,16 @@ export class GameRoom extends DurableObject {
       if (!p) {
         if (msg.create && s.players.length > 0) {
           if (this.online(ws).size > 0) return this.send(ws, { t: 'error', code: 'taken', msg: 'Room code in use' });
-          this.room = G.newRoom(); // abandoned room with the same code: start fresh
+          this.room = engineFor(msg.game).newRoom(); // abandoned room with the same code: start fresh
           await this.wipeChat();
         }
         if (msg.joinOnly && this.room.players.length === 0) {
           return this.send(ws, { t: 'error', code: 'noroom', msg: 'No room with that code' });
         }
         const kind = this.room.players.length === 0 ? 'create' : 'join';
-        p = G.addPlayer(this.room, msg.name);
+        // the first person in decides which game this room plays
+        if (kind === 'create' && !(this.room.spectators || []).length) this.room = engineFor(msg.game).newRoom();
+        p = E(this.room).addPlayer(this.room, msg.name);
         await this.logJoin(p, att, kind);
       } else {
         // Same player opened a new tab or reconnected: retire the old socket
@@ -267,7 +275,7 @@ export class GameRoom extends DurableObject {
 
     if (!att.pid) return this.send(ws, { t: 'error', msg: 'Join first' });
 
-    const res = G.handle(this.room, att.pid, msg);
+    const res = E(this.room).handle(this.room, att.pid, msg);
     if (res.error) return this.send(ws, { t: 'error', msg: res.error });
     if (res.kick) {
       for (const other of this.ctx.getWebSockets()) {
@@ -547,7 +555,7 @@ export class Lobby extends DurableObject {
       if (this.lastInvite.size > 2000) this.lastInvite.clear();
       this.sendTo(m.to, {
         t: 'invited', fromId: me.cid, from: me.name, room: me.room,
-        roomHost: this.rooms[me.room]?.host || me.name, phase: this.rooms[me.room]?.phase || 'lobby',
+        roomHost: this.rooms[me.room]?.host || me.name, phase: this.rooms[me.room]?.phase || 'lobby', game: this.rooms[me.room]?.game || '',
       });
       return ws.send(JSON.stringify({ t: 'invite-sent', to: target.name }));
     }

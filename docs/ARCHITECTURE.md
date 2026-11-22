@@ -13,6 +13,10 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 - **Durable Objects:** SQLite-backed, as the free plan requires. Migrations are `v1` (GameRoom) and `v2` (Lobby). **Never edit existing migration entries; only append new ones.**
 - **WebSocket Hibernation API** (`ctx.acceptWebSocket`). Socket attachments (`serializeAttachment`) hold `{ pid }` for rooms and `{ cid, name, room }` for the lobby. Keep-alive is the literal `"ping"`, answered with `"pong"` by `setWebSocketAutoResponse`, which is free and doesn't wake the object.
 
+## Two games, one room server
+
+A room plays either the card game or **Ludo** ([LUDO.md](LUDO.md)). Each has a rules engine in `public/shared/` (`game.js`, `ludo.js`) with the same function names; the room's state says which (`game: 'ludo'`, or nothing for the card game) and `E(room)` in `src/worker.js` picks the engine. Everything else below (sockets, chat, voice, reactions, timers, the lobby) is shared. Where this file says `G.`, read "the room's engine".
+
 ## GameRoom (one per room code)
 
 - **State:** `this.room` (the full game object from `game.js`), saved with `ctx.storage.put('room', …)` after every change. `ctx.storage.put('code', …)` is set on first connect (taken from `?room=`).
