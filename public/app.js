@@ -2074,6 +2074,48 @@
   };
   $('closeIos').onclick = () => $('iosInstall').classList.add('hidden');
 
+  // ── The phone's Back button ──
+  // The app is one page, so without this Back has nowhere to go and closes the app.
+  // While anything is open (a pop-up, chat, a lesson, a room) one extra history entry is kept; Back lands on it and
+  // we undo one step: close the pop-up, go back to the home screen, or ask before leaving a room. On the plain home
+  // screen there is no extra entry, so Back closes the app as usual.
+  let backGuard = false, backSkip = 0;
+  const openOverlay = () => [...document.querySelectorAll('.overlay:not(.hidden)')].pop() || null;
+  const onScreen = id => !$(id).classList.contains('hidden');
+  const backDeep = () => !onScreen('home') || !!openOverlay() || chatOpen || onScreen('reactTray') || onScreen('brewing');
+  function backSync() {
+    const deep = backDeep();
+    if (deep && !backGuard) { backGuard = true; try { history.pushState({ ko: 1 }, ''); } catch { backGuard = false; } }
+    else if (!deep && backGuard) { backGuard = false; backSkip++; try { history.back(); } catch { backSkip--; } } // went home by a button: drop the entry
+  }
+  function backStep() { // one step back, nearest thing first
+    const ov = openOverlay();
+    if (onScreen('reactTray')) return $('reactTray').classList.add('hidden');
+    if (ov) {
+      if (ov.id === 'endOverlay') return $('closeEnd').click();
+      if (ov.id === 'pkEndOverlay') return $('pkEndClose').click();
+      if (ov.id === 'kickConfirm') return closeKick();
+      if (ov.id === 'inviteModal') return $('declineInvite').click();
+      if (ov.id === 'colorPicker') pendingWild = null;
+      return ov.classList.add('hidden');
+    }
+    if (chatOpen) return setChatOpen(false);
+    if (onScreen('pkAdvice')) return $('pkAdvice').classList.add('hidden');
+    if (onScreen('school')) return $('scBack').click();
+    if (!onScreen('home')) return $('leaveBtn').click(); // in a room or a game: asks first, and stays if the answer is no
+    if (onScreen('brewing')) return selectGame(GAMES[0].id);
+  }
+  window.addEventListener('popstate', () => {
+    if (backSkip > 0) { backSkip--; return; }
+    if (!backGuard) return;
+    backGuard = false;
+    try { backStep(); } catch {}
+    setTimeout(backSync, 0);
+  });
+  let backQueued = false;
+  new MutationObserver(() => { if (backQueued) return; backQueued = true; setTimeout(() => { backQueued = false; backSync(); }, 50); })
+    .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
   // ── Poker School (poker.js): what it needs from this file ──
   window.KOPoker?.init({
     el, store, toast, toastLong, show, send, placeChatTab, askKick,

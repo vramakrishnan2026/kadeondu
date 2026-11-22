@@ -143,3 +143,7 @@ The dot in the top bar is green when connected, amber while connecting, and red 
 ## Poker School
 
 A tab that teaches Texas Hold'em at the learner's chosen level (Beginner, Intermediate, Advanced): lessons with quizzes, drills, practice against the computer with a coach, and practice tables with friends. Play chips only. Details in [POKER.md](POKER.md).
+
+## Back button
+
+The phone's Back button steps back inside the app: it closes a pop-up or the chat, returns from a lesson to Poker School, and asks before leaving a room or game. On the home screen it closes the app. Not yet checked on iPhones (swipe-back) or in the installed app on a real phone.
