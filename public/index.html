@@ -70,6 +70,7 @@
           <li><b>Share</b> the link so others can join</li>
           <li class="tab-ondu"><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
           <li class="tab-ludo"><b>Roll</b> the dice and race all four tokens home</li>
+          <li class="tab-carrom"><b>Flick</b> the striker and pocket your coins before the other side</li>
           <li class="tab-poker"><b>Learn</b> Texas Hold'em at your own level, then practise with play chips</li>
         </ol>
       </section>
@@ -161,6 +162,10 @@
         <label class="toggle only-ludo"><input type="checkbox" id="ludoHomeBonus"> Getting a token home gives another roll</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoThreeSixes"> Three 6s in a row lose the turn</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoBlocks"> Two tokens on a square form a block</label>
+        <!-- Carrom -->
+        <label class="field inline only-carrom">Rules
+          <select id="crRulesInput"><option value="classic" selected>Classic: black against white</option><option value="points">Points: any coin scores</option></select>
+        </label>
         <!-- Poker table -->
         <label class="field inline only-poker">Starting chips
           <select id="pkChipsInput"><option>500</option><option selected>1000</option><option>2000</option></select>
@@ -312,6 +317,60 @@
       </div>
     </div>
   </main>
+
+  <!-- Carrom. The board is drawn on a canvas and turned so that you sit at the bottom (see carrom.js).
+       Slide the striker with the slider; pull back on the board and let go to shoot. -->
+  <main id="carrom" class="screen hidden">
+    <div class="cr-wrap">
+      <div class="cr-stack">
+        <div id="crTop" class="cr-plates"></div>
+        <div id="crBoard" class="cr-board"><canvas id="crCanvas" aria-label="Carrom board"></canvas></div>
+        <div id="crBottom" class="cr-plates"></div>
+      </div>
+    </div>
+    <div id="crWatchers" class="watchers hidden"></div>
+    <div id="crStatus" class="status" aria-live="polite"></div>
+    <div id="carromActions" class="actions cr-actions">
+      <div class="act-main">
+        <label id="crSlideWrap" class="cr-slide"><span>Striker</span><input id="crSlide" type="range" min="0" max="1000" value="500" aria-label="Slide the striker left or right"></label>
+        <button id="crAgain" class="primary hidden">Play again</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Carrom: play vs computer set-up -->
+  <div id="carromSoloModal" class="overlay hidden">
+    <div class="modal">
+      <h3>🤖 Carrom vs computer</h3>
+      <label class="field inline">Game
+        <select id="csoloCount"><option value="1" selected>You against 1 computer player</option><option value="3">Doubles: 3 computer players</option></select>
+      </label>
+      <label class="field inline">Rules
+        <select id="csoloRules"><option value="classic" selected>Classic: black against white</option><option value="points">Points: any coin scores</option></select>
+      </label>
+      <label class="field inline">They play
+        <select id="csoloLevel"><option value="easy" selected>Easy</option><option value="normal">Normal</option></select>
+      </label>
+      <label class="field inline">Time per turn
+        <select id="csoloTime"><option value="0" selected>Off (take your time)</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select>
+      </label>
+      <p class="muted small-text">In doubles the player opposite you is your partner. With points rules everyone scores for themselves.</p>
+      <button id="csoloStart" class="primary big">Start game</button>
+      <button id="csoloCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Carrom: who won the board -->
+  <div id="crEnd" class="overlay hidden">
+    <div class="modal">
+      <h2 id="crEndTitle"></h2>
+      <p id="crEndSub" class="muted"></p>
+      <ol id="crEndList" class="scores"></ol>
+      <button id="crEndAgain" class="primary big hidden">Play again</button>
+      <p id="crEndWait" class="muted hidden">Waiting for the host to start a new board…</p>
+      <button id="crEndClose" class="ghost">Close</button>
+    </div>
+  </div>
 
   <!-- Poker: play vs computer set-up -->
   <div id="pokerSoloModal" class="overlay hidden">
@@ -525,6 +584,7 @@
   <div id="toast" class="toast hidden"></div>
   <script src="poker-learn.js"></script>
   <script src="poker.js"></script>
+  <script src="carrom.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

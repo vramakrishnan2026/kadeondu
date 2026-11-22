@@ -39,6 +39,12 @@ const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x');
   // Test-only (Ludo): the next rolls in ?room= come up as ?seq=6,3,… (then that room's dice are random again). Other rooms are not affected.
   // Test-only (poker): the next hand in ?room= deals ?cards=As,Kd,… first, in that order (two per player starting left of the button, then flop, turn, river).
   if(u.pathname==='/__test/deck'){ const code=(u.searchParams.get('room')||'').toUpperCase(); fixedDecks.set(code,(u.searchParams.get('cards')||'').split(',').filter(Boolean).map(PokerRules.parseCard)); res.writeHead(200); return res.end('ok') }
+  // Test-only (carrom): leave only the listed coins on the board in ?room=: ?coins=id:x:y,id:x:y and optionally ?queen=covered:w
+  if(u.pathname==='/__test/carrom'){ const code=(u.searchParams.get('room')||'').toUpperCase(); const r=rooms.get(code); if(!r?.room?.coins){ res.writeHead(404); return res.end('no such room') }
+    const want=new Map((u.searchParams.get('coins')||'').split(',').filter(Boolean).map(t=>{ const [id,x,y]=t.split(':').map(Number); return [id,[x,y]] }));
+    for(const c of r.room.coins){ const w=want.get(c.id); c.on=!!w; if(w){ c.x=w[0]; c.y=w[1] } }
+    const q=u.searchParams.get('queen'); if(q){ const [st,by]=q.split(':'); r.room.queen=st; r.room.queenBy=by||null; r.room.cover=null }
+    r.broadcast(); res.writeHead(200); return res.end('ok') }
   if(u.pathname==='/__test/die'){ const code=(u.searchParams.get('room')||'').toUpperCase(); fixedDice.set(code,(u.searchParams.get('seq')||'').split(',').filter(Boolean).map(Number)); res.writeHead(200); return res.end('ok') }
   // Test-only: pretend the next connections come from another place
   if(u.pathname==='/__test/geo'){ testGeo={city:u.searchParams.get('city')||'',region:u.searchParams.get('region')||'',country:u.searchParams.get('country')||''}; res.writeHead(200); return res.end('ok') }

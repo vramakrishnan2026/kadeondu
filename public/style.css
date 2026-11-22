@@ -613,7 +613,7 @@ button.danger { background: var(--red); }
 
 /* ═══════════ Ludo ═══════════ */
 /* home screen: lines that belong to one game's tab */
-body[data-tab="ludo"] .tab-ondu, body[data-tab="poker"] .tab-ondu, body:not([data-tab="ludo"]) .tab-ludo, body:not([data-tab="poker"]) .tab-poker { display: none; }
+body[data-tab="ludo"] .tab-ondu, body[data-tab="poker"] .tab-ondu, body[data-tab="carrom"] .tab-ondu, body:not([data-tab="ludo"]) .tab-ludo, body:not([data-tab="poker"]) .tab-poker, body:not([data-tab="carrom"]) .tab-carrom { display: none; }
 .lobby-game { color: var(--text); font-weight: 700; }
 
 /* the four seat colours (same as the card suits) */
@@ -845,3 +845,36 @@ body.lefty .pk-actions.with-chat .act-main { padding-right: 0; padding-left: 44p
 /* four game tabs: labels may take two lines so every tab stays readable on a narrow phone */
 .game-tab { flex: 1 1 0; padding: .25rem .3rem; }
 .game-tab span { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.08; text-align: center; font-size: clamp(.74rem, 3.5vw, .95rem); }
+
+/* ───────────────────────────────────────────────────────────
+   Carrom (carrom.js): a canvas board that fills the width, players on plates above and below
+   ─────────────────────────────────────────────────────────── */
+#carrom { padding: .5rem; gap: .35rem; justify-content: flex-start; }
+body.in-game #carrom { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: .35rem .5rem calc(.25rem + env(safe-area-inset-bottom)); gap: .3rem; }
+.cr-wrap { flex: 1 1 auto; min-height: 0; width: 100%; max-width: 560px; display: grid; place-items: center; container-type: size; --ph: 36px; }
+.cr-stack { width: min(100cqw, calc(100cqh - 2 * var(--ph) - 14px)); display: flex; flex-direction: column; gap: 7px; }
+.cr-board { position: relative; width: 100%; aspect-ratio: 1; border-radius: 5%; padding: 3.2%; background: linear-gradient(135deg, #6b4023, #3f2412); box-shadow: 0 6px 18px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,255,255,.08); }
+.cr-board canvas { display: block; width: 100%; height: 100%; border-radius: 2.5%; touch-action: none; cursor: crosshair; box-shadow: inset 0 0 8px rgba(0,0,0,.5); }
+#crBoard { box-sizing: border-box; }
+.cr-plates { width: 100%; display: flex; justify-content: center; gap: .4rem; flex: none; height: var(--ph); }
+.cr-plate { position: relative; display: flex; align-items: center; gap: .3rem; min-width: 0; flex: 0 1 auto; max-width: 100%; height: var(--ph); padding: 0 .6rem; border-radius: 99px; background: #1d1b26; border: 2px solid #3b3748; overflow: hidden; font-size: .84rem; }
+.cr-plates > .cr-plate:only-child { max-width: 100%; }
+.cr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.cr-stat { flex: none; color: #ffd66b; font-weight: 800; }
+.cr-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+.cr-dot.w { background: #f7f1e1; } .cr-dot.b { background: #0e0e12; box-shadow: inset 0 0 0 2px rgba(255,255,255,.45); }
+.cr-crown { flex: none; font-size: .8rem; } .cr-crown.pending { opacity: .7; }
+.cr-plate.turn { border-color: var(--accent); box-shadow: 0 0 12px rgba(255,106,43,.5); }
+.cr-plate.away .cr-name { font-style: italic; opacity: .7; }
+.cr-clock { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--accent); }
+.timing .cr-clock { width: calc(var(--left, 1) * 100%); transition: width .25s linear; }
+.timing.hurry .cr-clock { background: var(--red); }
+.cr-x { flex: none; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--red); color: #fff; font-size: .75rem; }
+.cr-slide { flex: 1 1 auto; display: flex; align-items: center; gap: .6rem; min-height: 52px; padding: 0 .8rem; border-radius: 14px; background: #1d1b26; border: 2px solid #3b3748; font-weight: 800; font-size: .9rem; color: var(--muted); }
+.cr-slide input { flex: 1; min-width: 0; height: 44px; accent-color: #2f7fe0; padding: 0; background: transparent; border: 0; }
+.cr-slide:has(input:not(:disabled)) { border-color: #2f7fe0; color: #fff; }
+.cr-actions.with-chat .act-main { padding-right: 44px; }
+body.lefty .cr-actions.with-chat .act-main { padding-right: 0; padding-left: 44px; }
+@media (prefers-reduced-motion: reduce) { .timing .cr-clock { transition: none; } }
+.cr-plates:has(.cr-plate:nth-child(3)) { gap: .25rem; }
+.cr-plates:has(.cr-plate:nth-child(3)) .cr-plate { padding: 0 .4rem; gap: .2rem; font-size: clamp(.68rem, 3.3cqw, .84rem); flex: 1 1 0; justify-content: center; }

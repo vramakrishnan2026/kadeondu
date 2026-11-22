@@ -147,3 +147,7 @@ A tab that teaches Texas Hold'em at the learner's chosen level (Beginner, Interm
 ## Back button
 
 The phone's Back button steps back inside the app: it closes a pop-up or the chat, returns from a lesson to Poker School, and asks before leaving a room or game. On the home screen it closes the app. Not yet checked on iPhones (swipe-back) or in the installed app on a real phone.
+
+## Carrom
+
+Flick the striker and pocket the coins: 2 or 4 players, or against the computer; classic or points rules. Details in [CARROM.md](CARROM.md).

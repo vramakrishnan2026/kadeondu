@@ -15,7 +15,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 
 ## Two games, one room server
 
-A room plays the card game, **Ludo** ([LUDO.md](LUDO.md)) or **poker** ([POKER.md](POKER.md)). Each has a rules engine in `public/shared/` (`game.js`, `ludo.js`, `poker.js`) with the same function names; the room's state says which (`game: 'ludo'`, or nothing for the card game) and `E(room)` in `src/worker.js` picks the engine. Everything else below (sockets, chat, voice, reactions, timers, the lobby) is shared. Where this file says `G.`, read "the room's engine".
+A room plays the card game, **Ludo** ([LUDO.md](LUDO.md)) **poker** ([POKER.md](POKER.md)) or **carrom** ([CARROM.md](CARROM.md)). Each has a rules engine in `public/shared/` (`game.js`, `ludo.js`, `poker.js`, `carrom.js`) with the same function names; the room's state says which (`game: 'ludo'`, or nothing for the card game) and `E(room)` in `src/worker.js` picks the engine. Everything else below (sockets, chat, voice, reactions, timers, the lobby) is shared. Where this file says `G.`, read "the room's engine".
 
 ## GameRoom (one per room code)
 
@@ -93,3 +93,5 @@ Network-first: online players always get the latest version, and the cache is on
 ## Poker School client
 
 The poker screens live in their own file, `public/poker.js`, not in `app.js`. `app.js` calls `window.KOPoker.init(bridge)` once and hands over what it needs (`send`, `show`, `toast`, the shared buttons row, solo start). `app.js` then calls `KOPoker.render`, `lobby`, `tick`, `onTab` and `reset` at the same points where it calls the Ludo functions. Lessons are data in `public/poker-learn.js`.
+
+Carrom follows the same pattern with `public/carrom.js` and `window.KOCarrom`.

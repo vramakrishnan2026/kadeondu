@@ -39,3 +39,7 @@
 - **Not tried on real phones.** Check the table, the raise slider and the lesson cards on the Android phone and the friends' iPhones.
 - **To confirm with the owner:** the tab name "Poker School"; progress kept on the phone only; a busted player getting a fresh stack automatically.
 - Ideas: tournament mode, more lessons, Teen Patti or Omaha.
+
+## Carrom (22 Nov 2026)
+- **Not tried on real phones.** The feel of aiming and the power range need the owner's judgement.
+- Ideas: boards played to 25 points, dues, stronger computer player, sounds.

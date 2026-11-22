@@ -1,6 +1,6 @@
 # Kade Ondu
 
-Multiplayer games for friends, played in the browser and installable as a phone app: **Kade Ondu**, a last-card game, **Ludo**, and **Poker School**, which teaches Texas Hold'em with play chips.
+Multiplayer games for friends, played in the browser and installable as a phone app: **Kade Ondu**, a last-card game, **Ludo**, **Carrom**, and **Poker School**, which teaches Texas Hold'em with play chips.
 **Live:** https://kadeondu.goarena.workers.dev
 
 Created by **Vinay Ramakrishnan**.
@@ -14,6 +14,7 @@ The game supports any number of players: an extra deck is added for every 10 pla
 |---|---|
 | [docs/FEATURES.md](docs/FEATURES.md) | Everything the card game does, every setting and its default |
 | [docs/LUDO.md](docs/LUDO.md) | Ludo: rules, house-rule settings, how it is built and tested |
+| [docs/CARROM.md](docs/CARROM.md) | Carrom: rules, physics, how a shot is replayed |
 | [docs/POKER.md](docs/POKER.md) | Poker School: levels, lessons, drills, the table and the coach |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: Cloudflare Worker, room servers, message protocol, files |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Accounts, how deploys work, domains, free-plan limits, troubleshooting |
@@ -40,6 +41,8 @@ public/            the game page (served as static files)
   config.js        name, call word, colours, Wild +4 effect, sticker captions  ← rename / tweak here
   shared/game.js   the card game's rules engine and computer players (used by the server AND by Play vs computer)
   shared/ludo.js   the same for Ludo
+  shared/carrom.js Carrom rules and physics
+  carrom.js        Carrom board on screen
   shared/poker.js  Texas Hold'em rules, hand reading and the coach
   poker.js         Poker School screens (home tab, lessons, drills, table)
   poker-learn.js   the lessons and quizzes (plain data)

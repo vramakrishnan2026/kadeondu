@@ -12,3 +12,4 @@ tests/rvid/
 tests/__pycache__/
 tests/server.log
 tests/mock/poker.js
+tests/mock/carrom.js
