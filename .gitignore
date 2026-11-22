@@ -11,3 +11,4 @@ tests/vid/
 tests/rvid/
 tests/__pycache__/
 tests/server.log
+tests/mock/poker.js

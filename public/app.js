@@ -44,8 +44,9 @@
     document.body.dataset.tab = g.id; // the home screen's per-game lines follow this (style.css)
     if (brewing) window.scrollTo(0, 0);
     try { renderRooms(lastRooms); } catch {} // the list shows this game's rooms (not ready yet during start-up)
+    window.KOPoker?.onTab(g.id); // Poker School draws its own part of the home screen
   }
-  const tabGame = () => (currentGame === 'ludo' ? 'ludo' : ''); // what the room server calls the game on the open tab
+  const tabGame = () => (currentGame === 'ludo' ? 'ludo' : currentGame === 'poker' ? 'poker' : ''); // what the room server calls the game on the open tab
   if (GAMES.length > 1) {
     const tabs = $('gameTabs');
     tabs.innerHTML = '';
@@ -94,11 +95,11 @@
     toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 7000);
   }
   function show(screen) {
-    for (const id of ['home', 'lobby', 'game', 'ludo']) $(id).classList.toggle('hidden', id !== screen);
+    for (const id of ['home', 'lobby', 'game', 'ludo', 'poker', 'school']) $(id).classList.toggle('hidden', id !== screen);
     if (screen !== 'home' && GAMES.length && !GAMES.find(g => g.id === currentGame)?.ready) selectGame(GAMES[0].id); // joined a room from a "Brewing" tab (an invite): come back to a real game's home
-    document.body.classList.toggle('in-game', screen === 'game' || screen === 'ludo'); // game screens fit the phone, no scrolling
+    document.body.classList.toggle('in-game', screen === 'game' || screen === 'ludo' || screen === 'poker'); // game screens fit the phone, no scrolling
     // the small-buttons row (reactions, mute, skip, scores, mic) is shared: it sits under whichever game is on screen
-    const side = document.querySelector('.act-side'), host = $(screen === 'ludo' ? 'ludoActions' : 'gameActions');
+    const side = document.querySelector('.act-side'), host = $(screen === 'ludo' ? 'ludoActions' : screen === 'poker' ? 'pokerActions' : 'gameActions');
     if (side.parentNode !== host) { host.append(side); host.after($('micEnable')); }
     placeChatTab();
     requestAnimationFrame(placeChatTab); // again once the new screen has been laid out
@@ -124,6 +125,7 @@
     const tab = $('chatTab');
     const on = chatAvailable();
     $('ludoActions').classList.toggle('with-chat', on); // the Roll row leaves room for the tab at the edge
+    $('pokerActions').classList.toggle('with-chat', on);
     tab.classList.toggle('hidden', !on || chatOpen);
     if (!on) { if (chatOpen) setChatOpen(false); return; }
     // on the game screen it sits in the table's empty bottom corner; in the waiting room, mid-screen
@@ -133,6 +135,9 @@
     } else if (!$('ludo').classList.contains('hidden')) {
       // at the end of the Roll row, like one more button (the board fills the rest of the screen)
       const r = $('ludoActions').querySelector('.act-main').getBoundingClientRect();
+      tab.style.top = `${Math.max(60, r.top + (r.height - tab.offsetHeight) / 2)}px`;
+    } else if (!$('poker').classList.contains('hidden')) {
+      const r = $('pokerActions').querySelector('.act-main').getBoundingClientRect();
       tab.style.top = `${Math.max(60, r.top + (r.height - tab.offsetHeight) / 2)}px`;
     } else tab.style.top = '42%';
     $('chatDot').classList.toggle('hidden', !chatUnread);
@@ -228,7 +233,8 @@
   function logText(e) {
     switch (e.k) {
       case 'join': return `${e.p} joined`;
-      case 'watch': return e.full ? `${e.p} is watching (all 4 seats are taken)` : S?.game === 'ludo' ? `${e.p} is watching` : `${e.p} is watching (joins next round)`;
+      case 'watch': return S?.game === 'poker' ? (e.full ? `${e.p} is watching (the table is full)` : `${e.p} is watching (gets a seat at the next hand)`)
+        : e.full ? `${e.p} is watching (all 4 seats are taken)` : S?.game === 'ludo' ? `${e.p} is watching` : `${e.p} is watching (joins next round)`;
       case 'leave': return `${e.p} left`;
       case 'kick': return `${e.p} was removed`;
       case 'idle': return `${e.p} was removed for being inactive`;
@@ -253,7 +259,7 @@
       case 'lmove': return e.cap ? `${e.p} sent ${e.cap[0].q} back home!` : e.home ? `${e.p} got a token home` : e.from === -1 ? `${e.p} brought a token out` : `${e.p} moved ${e.d}`;
       case 'done': return `${e.p} finished ${ordinal(e.x)}!`;
       case 'lend': return e.p ? `${e.p} wins the game` : 'Game over';
-      default: return '';
+      default: return window.KOPoker?.logText(e) || '';
     }
   }
 
@@ -332,6 +338,7 @@
     chatLog = []; chatUnread = false; setChatOpen(false); renderChat();
     closeKick(); wasIdleOut = false;
     ludoReset();
+    window.KOPoker?.reset();
     setNet();
     myName = $('nameInput').value.trim();
     inviteRoom = '';
@@ -390,9 +397,9 @@
     const me = s.players.find(p => p.id === s.you);
     const isHost = s.hostId === s.you;
     const name = id => s.players.find(p => p.id === id)?.name ?? '?';
-    const ludo = s.game === 'ludo';
+    const ludo = s.game === 'ludo', poker = s.game === 'poker';
     // the home tab follows the game of the room you are in, so Leave brings you back to that game's home
-    const tab = ludo ? 'ludo' : GAMES[0]?.id;
+    const tab = ludo ? 'ludo' : poker ? 'poker' : GAMES[0]?.id;
     if (GAMES.length > 1 && tab && currentGame !== tab && GAMES.some(g => g.id === tab)) selectGame(tab);
 
     // log + toasts for new events
@@ -431,13 +438,15 @@
       }
       $('hostSettings').classList.toggle('hidden', !isHost);
       // which game this room plays decides which settings are shown
-      document.querySelectorAll('#lobby .only-ondu').forEach(x => x.classList.toggle('hidden', ludo));
+      document.querySelectorAll('#lobby .only-ondu').forEach(x => x.classList.toggle('hidden', ludo || poker));
       document.querySelectorAll('#lobby .only-ludo').forEach(x => x.classList.toggle('hidden', !ludo));
-      $('lobbyGame').classList.toggle('hidden', !ludo);
-      $('lobbyGame').textContent = ludo ? '· 🎲 Ludo' : '';
+      document.querySelectorAll('#lobby .only-poker').forEach(x => x.classList.toggle('hidden', !poker));
+      $('lobbyGame').classList.toggle('hidden', !ludo && !poker);
+      $('lobbyGame').textContent = ludo ? '· 🎲 Ludo' : poker ? '· ♠ Poker table' : '';
       const watching = s.spectators || [];
       $('lobbyWatchers').classList.toggle('hidden', !watching.length);
-      $('lobbyWatchers').textContent = watching.length ? `👀 Watching (all 4 seats are taken): ${watching.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
+      $('lobbyWatchers').textContent = watching.length ? `👀 Watching (${poker ? 'the table is full' : 'all 4 seats are taken'}): ${watching.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
+      if (poker) return window.KOPoker.lobby(s, isHost);
       if (ludo) {
         for (const [id, key] of LUDO_RULES) $(id).checked = !!s.settings[key];
         $('privateInput').checked = !!s.settings.private;
@@ -481,6 +490,7 @@
     }
 
     if (ludo) return renderLudo(s, fresh, firstState);
+    if (poker) { $('endOverlay').classList.add('hidden'); return window.KOPoker.render(s, fresh, firstState); }
     $('nextRoundBtn').textContent = 'Next round'; // (the Ludo screen borrows this pop-up and renames the button)
     show('game');
     const myTurn = s.phase === 'playing' && s.turnId === s.you;
@@ -1208,7 +1218,7 @@
   let resizeRaf = 0;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(resizeRaf);
-    resizeRaf = requestAnimationFrame(() => { if (S && !($('game').classList.contains('hidden') && $('ludo').classList.contains('hidden'))) render(S); });
+    resizeRaf = requestAnimationFrame(() => { if (S && !($('game').classList.contains('hidden') && $('ludo').classList.contains('hidden') && $('poker').classList.contains('hidden'))) render(S); });
   });
 
   // ── Emoji reactions ───────────────────────────────────────
@@ -1297,6 +1307,7 @@
   }
   function tickClock() {
     if (S?.game === 'ludo') return tickLudoClock();
+    if (S?.game === 'poker') return window.KOPoker.tick();
     tickRoundClock();
     const st = $('status');
     st.querySelector('.secs')?.remove();
@@ -1683,7 +1694,7 @@
         el('div', 'rmeta', `${r.code} · ${r.players} playing` + (r.watching ? ` · ${r.watching} watching` : '')),
       );
       const live = r.phase === 'playing';
-      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? (r.game === 'ludo' ? 'Game over' : 'Between rounds') : 'Waiting');
+      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? (r.game === 'ludo' || r.game === 'poker' ? 'Game over' : 'Between rounds') : 'Waiting');
       const btn = el('button', live ? 'ghost small' : 'primary small', live ? 'Watch' : 'Join');
       btn.onclick = () => {
         if (needName()) return;
@@ -1747,8 +1758,8 @@
   function showInvite(m) {
     if (inRoom() || solo) return; // already playing somewhere
     currentInvite = m;
-    const ludoInvite = m.game === 'ludo';
-    $('inviteTitle').textContent = `${m.from} invited you to play ${ludoInvite ? (GAMES.find(g => g.id === 'ludo')?.label || 'Ludo') : CFG.name}`;
+    const ludoInvite = m.game === 'ludo' || m.game === 'poker'; // (both let a late joiner watch)
+    $('inviteTitle').textContent = m.game === 'poker' ? `${m.from} invited you to a poker practice table` : `${m.from} invited you to play ${ludoInvite ? (GAMES.find(g => g.id === 'ludo')?.label || 'Ludo') : CFG.name}`;
     $('inviteSub').textContent = m.phase === 'playing'
       ? (ludoInvite ? `${m.roomHost}'s room (${m.room}) is in the middle of a game. You can watch.` : `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`)
       : `${m.roomHost}'s room · ${m.room}`;
@@ -1955,7 +1966,7 @@
   $('skipTurnBtn').onclick = () => send({ t: 'skipturn' });
   $('leaveBtn').onclick = () => {
     if (solo) { if (confirm('Quit this game?')) goHome(); return; }
-    if (!confirm(S?.game === 'ludo' ? 'Leave this room? Your tokens come off the board.' : 'Leave this room? Your cards go back in the deck.')) return;
+    if (!confirm(S?.game === 'ludo' ? 'Leave this room? Your tokens come off the board.' : S?.game === 'poker' ? 'Leave this table? Your cards are folded.' : 'Leave this room? Your cards go back in the deck.')) return;
     leaving = true;
     if (ws?.readyState === 1) send({ t: 'leave' }); else goHome();
   };
@@ -2031,6 +2042,7 @@
   }
   $('soloBtn').onclick = () => {
     if (needName()) return;
+    if (currentGame === 'poker') return window.KOPoker.soloOpen();
     $(currentGame === 'ludo' ? 'ludoSoloModal' : 'soloModal').classList.remove('hidden');
   };
   $('soloCancel').onclick = () => $('soloModal').classList.add('hidden');
@@ -2061,6 +2073,41 @@
     }
   };
   $('closeIos').onclick = () => $('iosInstall').classList.add('hidden');
+
+  // ── Poker School (poker.js): what it needs from this file ──
+  window.KOPoker?.init({
+    el, store, toast, toastLong, show, send, placeChatTab, askKick,
+    getS: () => S,
+    isSolo: () => !!solo,
+    name: () => $('nameInput').value.trim(),
+    // the shared small-buttons row under a table: reactions, mute, skip, info text, mic
+    sideRow(s, info, mine) {
+      if (mine?.idleOut && !wasIdleOut) toastLong('You have missed 5 turns in a row. Play your next turn, or the others can remove you.');
+      wasIdleOut = !!mine?.idleOut;
+      if (kickTarget && !s.players.some(p => p.id === kickTarget && p.idleOut)) closeKick();
+      $('myInfo').textContent = info;
+      $('micBtn').classList.toggle('hidden', !!solo);
+      $('muteBtn').classList.toggle('hidden', !!solo);
+      $('reactBtn').classList.toggle('hidden', !s.settings.reactions);
+      if (!s.settings.reactions) $('reactTray').classList.add('hidden');
+      $('scoresBtn').classList.add('hidden');
+      updateMicEnable();
+      const turnPlayer = s.players.find(p => p.id === s.turnId);
+      $('skipTurnBtn').classList.toggle('hidden', !(s.hostId === s.you && s.phase === 'playing' && turnPlayer && !turnPlayer.online && turnPlayer.id !== s.you));
+    },
+    // a game against the computer that runs on this phone (engine G, room s, my player id)
+    startSolo(G, s, me) {
+      solo = { G, s, me, timer: null };
+      S = null; lastSeq = 0; prevTurn = null;
+      $('roomChip').textContent = 'VS COMPUTER';
+      $('roomChip').classList.remove('hidden');
+      $('leaveBtn').classList.remove('hidden');
+      $('inviteTopBtn').classList.add('hidden');
+      soloRender();
+      soloKick();
+    },
+  });
+  if (currentGame === 'poker') window.KOPoker?.onTab('poker');
 
   // ── Start: rejoin a saved game or prefill a shared link ──
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();

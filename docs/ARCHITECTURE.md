@@ -15,7 +15,7 @@ GameRoom ──RPC update(summary)──▶ Lobby   (only when the room's summar
 
 ## Two games, one room server
 
-A room plays either the card game or **Ludo** ([LUDO.md](LUDO.md)). Each has a rules engine in `public/shared/` (`game.js`, `ludo.js`) with the same function names; the room's state says which (`game: 'ludo'`, or nothing for the card game) and `E(room)` in `src/worker.js` picks the engine. Everything else below (sockets, chat, voice, reactions, timers, the lobby) is shared. Where this file says `G.`, read "the room's engine".
+A room plays the card game, **Ludo** ([LUDO.md](LUDO.md)) or **poker** ([POKER.md](POKER.md)). Each has a rules engine in `public/shared/` (`game.js`, `ludo.js`, `poker.js`) with the same function names; the room's state says which (`game: 'ludo'`, or nothing for the card game) and `E(room)` in `src/worker.js` picks the engine. Everything else below (sockets, chat, voice, reactions, timers, the lobby) is shared. Where this file says `G.`, read "the room's engine".
 
 ## GameRoom (one per room code)
 
@@ -89,3 +89,7 @@ One IIFE. The main parts:
 ## Offline helper (`public/sw.js`)
 
 Network-first: online players always get the latest version, and the cache is only a fallback. **Bump `CACHE` (e.g. `kade-ondu-v5`) and add new asset paths to `SHELL` when you add files** that should work offline.
+
+## Poker School client
+
+The poker screens live in their own file, `public/poker.js`, not in `app.js`. `app.js` calls `window.KOPoker.init(bridge)` once and hands over what it needs (`send`, `show`, `toast`, the shared buttons row, solo start). `app.js` then calls `KOPoker.render`, `lobby`, `tick`, `onTab` and `reset` at the same points where it calls the Ludo functions. Lessons are data in `public/poker-learn.js`.

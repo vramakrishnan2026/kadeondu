@@ -139,3 +139,7 @@ Manifest, icons (an original orange card with an italic "1") and an offline help
 ## Connection indicator
 
 The dot in the top bar is green when connected, amber while connecting, and red when offline. Reconnection is automatic.
+
+## Poker School
+
+A tab that teaches Texas Hold'em at the learner's chosen level (Beginner, Intermediate, Advanced): lessons with quizzes, drills, practice against the computer with a coach, and practice tables with friends. Play chips only. Details in [POKER.md](POKER.md).

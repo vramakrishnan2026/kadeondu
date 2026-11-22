@@ -53,3 +53,4 @@
 - **Buttons:** top row Catch! · Ondu! · Draw in three equal sizes; **Catch!** now has a fixed place and lights up red instead of popping up on a seat. Small buttons, your card count and the mic are on a second row.
 - **Room chat:** pull-out drawer at the edge with a dot for new messages; players and watchers; last 200 messages kept with the room and wiped when it empties. Not in Play vs computer.
 - **Table colour** follows the colour being played (red, yellow, green or blue) with a short fade, instead of always green.
+- **Poker School** tab: Texas Hold'em at three levels the learner picks. 18 lessons with quizzes, 7 drills, practice vs computer with a coach and hand review, and practice tables with friends (2 to 6 seats, same reactions, voice notes, chat, watchers). Play chips only. New engine `public/shared/poker.js`; see [POKER.md](POKER.md). Game tab labels may now take two lines so four tabs fit a narrow phone. Service worker cache v8.

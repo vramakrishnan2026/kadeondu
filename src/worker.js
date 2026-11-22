@@ -1,10 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import * as G from '../public/shared/game.js';
 import * as L from '../public/shared/ludo.js';
+import * as PK from '../public/shared/poker.js';
 
 // A room plays one game, chosen when it is created: Kade Ondu (the card game, the default) or Ludo.
 // Both rules engines offer the same functions, so the room server below works for either.
-const engineFor = game => (game === 'ludo' ? L : G);
+const engineFor = game => (game === 'ludo' ? L : game === 'poker' ? PK : G);
 const E = room => engineFor(room?.game);
 
 const IDLE_CLEANUP_MS = 24 * 60 * 60 * 1000; // forget a room 24 h after its last activity

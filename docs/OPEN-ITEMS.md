@@ -34,3 +34,8 @@
 - QR code for room links.
 - Lock a room (no new joins).
 - Bots sending sticker reactions.
+
+## Poker School (22 Nov 2026)
+- **Not tried on real phones.** Check the table, the raise slider and the lesson cards on the Android phone and the friends' iPhones.
+- **To confirm with the owner:** the tab name "Poker School"; progress kept on the phone only; a busted player getting a fresh stack automatically.
+- Ideas: tournament mode, more lessons, Teen Patti or Omaha.

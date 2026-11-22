@@ -1,7 +1,7 @@
 // Offline helper: always tries the network first (so updates show up straight away)
 // and falls back to the last copy only when there's no connection.
-const CACHE = 'kade-ondu-v7';
-const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js', '/shared/ludo.js',
+const CACHE = 'kade-ondu-v8';
+const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js', '/shared/ludo.js', '/shared/poker.js', '/poker.js', '/poker-learn.js',
   '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/rangoli.svg'];
 
 self.addEventListener('install', e => {

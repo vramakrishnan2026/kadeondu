@@ -70,6 +70,7 @@
           <li><b>Share</b> the link so others can join</li>
           <li class="tab-ondu"><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
           <li class="tab-ludo"><b>Roll</b> the dice and race all four tokens home</li>
+          <li class="tab-poker"><b>Learn</b> Texas Hold'em at your own level, then practise with play chips</li>
         </ol>
       </section>
 
@@ -81,6 +82,19 @@
           <div class="inv-title">You're invited!</div>
           <div id="inviteInfo" class="inv-meta"></div>
           <button id="inviteJoin" class="primary big">Join this game</button>
+        </div>
+
+        <!-- Poker School: pick a level, then lessons and drills (shown on the Poker School tab only; see poker.js) -->
+        <div id="pkHome" class="block tab-poker">
+          <div class="rooms-head"><h3>Your level</h3><span class="muted small-text">change it any time</span></div>
+          <div id="pkLevels" class="pk-levels" role="radiogroup" aria-label="Your level"></div>
+          <p id="pkLevelAbout" class="muted small-text pk-about"></p>
+          <h3>Lessons</h3>
+          <ul id="pkLessons" class="room-list pk-lessons"></ul>
+          <h3>Drills</h3>
+          <div id="pkDrills" class="tiles"></div>
+          <p class="muted small-text">♠ Play chips only. No real money is ever involved, and chips cannot be bought or cashed in.</p>
+          <h3 class="pk-play-h">Practise at a table</h3>
         </div>
 
         <div class="block">
@@ -147,6 +161,14 @@
         <label class="toggle only-ludo"><input type="checkbox" id="ludoHomeBonus"> Getting a token home gives another roll</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoThreeSixes"> Three 6s in a row lose the turn</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoBlocks"> Two tokens on a square form a block</label>
+        <!-- Poker table -->
+        <label class="field inline only-poker">Starting chips
+          <select id="pkChipsInput"><option>500</option><option selected>1000</option><option>2000</option></select>
+        </label>
+        <label class="field inline only-poker">Blinds
+          <select id="pkBlindInput"><option value="10" selected>5 / 10</option><option value="20">10 / 20</option><option value="50">25 / 50</option></select>
+        </label>
+        <label class="toggle only-poker"><input type="checkbox" id="pkCoachInput"> 💡 Coach hints <span class="muted small-text">(each player sees advice for their own cards)</span></label>
         <label class="toggle"><input type="checkbox" id="reactionsInput"> 😄 Emoji reactions</label>
         <label class="toggle"><input type="checkbox" id="privateInput"> 🔒 Private room <span class="muted small-text">(hidden from Open rooms; join only with the link or code)</span></label>
         <label class="field inline only-ondu">Cards per hand
@@ -235,6 +257,107 @@
       </div>
     </div>
   </main>
+
+  <!-- Poker School: lessons, quizzes and drills (one card at a time; this screen may scroll) -->
+  <main id="school" class="screen hidden">
+    <div class="sc-card">
+      <div class="sc-head">
+        <button id="scBack" class="ghost small" aria-label="Back to Poker School">‹ Back</button>
+        <div id="scTitle" class="sc-title"></div>
+        <div id="scStep" class="muted small-text"></div>
+      </div>
+      <div id="scBar" class="sc-bar"><i></i></div>
+      <div id="scBody" class="sc-body"></div>
+      <div id="scFoot" class="sc-foot"></div>
+    </div>
+  </main>
+
+  <!-- Poker table. You sit at the bottom; the others go round the table. The small-buttons row (😄 🔈 … 🎙)
+       is the same one the other games use: app.js moves it here while a poker table is on screen. -->
+  <main id="poker" class="screen hidden">
+    <div class="pk-wrap">
+      <div id="pkTable" class="pk-table">
+        <div id="pkSeats"></div>
+        <div class="pk-mid">
+          <div id="pkPot" class="pk-pot"></div>
+          <div id="pkBoard" class="pk-board"></div>
+          <div id="pkMsg" class="pk-msg" aria-live="polite"></div>
+        </div>
+      </div>
+      <div id="pkMe" class="pk-me"></div>
+      <div id="pkAdvice" class="pk-advice hidden"></div>
+    </div>
+    <div id="pkWatchers" class="watchers hidden"></div>
+    <button id="pkCoach" class="pk-coach hidden"></button>
+    <div id="pkStatus" class="status" aria-live="polite"></div>
+    <div id="pkRaise" class="pk-raise hidden">
+      <div class="pk-sizes">
+        <button data-size="min" class="ghost small">Min</button>
+        <button data-size="0.5" class="ghost small">½ pot</button>
+        <button data-size="1" class="ghost small">Pot</button>
+        <button data-size="max" class="ghost small">All-in</button>
+        <button data-size="x" class="ghost small" aria-label="Cancel">✕</button>
+      </div>
+      <input id="pkRange" type="range" aria-label="Amount">
+      <div id="pkRaiseAmt" class="pk-raise-amt"></div>
+    </div>
+    <div id="pokerActions" class="actions pk-actions">
+      <div class="act-main">
+        <button id="pkFold" class="pk-btn pk-fold" disabled>Fold</button>
+        <button id="pkCall" class="pk-btn pk-call" disabled>Check</button>
+        <button id="pkBet" class="pk-btn pk-bet-btn" disabled>Bet</button>
+        <button id="pkEndGame" class="ghost hidden">End game</button>
+        <button id="pkNext" class="primary hidden">Deal next hand</button>
+        <button id="pkAgain" class="primary hidden">Play again</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Poker: play vs computer set-up -->
+  <div id="pokerSoloModal" class="overlay hidden">
+    <div class="modal">
+      <h3>🤖 Poker vs computer</h3>
+      <label class="field inline">Computer players
+        <select id="psoloCount"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+      </label>
+      <label class="field inline">They play
+        <select id="psoloLevel"><option value="easy">Easy (loose, they call a lot)</option><option value="normal" selected>Normal</option></select>
+      </label>
+      <label class="field inline">Starting chips
+        <select id="psoloChips"><option>500</option><option selected>1000</option><option>2000</option></select>
+      </label>
+      <label class="field inline">Blinds
+        <select id="psoloBlind"><option value="10" selected>5 / 10</option><option value="20">10 / 20</option><option value="50">25 / 50</option></select>
+      </label>
+      <label class="field inline">Time per turn
+        <select id="psoloTime"><option value="0" selected>Off (take your time)</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select>
+      </label>
+      <p class="muted small-text">The coach is always on here: it advises at the level you picked, and reviews each hand with you. Play chips only.</p>
+      <button id="psoloStart" class="primary big">Deal me in</button>
+      <button id="psoloCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Poker: final chip counts when the host ends the game -->
+  <div id="pkEndOverlay" class="overlay hidden">
+    <div class="modal">
+      <h2 id="pkEndTitle"></h2>
+      <p id="pkEndSub" class="muted"></p>
+      <ol id="pkEndList" class="scores pk-scores"></ol>
+      <button id="pkEndAgain" class="primary big hidden">Play again</button>
+      <p id="pkEndWait" class="muted hidden">Waiting for the host to start a new game…</p>
+      <button id="pkEndClose" class="ghost">Close</button>
+    </div>
+  </div>
+
+  <!-- Poker: your choices next to the coach's, after a hand -->
+  <div id="pkReview" class="overlay hidden">
+    <div class="modal">
+      <h3>📋 Hand review</h3>
+      <ul id="pkReviewList" class="pk-review"></ul>
+      <button id="pkReviewClose" class="primary big">Close</button>
+    </div>
+  </div>
 
   <!-- Ludo: play vs computer set-up -->
   <div id="ludoSoloModal" class="overlay hidden">
@@ -400,6 +523,8 @@
     </form>
   </aside>
   <div id="toast" class="toast hidden"></div>
+  <script src="poker-learn.js"></script>
+  <script src="poker.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -16,6 +16,9 @@ window.GAME_CONFIG = {
     { id: 'ondu', ready: true },
     { id: 'ludo', label: 'Ludo', ready: true, tagline: 'Roll, race and send them home. 2 to 4 players, anyone with the link can play.' },
     { id: 'ruthless', label: 'Ondu Ruthless', ready: false },   // the tougher, no-holds-barred version of this game
+    // Poker School: lessons, drills and practice tables for Texas Hold'em, by level. Play chips only.
+    // (The id 'poker' is what the room server knows it by: don't change it. Lessons are in poker-learn.js.)
+    { id: 'poker', label: 'Poker School', ready: true, tagline: "Learn Texas Hold'em at your own level. Lessons, drills and practice tables with play chips." },
   ],
 
   // The custom Wild +4 effect (photo + laugh). SWITCHED OFF at the owner's request (Nov 2026):

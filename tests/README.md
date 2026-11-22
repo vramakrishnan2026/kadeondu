@@ -17,6 +17,7 @@ node timersim.mjs   # everyone always lets the clock run out; checks auto-moves 
 node idlesim.mjs    # inactive players: 5 timer-played turns in a row, who may remove them, own move resets the count
 node chatsim.mjs    # room chat on the server: who can post, cleaning, last-200 limit, wipe rules (run prepare-mock.sh once first)
 node statssim.mjs   # join stats: password check, join log, 90-day clean-up, location hand-off (run prepare-mock.sh once first)
+node pokersim.mjs   # Poker: hand reading, coach, side pots, 6,000 random hands with chip conservation
 node ludosim.mjs    # Ludo: 576 computer-only games over every mix of house rules, plus set pieces for each rule
 node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, ties, scoring, late moves, off by default
 ```
@@ -28,6 +29,7 @@ node roundsim.mjs   # round time limit (3 / 5 min): lowest card points wins, tie
 | `ui_landing.py` | first visit, invited newcomer one-tap join, returning player invite card, change name |
 | `ui_tabs.py` | game tabs on the home screen: Ludo has its own home; Ondu Ruthless shows "Brewing…" with the steaming cup; back to the game by button or tab; tabs fit a 320 px phone; invite links open on the game |
 | `ui_ludo.py` | Ludo in a room: settings, rolling, choosing a token, capture, reactions, chat, a watcher, finishing, playing again, fit at five screen sizes, turn timer, left-handed, vs computer (uses the stand-in's `/__test/die` and `/__test/ludo`) |
+| `ui_poker.py` | Poker School: home tab and levels, a lesson and quiz, every drill, vs computer with coach and review, a friends' table, fit at five screen sizes |
 | `ui_ludo_voice.py` | voice notes and reactions on the Ludo screen; the buttons row returns to the card game afterwards |
 | `ui_rooms.py` | open rooms list, watching mid-round, dealt in next round |
 | `ui_invite.py` | Online now, invite/accept/decline, invite from home, invite mid-game |
