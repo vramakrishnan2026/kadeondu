@@ -900,3 +900,19 @@ body.lefty .cr-actions.with-chat .act-main { padding-right: 0; padding-left: 44p
 .pk-guard-sub b { color: #ffd66b; }
 .pk-guard-why { margin: 0; padding-left: 1.1rem; text-align: left; display: flex; flex-direction: column; gap: .35rem; font-size: .92rem; line-height: 1.38; color: #e4e2ec; }
 .pk-guard-why li.pk-watch { color: #ffcf80; font-weight: 700; }
+
+/* Poker: questions to the AI coach inside the hand review */
+#pkReview .modal { max-height: 92dvh; overflow: auto; }
+#pkReview .pk-review { max-height: none; overflow: visible; }
+.pk-ask { display: flex; flex-direction: column; gap: .45rem; text-align: left; border-top: 1px solid var(--line); padding-top: .7rem; }
+.pk-ask-head { font-weight: 800; font-size: .95rem; }
+.pk-qa { display: flex; flex-direction: column; gap: .4rem; }
+.pk-qa:empty { display: none; }
+.pk-qa .q { align-self: flex-end; max-width: 88%; background: var(--accent); color: #fff; border-radius: 14px 14px 4px 14px; padding: .4rem .65rem; font-size: .9rem; }
+.pk-qa .a { align-self: flex-start; max-width: 94%; background: rgba(255,255,255,.09); border-radius: 14px 14px 14px 4px; padding: .5rem .65rem; font-size: .92rem; line-height: 1.42; }
+.pk-qa .a.wait { opacity: .7; font-style: italic; }
+.pk-ask-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.pk-ask-chips button { min-height: 40px; padding: 0 .75em; font-size: .82rem; border-radius: 99px; }
+.pk-ask-form { display: flex; gap: .4rem; }
+.pk-ask-form input { flex: 1; min-width: 0; min-height: 48px; }
+.pk-ask-form button { min-height: 48px; flex: none; }

@@ -17,7 +17,7 @@ export const IDLE_KICK = 5;
 const LOG_MAX = 50;
 // How long the screens take to show things (computer players and the clocks wait for these)
 const DEAL_MS = 900, ACT_MS = 350, BOARD_MS = 700, SHOW_MS = 1200;
-const BETWEEN_MS = 4500, BETWEEN_SHOW_MS = 8000; // pause before the next hand (longer after a showdown)
+const BETWEEN_MS = 8000, BETWEEN_SHOW_MS = 15000; // pause before the next hand (longer after a showdown), when hands deal themselves
 
 function randInt(n) {
   const a = new Uint32Array(1);
@@ -332,6 +332,7 @@ export function newRoom() {
       startChips: 1000, blind: 10,
       coach: false,        // coach hints at this table (each player sees hints for their own cards only)
       botLevel: 'normal', turnTime: 20, private: false, reactions: false,
+      autoDeal: true,      // the next hand deals itself after a pause. Off vs computer: the learner deals when ready.
     },
     round: 0,        // hand number in this game
     hand: null,      // null | betting | between
@@ -605,7 +606,7 @@ function award(s, score) {
   s.currentBet = 0;
   s.animMs = (s.animMs || 0) + (score ? SHOW_MS : 0);
   s.turnNo++; s.actNo++;
-  s.deadline = Date.now() + s.animMs + (score ? BETWEEN_SHOW_MS : BETWEEN_MS); // the next hand deals itself
+  s.deadline = s.settings.autoDeal === false ? null : Date.now() + s.animMs + (score ? BETWEEN_SHOW_MS : BETWEEN_MS); // the next hand deals itself
   s.deadlineFor = s.actNo;
 }
 

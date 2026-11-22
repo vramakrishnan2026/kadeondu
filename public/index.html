@@ -443,7 +443,18 @@
     <div class="modal">
       <h3>📋 Hand review</h3>
       <ul id="pkReviewList" class="pk-review"></ul>
-      <button id="pkReviewClose" class="primary big">Close</button>
+      <!-- Questions to the AI coach about the hands of this table session only -->
+      <div class="pk-ask">
+        <div class="pk-ask-head">Ask the AI coach about this session</div>
+        <div id="pkQa" class="pk-qa"></div>
+        <div id="pkAskChips" class="pk-ask-chips"></div>
+        <form id="pkAskForm" class="pk-ask-form" autocomplete="off">
+          <input id="pkAskInput" type="text" maxlength="200" placeholder="Your question about these hands" aria-label="Your question about these hands">
+          <button id="pkAskBtn" class="primary" type="submit">Ask</button>
+        </form>
+        <span class="muted small-text">Answers come from AI and cover this table session only. They can be wrong.</span>
+      </div>
+      <button id="pkReviewClose" class="ghost">Close</button>
     </div>
   </div>
 

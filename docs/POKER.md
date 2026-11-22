@@ -24,7 +24,7 @@ Progress (level, quiz scores, drill bests) is in `localStorage` under `ko-poker`
 ## Table rules
 - No-limit Texas Hold'em. Blinds 5/10, 10/20 or 25/50; starting stack 500, 1000 or 2000 (host settings).
 - A player who runs out of chips gets a fresh stack at the next hand (it is a practice table). The final table shows chips won or lost, counting those top-ups.
-- The game has no natural end: the host presses **End game** between hands. The next hand deals itself after a pause (the host can deal sooner).
+- The game has no natural end: the host presses **End game** between hands. At a friends' table the next hand deals itself after a pause (the host can deal sooner); vs computer it waits for the learner.
 - Side pots with all-ins are handled. A bet nobody called is returned.
 - Simplification: any raise, even an all-in for less than a full raise, lets the others raise again.
 - A player who leaves mid-hand is folded and their seat is cleared before the next hand.
@@ -67,10 +67,23 @@ The owner asked for the game to be watched and a mistaken move undone so the lea
 - **This is the built-in coach, not the Cloudflare AI.** Checking every move with the AI would use the free allowance up within a few hands and add a wait to each move.
 - The plan shows "Mistakes taken back: N".
 
+## Time to think, and questions to the AI coach (added 22 Nov 2026)
+The owner said the next hand started before a learner could analyse the last one, and asked for the AI to answer questions about that session only.
+
+- **Vs computer the next hand waits.** `settings.autoDeal` is off there: nothing is dealt until the learner taps "Deal next hand".
+- **At a friends' table** hands still deal themselves (nobody should be able to stall the table), but the pause is longer: 15 s after a showdown, 8 s otherwise. An open review no longer closes when the next hand starts, and "Review the last hand" stays available while waiting for a turn.
+- **Ask the AI coach** (inside the hand review): the learner types a question or taps a suggestion. `POST /api/poker-ask` sends the last 4 hands of this table session and the question to Workers AI.
+  - What is sent: blinds, the learner's cards and seat, every action, the board, the coach's advice and reasons, showdowns and results. Other players appear as "Opponent A", "Opponent B". No names.
+  - The model is told to answer only about those hands and to refuse anything else with a fixed sentence. The session is forgotten when the learner leaves the table.
+  - The question is cut to 200 characters and stripped of brackets; history lines must match a plain-text pattern or are dropped (`askLine` in `src/worker.js`).
+  - Limits: 12 questions a day per phone; notes and answers share `AI_DAILY_CAP` (700 a day). A plain message appears when the allowance is used up.
+- **Not yet seen live:** the real model's answers, including whether it keeps to the session when asked about other things.
+
 ## Tests
 - `node tests/pokersim.mjs`: hand reading, coach sanity, side pots, 6,000 random hands with chip conservation, watchers, leaving.
 - `python3 tests/ui_poker_plan.py`: the plan, revision quiz, AI note (pretend AI: on, limit reached, off), habit counting, coach nudge, level up.
 - `python3 tests/ui_poker_guard.py`: the stop-and-take-back pop-up at a friends' table (fixed deal) and vs computer, each setting.
+- `python3 tests/ui_poker_ask.py`: hands wait vs computer; questions to the AI coach (what is sent, cleaning, limits); review stays open at a friends' table.
 - `python3 tests/ui_poker.py`: home tab, a lesson and quiz, every drill, vs computer with coach and review, a friends' table (hidden cards, showdown, watcher, timer), fit at five screen sizes.
 - The stand-in has `/__test/deck?room=CODE&cards=As,Kd,…` to fix the next deal.
 

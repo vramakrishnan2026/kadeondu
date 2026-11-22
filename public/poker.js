@@ -493,7 +493,7 @@
     6: [[11, 48], [14, 17], [38, 10], [62, 10], [86, 17], [89, 48]],
   };
   let T = null; // what the table remembers between updates
-  const freshTable = () => ({ round: -1, boardLen: 0, deadlineAt: null, turnLength: 0, coachKey: '', advice: null, coachOpen: false, review: [], reviewRound: -1, raiseOpen: false, raiseTo: 0, waiting: false, endClosed: -1, toldWin: -1 });
+  const freshTable = () => ({ round: -1, boardLen: 0, deadlineAt: null, turnLength: 0, coachKey: '', advice: null, coachOpen: false, review: [], reviewRound: -1, hands: [], alias: {}, qa: [], asking: false, raiseOpen: false, raiseTo: 0, waiting: false, endClosed: -1, toldWin: -1 });
   function reset() {
     T = null;
     for (const id of ['pkSeats', 'pkBoard', 'pkMe', 'pkMsg']) $(id)?.replaceChildren();
@@ -553,8 +553,24 @@
     const myTurn = betting && s.turnId === s.you && seated;
     if (myTurn && T.prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
     T.prevTurn = s.turnId;
-    if (s.round !== T.round) { T.round = s.round; T.boardLen = 0; T.raiseOpen = false; if (T.reviewRound !== s.round) { T.reviewRound = s.round; T.review = []; } $('pkReview').classList.add('hidden'); }
+    if (s.round !== T.round) { T.round = s.round; T.boardLen = 0; T.raiseOpen = false; if (T.reviewRound !== s.round) { T.reviewRound = s.round; if (T.review.length) T.prevReview = T.review; T.review = []; } } // (an open review stays open: the reader decides when to close it)
     if (!myTurn) { T.raiseOpen = false; T.pending = null; $('pkGuard').classList.add('hidden'); } // (a stopped move lapses if the turn has gone)
+
+    // the story of this table session, kept for questions to the AI coach (other players become "Opponent A", …)
+    const CT = c => '23456789TJQKA'[c >> 2] + 'shdc'[c & 3];
+    const who = id => { if (id === s.you) return 'You'; if (!T.alias[id]) T.alias[id] = 'Opponent ' + String.fromCharCode(65 + Object.keys(T.alias).length % 26); return T.alias[id]; };
+    for (const e of fresh) {
+      if (e.n <= (T.histSeq || 0)) continue;
+      T.histSeq = e.n;
+      if (e.k === 'deal') { T.hands.push({ n: e.hand, street: 'Before the flop', lines: [`Blinds ${e.sbAmt} and ${e.bbAmt}. ${s.players.length} players.`] }); if (T.hands.length > 6) T.hands.shift(); continue; }
+      const H = T.hands[T.hands.length - 1];
+      if (!H) continue;
+      if (e.k === 'pact') { const w = who(e.id), v = w === 'You' ? '' : 's'; H.lines.push(`${H.street}: ${w} ${e.a === 'fold' ? 'fold' + v : e.a === 'check' ? 'check' + v : e.a === 'call' ? `call${v} ${e.amt}` : e.a === 'bet' ? `bet${v} ${e.to}` : `raise${v} to ${e.to}`}${e.allin ? ' (all-in)' : ''}`); }
+      else if (e.k === 'board') { H.street = e.street === 'flop' ? 'Flop' : e.street === 'turn' ? 'Turn' : 'River'; H.lines.push(`${H.street} dealt: ${e.cards.map(CT).join(' ')}`); }
+      else if (e.k === 'show') for (const h of e.hands) H.lines.push(`Showdown: ${who(h.id)} ${h.id === s.you ? 'show' : 'shows'} ${h.cards.map(CT).join(' ')} (${h.hand})`);
+      else if (e.k === 'pwin') H.lines.push(`Result: ${who(e.id)} ${e.id === s.you ? 'win' : 'wins'} ${e.amt}${e.hand ? ' with ' + e.hand : ''}`);
+    }
+    { const H = T.hands[T.hands.length - 1]; if (H && !H.mine && me?.cards?.length && me.inHand) { H.mine = true; H.lines.splice(1, 0, `Your cards: ${me.cards.map(CT).join(' ')}. Your seat: ${me.pos || 'unknown'}.`); } }
 
     // news
     if (!firstState) for (const e of fresh) {
@@ -670,6 +686,12 @@
       const same = T.review.filter(r => r.match).length;
       strip.textContent = `📋 Review this hand · ${same} of ${T.review.length} matched the coach`;
       strip.dataset.mode = 'review';
+      T.shownReview = T.review;
+    } else if (canCoach && !myTurn && T.prevReview?.length && s.phase === 'playing') { // the next hand has started: the last one can still be reviewed
+      showStrip = true;
+      strip.textContent = '📋 Review the last hand · ask the AI coach';
+      strip.dataset.mode = 'review';
+      T.shownReview = T.prevReview;
     }
     strip.classList.toggle('hidden', !showStrip);
     if (!showStrip || strip.dataset.mode !== 'advice') $('pkAdvice').classList.add('hidden');
@@ -721,7 +743,7 @@
     st.querySelector('.secs')?.remove();
     st.classList.toggle('mine', myTurn);
     st.textContent = s.phase === 'ended' ? 'Game over'
-      : between ? 'Next hand coming up'
+      : between ? (T.deadlineAt ? 'Next hand coming up' : isHost ? 'Take your time: deal the next hand when you are ready' : 'Waiting for the host to deal the next hand')
       : !seated ? `Watching · ${who}'s turn`
       : myTurn ? (s.toCall > 0 ? `Your turn: ${s.toCall} to call` : 'Your turn: check or bet')
       : me.folded ? `You folded · ${who}'s turn`
@@ -799,6 +821,8 @@
         if (slip) P0.slip[slip] = (P0.slip[slip] || 0) + 1;
         save();
         T.review.push({ street: { preflop: 'Before the flop', flop: 'Flop', turn: 'Turn', river: 'River' }[s.street], did: word, coach: a.head, match: mine === a.act, lines: a.lines, slip });
+        const H = T.hands[T.hands.length - 1];
+        if (H) H.lines.push(`${H.street}: the coach advised you to ${a.head.toLowerCase()}. Coach's reasons: ${a.lines.join(' ').slice(0, 150)}`.replace(/[^\w ,.'&:;%+()?!/-]/g, ' ').slice(0, 178));
       }
     }
     T.waiting = true; T.raiseOpen = false;
@@ -853,14 +877,50 @@
   function showReview() {
     const list = $('pkReviewList');
     list.replaceChildren();
-    for (const r of T.review) {
+    for (const r of T.shownReview || T.review) {
       const li = el('li', r.match ? 'same' : 'diff');
       li.append(el('div', 'rv-top', `${r.street}: you chose ${r.did}`), el('div', 'rv-coach', (r.match ? '✓ Coach agrees: ' : '✗ Coach: ') + r.coach));
       if (!r.match) li.append(el('div', 'rv-why', r.lines.join(' ')));
       if (r.slip && habit()?.kind === r.slip) li.append(el('div', 'rv-habit', `⚠ Your most common slip: ${HABITS[r.slip].short}.`));
       list.append(li);
     }
+    renderQa();
+    const chips = $('pkAskChips');
+    chips.replaceChildren(...['Why was the coach\'s move better?', 'What should I watch for next time?', 'How did the others play this hand?'].map(t => { const b = el('button', 'ghost', t); b.type = 'button'; b.onclick = () => askCoach(t); return b; }));
     $('pkReview').classList.remove('hidden');
+  }
+  // Questions to the AI coach about this table session's hands only. Sent: the last few hands (cards, actions, the
+  // coach's advice, other players as "Opponent A") and the question. A few a day per phone; plain message when used up.
+  const ASK_PER_DAY = 12;
+  function renderQa() {
+    const box = $('pkQa');
+    box.replaceChildren();
+    for (const x of T?.qa || []) { box.append(el('div', 'q', x.q), el('div', 'a' + (x.a ? '' : ' wait'), x.a || 'The AI coach is looking at the hand…')); }
+    box.lastElementChild?.scrollIntoView({ block: 'nearest' });
+  }
+  async function askCoach(text) {
+    const q = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!T || T.asking || q.length < 3) return;
+    const hands = T.hands.slice(-4).filter(h => h.lines.length).map(h => ({ n: h.n, lines: h.lines.slice(0, 26) }));
+    if (!hands.length) return KO.toast('Play a hand first, then ask about it');
+    const today = new Date().toISOString().slice(0, 10);
+    if (prog.ai.qday !== today) { prog.ai.qday = today; prog.ai.qn = 0; }
+    const item = { q, a: '' };
+    T.qa.push(item);
+    const done = a => { item.a = a; T.asking = false; $('pkAskBtn').disabled = false; if (T) renderQa(); };
+    if ((prog.ai.qn || 0) >= ASK_PER_DAY) { renderQa(); return done('You have asked today\'s questions. The review above still shows what the coach would have done, and the AI coach is back tomorrow.'); }
+    T.asking = true; $('pkAskBtn').disabled = true; $('pkAskInput').value = '';
+    renderQa();
+    try {
+      const r = await fetch('/api/poker-ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ level: level(), q, hands }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.text) throw new Error(j.error || 'failed');
+      prog.ai.qn = (prog.ai.qn || 0) + 1; save();
+      done(String(j.text).slice(0, 800));
+    } catch (e) {
+      done(e.message === 'limit' ? 'The AI coach has used up its free allowance for today. The review above still shows what the coach would have done.'
+        : 'The AI coach cannot be reached just now. The review above still shows what the coach would have done.');
+    }
   }
 
   // Play vs computer: the whole table runs here on the phone, with the coach always on
@@ -873,6 +933,7 @@
     s.settings.botLevel = $('psoloLevel').value;
     s.settings.turnTime = Number($('psoloTime').value);
     s.settings.coach = true;
+    s.settings.autoDeal = false; // no rush: the next hand waits until you deal it
     prog.guard = $('psoloGuard').value; save();
     const me = G.addPlayer(s, KO.name() || 'You');
     for (let i = 0; i < Number($('psoloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
@@ -917,6 +978,7 @@
     $('pkEndClose').onclick = () => { const s = KO.getS(); if (T && s) { T.endClosed = s.round; $('pkEndOverlay').classList.add('hidden'); controls(); } };
     $('pkCoach').onclick = showAdvice;
     $('pkReviewClose').onclick = () => $('pkReview').classList.add('hidden');
+    $('pkAskForm').addEventListener('submit', e => { e.preventDefault(); askCoach($('pkAskInput').value); });
     $('pkGuardBack').onclick = () => { $('pkGuard').classList.add('hidden'); if (T) { T.pending = null; T.raiseOpen = false; } prog.play.saved = (prog.play.saved || 0) + 1; save(); controls(); KO.toast('Taken back: choose again'); };
     $('pkGuardGo').onclick = () => { $('pkGuard').classList.add('hidden'); const m = T?.pending; if (T) T.pending = null; if (m) act(m, true); };
     $('pkChipsInput').onchange = e => KO.send({ t: 'settings', startChips: Number(e.target.value) });
