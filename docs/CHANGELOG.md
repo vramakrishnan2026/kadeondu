@@ -68,3 +68,4 @@
 - **Carrom sounds remade** after the owner said they sounded like bamboo pipes: noise-based wooden clacks instead of ringing tones, less echo. Cache v20.
 - **Carrom looks:** coins, striker and pockets drawn with depth (lit rim, shaded top, turned grooves, soft shadow; light from the top left). The frame's corners carry a brass inlay line and the Kade Ondu four-colour star. Cache v21.
 - **Carrom board about 20% smoother** at the owner's request: `FRICTION` 52 to 42 in `shared/carrom.js`, so coins and the striker slide about a quarter further at the same pull. Cache v22.
+- **Carrom board 10% smoother again**, which the owner said settles it: `FRICTION` 42 to 37 (about 30% below the first value of 52). Cache v23.
