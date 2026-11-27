@@ -21,7 +21,8 @@ const LOG_MAX = 30;
 export const COIN_R = 2.15, STRIKER_R = 2.8, POCKET_R = 3.7, POCKET_AT = 3.4;
 export const BASE = 18, BASE_FROM = 23, BASE_TO = 77; // baseline: this far from your edge, between these marks
 export const V_MIN = 30, V_MAX = 240;                  // slowest and fastest shot
-const FRICTION = 52;        // how fast things slow down (units per second, each second)
+const FRICTION = 42;        // how fast things slow down (units per second, each second). Lower = a smoother, faster board.
+                            // Was 52 until the owner asked for a board about 20% smoother (28 Nov 2026). The computer's shots are worked out from this number.
 const WALL_BOUNCE = 0.72, HIT_BOUNCE = 0.93;
 const COIN_M = 1, STRIKER_M = 2.7;
 export const HZ = 120;      // physics steps per second
