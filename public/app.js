@@ -6,6 +6,7 @@
   const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const SESSION_KEY = 'cardgame-session';
   const CID_KEY = 'cardgame-cid';
+  const SEAT_KEY = 'cardgame-seat'; // a private key for this browser: the room server uses it to give you your own seat back
   const NAME_KEY = 'cardgame-name';
 
   // ── Apply the rename-able config ──────────────────────────
@@ -288,6 +289,15 @@
     d.title = cls === 'on' ? 'Connected' : cls === 'wait' ? 'Connecting…' : 'Not connected, retrying';
   }
 
+  // This browser's seat key. Unlike the id used for the "who's online" list, it is never shown to other players,
+  // so nobody else can use it to take your seat.
+  let seatKey = store.get(SEAT_KEY);
+  if (!/^[a-z0-9]{24}$/.test(seatKey || '')) {
+    seatKey = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => 'abcdefghijkmnopqrstuvwxyz23456789'[b % 33]).join('');
+    store.set(SEAT_KEY, seatKey);
+  }
+  let pendingLeave = false, leaveTimer = null; // Leave was pressed while the connection was down: say goodbye once it is back
+
   function connect(code, intent) {
     room = code;
     joinIntent = intent;
@@ -304,6 +314,7 @@
         t: 'join',
         name: $('nameInput').value.trim() || store.get(NAME_KEY) || 'Player',
         playerId: s?.playerId, token: s?.token,
+        seat: seatKey,
         create: !s && joinIntent.create, joinOnly: !joinIntent.create,
         ...(joinIntent.create && joinIntent.game ? { game: joinIntent.game } : {}), // which game a new room plays
       }));
@@ -336,6 +347,7 @@
     try { ws?.close(); } catch {}
     ws = null; S = null; room = null; lastSeq = 0;
     session = null; store.del(SESSION_KEY);
+    pendingLeave = false; clearTimeout(leaveTimer);
     history.replaceState(null, '', location.pathname);
     $('roomChip').classList.add('hidden');
     $('leaveBtn').classList.add('hidden');
@@ -361,6 +373,7 @@
     if (m.t === 'welcome') {
       session = { room, playerId: m.playerId, token: m.token };
       store.set(SESSION_KEY, session);
+      if (pendingLeave) { pendingLeave = false; clearTimeout(leaveTimer); leaving = true; send({ t: 'leave' }); return; }
       history.replaceState(null, '', `?room=${room}`);
       $('roomChip').textContent = room;
       $('roomChip').classList.remove('hidden');
@@ -2001,7 +2014,15 @@
     if (solo) { if (confirm('Quit this game?')) goHome(); return; }
     if (!confirm(S?.game === 'ludo' ? 'Leave this room? Your tokens come off the board.' : S?.game === 'poker' ? 'Leave this table? Your cards are folded.' : S?.game === 'carrom' ? 'Leave this room? The board ends for everyone.' : 'Leave this room? Your cards go back in the deck.')) return;
     leaving = true;
-    if (ws?.readyState === 1) send({ t: 'leave' }); else goHome();
+    if (ws?.readyState === 1) return send({ t: 'leave' });
+    // Not connected right now (the phone was asleep, or the app has just been reopened). Going home quietly here
+    // used to leave the seat behind in the room, and the next join got a second seat ("Vinay 2").
+    // Instead: reconnect, tell the room, then go home. If the room cannot be reached in a few seconds, go home anyway.
+    pendingLeave = true;
+    toast('Leaving…');
+    connect(room, { create: false });
+    clearTimeout(leaveTimer);
+    leaveTimer = setTimeout(() => { if (pendingLeave) { pendingLeave = false; goHome('You left the room'); leaving = false; } }, 5000);
   };
   document.querySelectorAll('#colorPicker [data-color]').forEach(b => {
     b.onclick = () => {

@@ -95,3 +95,7 @@ Network-first: online players always get the latest version, and the cache is on
 The poker screens live in their own file, `public/poker.js`, not in `app.js`. `app.js` calls `window.KOPoker.init(bridge)` once and hands over what it needs (`send`, `show`, `toast`, the shared buttons row, solo start). `app.js` then calls `KOPoker.render`, `lobby`, `tick`, `onTab` and `reset` at the same points where it calls the Ludo functions. Lessons are data in `public/poker-learn.js`.
 
 Carrom follows the same pattern with `public/carrom.js` and `window.KOCarrom`.
+
+## Getting your seat back
+
+A phone normally rejoins with the player id and token it saved (`cardgame-session`). If that is missing, the room looks for a player whose `seatKey` matches the private key this browser sends with every join (`cardgame-seat`) and hands that seat back. The key is separate from the id used in the "who's online" list, because that id is visible to other players. A different browser or phone has a different key and gets a new seat.

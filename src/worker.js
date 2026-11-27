@@ -318,6 +318,11 @@ export class GameRoom extends DurableObject {
     if (msg.t === 'join') {
       const s = this.room;
       let p = [...s.players, ...(s.spectators || [])].find(x => x.id === msg.playerId && x.token === msg.token);
+      // No saved seat sent, but this browser already has a seat here (its private seat key matches): give that seat
+      // back instead of adding the person a second time as "Name 2". Happens when the phone lost its saved seat,
+      // e.g. after leaving while disconnected, or when site data was cleared but the key survived.
+      const seat = typeof msg.seat === 'string' && /^[a-z0-9]{24}$/.test(msg.seat) ? msg.seat : null;
+      if (!p && seat && !msg.create) p = [...s.players, ...(s.spectators || [])].find(x => x.seatKey === seat && !x.bot && !x.left) || null;
       if (!p) {
         if (msg.create && s.players.length > 0) {
           if (this.online(ws).size > 0) return this.send(ws, { t: 'error', code: 'taken', msg: 'Room code in use' });
@@ -331,6 +336,7 @@ export class GameRoom extends DurableObject {
         // the first person in decides which game this room plays
         if (kind === 'create' && !(this.room.spectators || []).length) this.room = engineFor(msg.game).newRoom();
         p = E(this.room).addPlayer(this.room, msg.name);
+        if (seat) p.seatKey = seat; // (kept with the room; never sent to anyone. Not `seat`: Ludo uses that for the board)
         await this.logJoin(p, att, kind);
       } else {
         // Same player opened a new tab or reconnected: retire the old socket
