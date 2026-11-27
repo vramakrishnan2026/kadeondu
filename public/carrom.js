@@ -166,13 +166,13 @@
     $('botLevelInput').value = s.settings.botLevel || 'normal';
     $('turnTimeInput').value = String(s.settings.turnTime || 0);
     $('addBotBtn').disabled = s.players.length >= 4;
-    const n = s.players.length, okN = n === 2 || n === 4;
+    const n = s.players.length, okN = n >= 2; // (with 3, a computer player joins when the host starts)
     $('guestSettings').textContent = isHost ? '' : `${s.settings.rules === 'points' ? 'Points rules: any coin, black 10, white 20, queen 50' : 'Classic rules: black against white, cover the queen'}` +
       (s.players.some(p => p.bot) ? ` · computer: ${s.settings.botLevel || 'normal'}` : '') + ` · ${s.settings.turnTime ? s.settings.turnTime + ' s per turn' : 'no turn timer'}` +
       (s.settings.reactions ? ' · 😄 reactions on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
     $('startBtn').classList.toggle('hidden', !isHost);
     $('startBtn').disabled = !okN;
-    $('startBtn').textContent = n < 2 ? 'Waiting for players… (2 or 4)' : n === 3 ? 'One more needed (2 or 4 players)' : n === 4 ? (s.settings.rules === 'points' ? 'Start game (4 players)' : 'Start game (2 teams of 2)') : 'Start game (2 players)';
+    $('startBtn').textContent = n < 2 ? 'Waiting for players… (2 or 4)' : n === 3 ? (s.settings.rules === 'points' ? 'Start game (3 players + 1 computer)' : 'Start game (3 players + 1 computer, 2 teams)') : n === 4 ? (s.settings.rules === 'points' ? 'Start game (4 players)' : 'Start game (2 teams of 2)') : 'Start game (2 players)';
     $('waitHost').classList.toggle('hidden', isHost);
   }
 
@@ -292,7 +292,7 @@
       ol.append(li);
     });
     $('crEndAgain').classList.toggle('hidden', !isHost);
-    $('crEndAgain').disabled = !(s.players.length === 2 || s.players.length === 4);
+    $('crEndAgain').disabled = s.players.length < 2;
     $('crEndWait').classList.toggle('hidden', isHost);
   }
 

@@ -32,7 +32,8 @@ const online = s => new Set(s.players.map(p => p.id));
   ok('backwards refused', !!C.handle(s, ps[0].id, { t: 'shot', pos: 0.5, vx: 0, vy: 100 }).error);
   ok('too soft refused', !!C.handle(s, ps[0].id, { t: 'shot', pos: 0.5, vx: 0, vy: -5 }).error);
   ok('not your turn', !!C.handle(s, ps[1].id, { t: 'shot', pos: 0.5, vx: 0, vy: 100 }).error);
-  ok('3 players cannot start', (() => { const t = table(3); return !!C.handle(t.s, t.ps[0].id, { t: 'start' }).error; })());
+  ok('3 players: a computer player fills the fourth seat', (() => { const t = table(3, 'classic', false); const r = C.handle(t.s, t.ps[0].id, { t: 'start' }); return !r.error && t.s.players.length === 4 && t.s.players[3].bot && t.s.phase === 'playing'; })());
+  ok('2 and 4 start as they are', [2, 4].every(n => { const t = table(n, 'classic', false); C.handle(t.s, t.ps[0].id, { t: 'start' }); return t.s.players.length === n && t.s.phase === 'playing'; }));
 }
 // 2. rules set pieces (coins placed by hand, then a straight pot into the top-right pocket by player 0, white)
 function setup(rules, coins, extra = {}) {

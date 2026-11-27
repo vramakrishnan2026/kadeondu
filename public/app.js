@@ -490,7 +490,7 @@
           (s.settings.reactions ? ' · 😄 reactions on' : '') + (s.settings.private ? ' · 🔒 private room' : '');
         $('startBtn').classList.toggle('hidden', !isHost);
         $('startBtn').disabled = s.players.length < 2;
-        $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players… (2 to 4)' : `Start Ludo (${s.players.length} players)`;
+        $('startBtn').textContent = s.players.length < 2 ? 'Waiting for players… (2 to 4)' : s.players.length === 3 && !s.players.some(p => p.bot) ? 'Start Ludo (3 players + 1 computer)' : `Start Ludo (${s.players.length} players)`;
         $('waitHost').classList.toggle('hidden', isHost);
         return;
       }

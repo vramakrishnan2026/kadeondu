@@ -10,7 +10,8 @@ A tab for Carrom: flick the striker, pocket the coins. Built 22 Nov 2026.
 ## How it plays
 - **Seats:** bottom, right, top, left. Two players sit opposite each other. With four, the player opposite you is your partner (classic rules). Everyone sees the board turned so that they sit at the bottom.
 - **Shooting:** slide the striker along your baseline with the slider, then pull back anywhere on the board (like a catapult) and let go. The dotted line shows the direction, the bar shows the power. Shots must go forward.
-- **Start needs exactly 2 or 4 players.** If someone leaves mid-board, the board ends and everyone returns to the waiting room.
+- **With 3 players the host can still start:** a computer player takes the fourth seat (added 27 Nov 2026, at the owner's request). The Start button says so.
+- **A game is played by exactly 2 or 4.** If someone leaves mid-board, the board ends and everyone returns to the waiting room.
 - A turn that times out is simply missed.
 
 ### Classic rules (default)

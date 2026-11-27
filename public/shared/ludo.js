@@ -358,6 +358,9 @@ function handleInner(s, pid, msg) {
   if (t === 'start') {
     if (!isHost) return { error: 'Only the host can start' };
     if (s.phase === 'playing') return { error: 'Game already running' };
+    // three real players at the table: a computer player takes the fourth seat (the owner asked for this).
+    // Not when a computer player is already there: then the host chose a three-player game on purpose.
+    if (s.players.length === 3 && !s.players.some(p => p.bot) && !(s.spectators || []).length && !s.settings.noFill) addPlayer(s, botName(s), { bot: true, level: s.settings.botLevel });
     const e = startRound(s);
     return e ? { error: e } : {};
   }

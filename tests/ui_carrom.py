@@ -103,7 +103,7 @@ async def main():
         # a late joiner watches; then doubles with two computer players
         w=await page('Priya'); await w.click(TAB); await w.wait_for_timeout(300); await w.click('#roomList li button'); await w.wait_for_timeout(700)
         await a.click('#crEndClose'); print('closed: play again shown', await a.is_visible('#crAgain'), '| Priya seated for the next board:', await a.evaluate("() => 1") and True)
-        await a.click('#crAgain'); await a.wait_for_timeout(700); print('3 seated cannot start:', repr(await a.text_content('#toast'))[:60])
+        await a.click('#crAgain'); await a.wait_for_timeout(900); print('3 seated, play again: a computer player takes the fourth seat:', await a.locator('.cr-plate').count()==4 and await a.locator('.cr-plate:has-text("🤖")').count()==1, '|', await a.locator('.cr-plate').all_inner_texts())
         await a.click('#leaveBtn'); await a.wait_for_selector('#home:not(.hidden)')
         # doubles vs computer, points rules, sizes
         await a.click('#soloBtn'); await a.select_option('#csoloCount','3'); await a.select_option('#csoloRules','points'); await a.click('#csoloStart'); await a.wait_for_selector('#carrom:not(.hidden)'); await a.wait_for_timeout(600)

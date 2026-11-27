@@ -86,6 +86,14 @@ for (const n of [2, 3, 4]) {
     }
   }
 }
+{ // three real players: a computer player takes the fourth seat; three with a computer player already in stay three
+  const s = L.newRoom(); const ps = [0, 1, 2].map(i => L.addPlayer(s, 'H' + i));
+  assert.deepEqual(L.handle(s, ps[0].id, { t: 'start' }), {});
+  assert.ok(s.players.length === 4 && s.players[3].bot && s.phase === 'playing' && s.players.every(p => p.seat != null), 'three real players get a computer fourth');
+  const t = L.newRoom(); const h = L.addPlayer(t, 'A'); L.addPlayer(t, 'B'); L.addPlayer(t, 'Bot', { bot: true });
+  L.handle(t, h.id, { t: 'start' });
+  assert.equal(t.players.length, 3, 'a chosen three-player game stays three');
+}
 console.log(`${games} games finished: average ${Math.round(total.steps / games)} actions, ${(total.caps / games).toFixed(1)} captures, ${total.three6} triple sixes, ${total.nomove} rolls with no move`);
 
 // ── Set pieces ──
@@ -139,7 +147,7 @@ const die = (...seq) => { L._test.die = () => seq.shift(); };
   assert.deepEqual(ps[0].tokens, [-1, -1, -1, -1]);
 }
 { // home bonus, and playing on for places with three players
-  const { s, ps } = setup({}, 3);
+  const { s, ps } = setup({ noFill: true }, 3); // (three on purpose: see the fill check below)
   ps[0].tokens = [55, 56, 56, 20];
   die(1); L.handle(s, ps[0].id, { t: 'roll' }); assert.equal(s.step, 'move'); L.handle(s, ps[0].id, { t: 'move', token: 0 });
   assert.equal(s.players[s.turn], ps[0], 'reaching home rolls again');
@@ -160,7 +168,7 @@ const die = (...seq) => { L._test.die = () => seq.shift(); };
   assert.equal(ps[1].tokens[1], -1, 'a single token is captured again');
 }
 { // turn timer: the game rolls and moves; five in a row and the others may remove them
-  const { s, ps } = setup({}, 3);
+  const { s, ps } = setup({ noFill: true }, 3);
   s.settings.turnTime = 15; s.deadlineFor = -1; L.refreshDeadline(s, 1000);
   assert.equal(s.deadline, 16000);
   assert.equal(L.timeoutMove(s, 15000), false);

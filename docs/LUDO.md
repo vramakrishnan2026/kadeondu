@@ -60,3 +60,7 @@ The defaults are the owner's "Classic" choice, which is why some are on (the usu
 - Team play (2 v 2), a quick mode with fewer tokens, sounds for the dice and captures.
 - A fifth and sixth player would need a different board.
 - Kade Ondu's game name is still shown in the top bar while playing Ludo.
+
+## Three real players (added 27 Nov 2026)
+
+When the host starts with exactly three real players, a computer player takes the fourth seat (the owner asked for this, as in Carrom). The Start button says "3 players + 1 computer". If a computer player is already one of the three, the host chose a three-player game and nothing is added. Three people without a computer player is currently not possible in a room: a switch can be added if the owner wants one (`settings.noFill` exists in the engine but has no control on screen).
