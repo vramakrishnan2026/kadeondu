@@ -34,6 +34,15 @@ const srv=http.createServer((req,res)=>{ const u=new URL(req.url,'http://x');
   if(u.pathname==='/__test/chatempty'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); if(!r){res.writeHead(404);return res.end('no room')}
     r.chatEmptyAt=Date.now()-Number(u.searchParams.get('min')||6)*60000; return r.alarm().then(()=>{ res.writeHead(200); res.end(String(r.chat.length)) }) }
   // Test-only: mark ?name= as having forgotten to call (so others can Catch! them), give ?name= ?score= points, or set their idle count with ?idle=
+  // Test-only (card games): give ?name= the hand ?cards=r:7,b:1,w:wd10 (colour:value). ?top=r:5 sets the pile's top card,
+  // ?turn=1 makes it their turn, ?count=20 pads the hand with plain cards up to that many.
+  if(u.pathname==='/__test/hand'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); const p=r&&r.room.players.find(x=>x.name===u.searchParams.get('name')); if(!p){res.writeHead(404);return res.end('no such player')}
+    const mk=t=>{ const [c,v]=t.split(':'); return { id: r.room.nextCardId++, c, v } };
+    p.hand=(u.searchParams.get('cards')||'').split(',').filter(Boolean).map(mk);
+    while(p.hand.length<Number(u.searchParams.get('count')||0)) p.hand.push(mk('y:'+(1+p.hand.length%6)));
+    if(u.searchParams.get('top')){ const t=mk(u.searchParams.get('top')); r.room.discard.push(t); r.room.color=t.c }
+    if(u.searchParams.get('turn')){ r.room.turn=r.room.players.indexOf(p); r.room.pendingDraw=0; r.room.pendingType=null; r.room.drawnCardId=null; r.room.turnNo++ }
+    r.broadcast(); res.writeHead(200); return res.end('ok') }
   if(u.pathname==='/__test/rig'){ const r=rooms.get((u.searchParams.get('room')||'').toUpperCase()); const p=r&&r.room.players.find(x=>x.name===u.searchParams.get('name')); if(!p){res.writeHead(404);return res.end('no such player')}
     if(u.searchParams.has('score')) p.score=Number(u.searchParams.get('score')); else if(u.searchParams.has('idle')) p.idle=Number(u.searchParams.get('idle')); else r.room.vulnerable=p.id; r.broadcast(); res.writeHead(200); return res.end('ok') }
   // Test-only (Ludo): put ?name='s tokens at ?tokens=a,b,c,d (progress values, -1 = yard, 56 = home), or set their idle count with ?idle=

@@ -70,6 +70,7 @@
           <li><b>Share</b> the link so others can join</li>
           <li class="tab-ondu"><b>Race</b> to your last card and shout <span data-call>Ondu!</span></li>
           <li class="tab-ludo"><b>Roll</b> the dice and race all four tokens home</li>
+          <li class="tab-ruthless"><b>Ruthless:</b> if you can play you must, draw cards pile up, and 25 cards puts you out</li>
           <li class="tab-carrom"><b>Flick</b> the striker and pocket your coins before the other side</li>
           <li class="tab-poker"><b>Learn</b> Texas Hold'em at your own level, then practise with play chips</li>
         </ol>
@@ -83,6 +84,13 @@
           <div class="inv-title">You're invited!</div>
           <div id="inviteInfo" class="inv-meta"></div>
           <button id="inviteJoin" class="primary big">Join this game</button>
+        </div>
+
+        <!-- Ondu Ruthless: what is different, and the card guide (shown on its tab only) -->
+        <div class="block tab-ruthless ruthless-note">
+          <b>🔥 What makes it ruthless</b>
+          <span>If you can play, you must. If you cannot, you draw until you can. Draw cards pile up on the next player. A 7 swaps hands, a 0 passes hands along. 25 cards and you are out of the round.</span>
+          <button type="button" class="ghost small ruthless-rules-btn">📖 The new cards and rules</button>
         </div>
 
         <!-- Poker School: pick a level, then lessons and drills (shown on the Poker School tab only; see poker.js) -->
@@ -177,6 +185,12 @@
         <label class="toggle only-ludo"><input type="checkbox" id="ludoHomeBonus"> Getting a token home gives another roll</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoThreeSixes"> Three 6s in a row lose the turn</label>
         <label class="toggle only-ludo"><input type="checkbox" id="ludoBlocks"> Two tokens on a square form a block</label>
+        <!-- Ondu Ruthless -->
+        <div class="only-ruthless ruthless-note">
+          <b>🔥 Ruthless rules</b>
+          <span>If you can play, you must. If you cannot, you draw until you can. Draw cards always stack. A 7 swaps hands, a 0 passes hands along. 25 cards and you are out of the round.</span>
+          <button type="button" class="ghost small ruthless-rules-btn">📖 The new cards</button>
+        </div>
         <!-- Carrom -->
         <label class="field inline only-carrom">Rules
           <select id="crRulesInput"><option value="classic" selected>Classic: black against white</option><option value="points">Points: any coin scores</option></select>
@@ -352,6 +366,31 @@
       </div>
     </div>
   </main>
+
+  <!-- Ondu Ruthless: choose who to swap hands with after playing a 7 -->
+  <div id="swapPicker" class="overlay hidden">
+    <div class="modal">
+      <h3>Swap hands with…</h3>
+      <p id="swapMine" class="muted small-text"></p>
+      <div id="swapList" class="swap-list"></div>
+      <button id="swapCancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Ondu Ruthless: the new cards and rules -->
+  <div id="ruthlessRules" class="overlay hidden">
+    <div class="modal">
+      <h3>🔥 Ondu Ruthless</h3>
+      <ul class="ruthless-how">
+        <li><b>If you can play, you must.</b> No holding cards back.</li>
+        <li><b>No match?</b> Draw until a card fits, then play it.</li>
+        <li><b>Draw cards stack.</b> Answer with one as big or bigger and the total moves on.</li>
+        <li><b>25 cards and you are out</b> of the round. Last player in wins.</li>
+      </ul>
+      <ul id="ruthlessCards" class="ruthless-cards"></ul>
+      <button id="ruthlessRulesClose" class="primary big">Got it</button>
+    </div>
+  </div>
 
   <!-- Carrom: play vs computer set-up -->
   <div id="carromSoloModal" class="overlay hidden">

@@ -151,3 +151,7 @@ The phone's Back button steps back inside the app: it closes a pop-up or the cha
 ## Carrom
 
 Flick the striker and pocket the coins: 2 or 4 players, or against the computer; classic or points rules. Details in [CARROM.md](CARROM.md).
+
+## Ondu Ruthless
+
+The card game with harsher rules and a bigger deck, on its own tab. Details in [RUTHLESS.md](RUTHLESS.md).

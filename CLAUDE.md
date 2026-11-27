@@ -28,7 +28,7 @@ Read `README.md` and the `docs/` folder first. This file covers how to work on t
 | Change | File |
 |---|---|
 | Game name / call word / colours / reaction emoji / Wild +4 effect on-off / game tabs on the home screen (`games`) | `public/config.js` (+ `manifest.webmanifest` for the installed app name) |
-| Rules, computer players, turn timer, settings defaults | `public/shared/game.js` (card game), `public/shared/ludo.js` (Ludo; see `docs/LUDO.md`), `public/shared/poker.js` (poker; see `docs/POKER.md`) |
+| Rules, computer players, turn timer, settings defaults | `public/shared/game.js` (card game, and Ondu Ruthless as a mode of it; see `docs/RUTHLESS.md`), `public/shared/ludo.js` (Ludo; see `docs/LUDO.md`), `public/shared/poker.js` (poker; see `docs/POKER.md`) |
 | Carrom rules and physics / board on screen (see `docs/CARROM.md`) | `public/shared/carrom.js` / `public/carrom.js` |
 | Poker School lessons and quizzes / screens | `public/poker-learn.js` / `public/poker.js` |
 | Server: rooms, relays, lobby, presence, invites | `src/worker.js` |

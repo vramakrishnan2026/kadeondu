@@ -15,7 +15,9 @@ window.GAME_CONFIG = {
   games: [
     { id: 'ondu', ready: true },
     { id: 'ludo', label: 'Ludo', ready: true, tagline: 'Roll, race and send them home. 2 to 4 players, anyone with the link can play.' },
-    { id: 'ruthless', label: 'Ondu Ruthless', ready: false },   // the tougher, no-holds-barred version of this game
+    // Ondu Ruthless: the tougher version of the card game (rules in shared/game.js, room made by shared/ruthless.js).
+    // (The id 'ruthless' is what the room server knows it by: don't change it.)
+    { id: 'ruthless', label: 'Ondu Ruthless', ready: true, tagline: 'The card game with the gloves off. Play if you can, stack the draw cards, and 25 cards puts you out.' },
     // Carrom: flick the striker, pocket the coins. (The id 'carrom' is what the room server knows it by.)
     { id: 'carrom', label: 'Carrom', ready: true, tagline: 'Flick the striker and clear your coins. 2 or 4 players, or play the computer.' },
     // Poker School: lessons, drills and practice tables for Texas Hold'em, by level. Play chips only.

@@ -47,7 +47,7 @@
     window.KOPoker?.onTab(g.id); // Poker School draws its own part of the home screen
     window.KOCarrom?.onTab(g.id);
   }
-  const tabGame = () => (['ludo', 'poker', 'carrom'].includes(currentGame) ? currentGame : ''); // what the room server calls the game on the open tab
+  const tabGame = () => (['ludo', 'poker', 'carrom', 'ruthless'].includes(currentGame) ? currentGame : ''); // what the room server calls the game on the open tab
   if (GAMES.length > 1) {
     const tabs = $('gameTabs');
     tabs.innerHTML = '';
@@ -213,10 +213,10 @@
   const roomLink = code => `${location.origin}${location.pathname}?room=${code}`;
 
   function cardLabel(v) {
-    return { skip: '⊘', rev: '⇄', d2: '+2', wild: '★', wd4: '+4' }[v] ?? v;
+    return { skip: '⊘', rev: '⇄', d2: '+2', wild: '★', wd4: '+4', d4: '+4', skipall: '⊘⊘', dump: '↓↓', wrd4: '⇄+4', wd6: '+6', wd10: '+10', roul: '?' }[v] ?? v;
   }
   function cardName(c) {
-    const v = { skip: 'Skip', rev: 'Reverse', d2: 'Draw 2', wild: 'Wild', wd4: 'Wild +4' }[c.v] ?? c.v;
+    const v = { skip: 'Skip', rev: 'Reverse', d2: 'Draw 2', wild: 'Wild', wd4: 'Wild +4', d4: 'Draw 4', skipall: 'Skip All', dump: 'Dump', wrd4: 'Wild Reverse +4', wd6: 'Wild +6', wd10: 'Wild +10', roul: 'Roulette' }[c.v] ?? c.v;
     return c.c === 'w' ? v : `${COLOR_NAMES[c.c]} ${v}`;
   }
   function makeCard(c) {
@@ -224,11 +224,12 @@
     const lab = cardLabel(c.v);
     d.append(el('span', 'burst'), el('span', 'corner tl', lab), el('span', 'mid', lab), el('span', 'corner br', lab));
     if (c.v === '6' || c.v === '9') d.classList.add('ul'); // tell 6 from 9 upside down
+    if (lab.length >= 3 || c.v === 'skipall' || c.v === 'dump') d.classList.add('long'); // +10, ⇄+4 and the double symbols need smaller lettering
     d.setAttribute('aria-label', cardName(c));
     return d;
   }
   const ORDER = { r: 0, y: 1, g: 2, b: 3, w: 4 };
-  const VORDER = v => (/^\d$/.test(v) ? Number(v) : { skip: 10, rev: 11, d2: 12, wild: 13, wd4: 14 }[v]);
+  const VORDER = v => (/^\d$/.test(v) ? Number(v) : { skip: 10, rev: 11, skipall: 12, dump: 13, d2: 14, d4: 15, wild: 16, roul: 17, wd4: 18, wrd4: 19, wd6: 20, wd10: 21 }[v]);
   const sortHand = h => [...h].sort((a, b) => ORDER[a.c] - ORDER[b.c] || VORDER(a.v) - VORDER(b.v));
 
   const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || (n % 100 > 10 && n % 100 < 14) ? 0 : n % 10]}`;
@@ -242,7 +243,12 @@
       case 'idle': return `${e.p} was removed for being inactive`;
       case 'start': return `Round ${e.r} started` + (e.decks > 1 ? ` (${e.decks} decks)` : '');
       case 'play': return `${e.p} played ${cardName(e.card)}` + (e.card.c === 'w' ? ` → ${COLOR_NAMES[e.col]}` : '');
-      case 'draw': return e.forced ? `${e.p} picked up ${e.x}` : `${e.p} drew a card`;
+      case 'draw': return e.forced ? `${e.p} picked up ${e.x}` : e.x > 1 ? `${e.p} drew ${e.x} cards` : `${e.p} drew a card`;
+      case 'ko': return `${e.p} is out: ${S?.koAt || 25} cards!`;
+      case 'swap': return `${e.p} swapped hands with ${e.q}`;
+      case 'passhands': return 'Everyone passed their hand along';
+      case 'dump': return `${e.p} dumped ${e.x} more ${COLOR_NAMES[e.col].toLowerCase()} card${e.x === 1 ? '' : 's'}`;
+      case 'roul': return `Roulette: ${e.p} drew ${e.x} to find ${COLOR_NAMES[e.col].toLowerCase()}`;
       case 'pass': return `${e.p} kept their card`;
       case 'call': return `${e.p}: ${CFG.callWord}`;
       case 'catch': return `${e.p} caught ${e.q}! +2 cards`;
@@ -400,9 +406,9 @@
     const me = s.players.find(p => p.id === s.you);
     const isHost = s.hostId === s.you;
     const name = id => s.players.find(p => p.id === id)?.name ?? '?';
-    const ludo = s.game === 'ludo', poker = s.game === 'poker', carrom = s.game === 'carrom';
+    const ludo = s.game === 'ludo', poker = s.game === 'poker', carrom = s.game === 'carrom', ruthless = s.game === 'ruthless';
     // the home tab follows the game of the room you are in, so Leave brings you back to that game's home
-    const tab = ludo ? 'ludo' : poker ? 'poker' : carrom ? 'carrom' : GAMES[0]?.id;
+    const tab = ludo ? 'ludo' : poker ? 'poker' : carrom ? 'carrom' : ruthless ? 'ruthless' : GAMES[0]?.id;
     if (GAMES.length > 1 && tab && currentGame !== tab && GAMES.some(g => g.id === tab)) selectGame(tab);
 
     // log + toasts for new events
@@ -413,6 +419,8 @@
         if (e.k === 'call') toast(logText(e), true);
         else if (e.k === 'timeout' && e.p === s.players.find(p => p.id === s.you)?.name) toast(ludo ? "Time's up! The game played for you" : "Time's up! A move was made for you");
         else if (e.k === 'catch' || e.k === 'win') toast(logText(e), e.k === 'win');
+        else if (e.k === 'ko') toast(e.id === s.you ? `You are out this round: ${s.koAt} cards!` : logText(e), true);
+        else if (e.k === 'swap' || e.k === 'passhands' || e.k === 'roul' || e.k === 'dump') toast(logText(e));
       }
     }
     if (s.log.length) lastSeq = s.log[s.log.length - 1].n;
@@ -445,8 +453,10 @@
       document.querySelectorAll('#lobby .only-ludo').forEach(x => x.classList.toggle('hidden', !ludo));
       document.querySelectorAll('#lobby .only-poker').forEach(x => x.classList.toggle('hidden', !poker));
       document.querySelectorAll('#lobby .only-carrom').forEach(x => x.classList.toggle('hidden', !carrom));
-      $('lobbyGame').classList.toggle('hidden', !ludo && !poker && !carrom);
-      $('lobbyGame').textContent = ludo ? '· 🎲 Ludo' : poker ? '· ♠ Poker table' : carrom ? '· 🎯 Carrom' : '';
+      document.querySelectorAll('#lobby .only-ruthless').forEach(x => x.classList.toggle('hidden', !ruthless));
+      if (ruthless) for (const id of ['stackingInput', 'wd4FxInput']) $(id).closest('label').classList.add('hidden'); // stacking is always on, and there is no +4 animation
+      $('lobbyGame').classList.toggle('hidden', !ludo && !poker && !carrom && !ruthless);
+      $('lobbyGame').textContent = ludo ? '· 🎲 Ludo' : poker ? '· ♠ Poker table' : carrom ? '· 🎯 Carrom' : ruthless ? '· 🔥 Ondu Ruthless' : '';
       const watching = s.spectators || [];
       $('lobbyWatchers').classList.toggle('hidden', !watching.length);
       $('lobbyWatchers').textContent = watching.length ? `👀 Watching (${poker ? 'the table is full' : 'all 4 seats are taken'}): ${watching.map(p => p.name + (p.id === s.you ? ' (you)' : '')).join(', ')}` : '';
@@ -559,7 +569,7 @@
     if (mine?.idleOut && !wasIdleOut) toastLong('You have missed 5 turns in a row. Play your next turn, or the others can remove you.');
     wasIdleOut = !!mine?.idleOut;
     if (kickTarget && !s.players.some(p => p.id === kickTarget && p.idleOut)) closeKick(); // they came back, or someone else removed them
-    $('myInfo').textContent = !mine || s.spectating ? '' : `${mine.count} card${mine.count === 1 ? '' : 's'}` + (showScores ? ` · ${mine.score} pts` : '');
+    $('myInfo').textContent = !mine || s.spectating ? '' : `${mine.count} card${mine.count === 1 ? '' : 's'}` + (ruthless ? ` · out at ${s.koAt}` : '') + (showScores && !ruthless ? ` · ${mine.score} pts` : '');
     $('micBtn').classList.toggle('hidden', !!solo);
     $('reactBtn').classList.toggle('hidden', !s.settings.reactions || s.phase === 'lobby');
     if (!s.settings.reactions) $('reactTray').classList.add('hidden');
@@ -603,7 +613,7 @@
     placeSeats(false);
     if (n <= 8 && fansHitPiles()) placeSeats(true);
 
-    const canDraw = myTurn && s.drawnCardId === null;
+    const canDraw = myTurn && s.drawnCardId === null && !s.mustPlay; // (Ruthless: no drawing while a card fits)
     $('drawPile').classList.toggle('can', canDraw);
     $('drawPile').disabled = !canDraw;
 
@@ -611,11 +621,12 @@
     const st = $('status');
     st.classList.toggle('mine', myTurn);
     if (s.phase === 'ended') st.textContent = 'Round over';
+    else if (s.knockedOut) st.textContent = `You are out this round (${s.koAt} cards) · ${name(s.turnId)}'s turn`;
     else if (s.spectating) st.textContent = `Watching · ${name(s.turnId)}'s turn`;
     else if (myTurn) {
-      st.textContent = s.pendingDraw > 0 ? `Stack a card or pick up ${s.pendingDraw}`
-        : s.drawnCardId !== null ? 'Play the card you drew, or keep it'
-        : s.playable.length ? 'Your turn' : 'Your turn: no match, draw a card';
+      st.textContent = s.pendingDraw > 0 ? (ruthless ? `Answer with a draw card as big or bigger, or pick up ${s.pendingDraw}` : `Stack a card or pick up ${s.pendingDraw}`)
+        : s.drawnCardId !== null ? (ruthless ? 'You must play the card you drew' : 'Play the card you drew, or keep it')
+        : s.playable.length ? (ruthless ? 'Your turn: you must play a card' : 'Your turn') : ruthless ? 'No match: draw until a card fits' : 'Your turn: no match, draw a card';
     } else {
       st.textContent = `${name(s.turnId)}'s turn` + (s.pendingDraw > 0 ? ` (+${s.pendingDraw} waiting)` : '');
     }
@@ -638,7 +649,8 @@
     $('drawBtn').classList.toggle('penalty', myTurn && s.pendingDraw > 0);
     $('drawBtn').querySelector('.draw-lbl').textContent = myTurn && s.pendingDraw > 0 ? `Pick up ${s.pendingDraw}` : 'Draw';
     $('drawBtn').setAttribute('aria-label', myTurn && s.pendingDraw > 0 ? `Pick up ${s.pendingDraw} cards` : 'Draw a card');
-    $('passBtn').classList.toggle('hidden', !keeping);
+    $('passBtn').classList.toggle('hidden', !keeping || ruthless); // (Ruthless: the drawn card must be played)
+    $('drawBtn').classList.toggle('hidden', s.phase !== 'playing' || s.spectating || (keeping && !ruthless));
     $('callBtn').disabled = !s.canCall;
     const turnPlayer = s.players.find(p => p.id === s.turnId);
     $('skipTurnBtn').classList.toggle('hidden', !(isHost && s.phase === 'playing' && turnPlayer && !turnPlayer.online && turnPlayer.id !== s.you));
@@ -689,6 +701,7 @@
       $('endOverlay').classList.add('hidden');
     }
     if (s.phase !== 'playing') $('colorPicker').classList.add('hidden');
+    if (s.phase !== 'playing' || s.turnId !== s.you) $('swapPicker').classList.add('hidden');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1636,6 +1649,19 @@
     if (c.c === 'w') {
       pendingWild = c.id;
       $('colorPicker').classList.remove('hidden');
+    } else if (S?.game === 'ruthless' && c.v === '7' && S.players.length > 2 && S.hand.length > 1) {
+      // Ruthless: a 7 swaps hands with a player you choose
+      const list = $('swapList');
+      list.replaceChildren();
+      for (const p of S.players) {
+        if (p.id === S.you) continue;
+        const b = el('button', 'ghost swap-pick');
+        b.append(el('span', '', (p.bot ? '🤖 ' : '') + p.name), el('b', '', `${p.count} card${p.count === 1 ? '' : 's'}`));
+        b.onclick = () => { $('swapPicker').classList.add('hidden'); send({ t: 'play', cardId: c.id, target: p.id }); };
+        list.append(b);
+      }
+      $('swapMine').textContent = `You hold ${S.hand.length - 1} after playing the 7.`;
+      $('swapPicker').classList.remove('hidden');
     } else {
       send({ t: 'play', cardId: c.id });
     }
@@ -1701,7 +1727,7 @@
         el('div', 'rmeta', `${r.code} · ${r.players} playing` + (r.watching ? ` · ${r.watching} watching` : '')),
       );
       const live = r.phase === 'playing';
-      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? (r.game && r.game !== 'ondu' ? 'Game over' : 'Between rounds') : 'Waiting');
+      const badge = el('span', 'badge' + (live ? ' live' : ''), live ? 'In game' : r.phase === 'ended' ? (r.game && r.game !== 'ondu' && r.game !== 'ruthless' ? 'Game over' : 'Between rounds') : 'Waiting');
       const btn = el('button', live ? 'ghost small' : 'primary small', live ? 'Watch' : 'Join');
       btn.onclick = () => {
         if (needName()) return;
@@ -1766,7 +1792,7 @@
     if (inRoom() || solo) return; // already playing somewhere
     currentInvite = m;
     const ludoInvite = m.game === 'ludo' || m.game === 'poker' || m.game === 'carrom'; // (these let a late joiner watch)
-    $('inviteTitle').textContent = m.game === 'poker' ? `${m.from} invited you to a poker practice table` : m.game === 'carrom' ? `${m.from} invited you to play Carrom` : `${m.from} invited you to play ${ludoInvite ? (GAMES.find(g => g.id === 'ludo')?.label || 'Ludo') : CFG.name}`;
+    $('inviteTitle').textContent = m.game === 'poker' ? `${m.from} invited you to a poker practice table` : m.game === 'carrom' ? `${m.from} invited you to play Carrom` : m.game === 'ruthless' ? `${m.from} invited you to play Ondu Ruthless` : `${m.from} invited you to play ${ludoInvite ? (GAMES.find(g => g.id === 'ludo')?.label || 'Ludo') : CFG.name}`;
     $('inviteSub').textContent = m.phase === 'playing'
       ? (ludoInvite ? `${m.roomHost}'s room (${m.room}) is in the middle of a game. You can watch.` : `${m.roomHost}'s room (${m.room}) is mid-round. You'll watch, then get dealt in next round.`)
       : `${m.roomHost}'s room · ${m.room}`;
@@ -2025,15 +2051,16 @@
   }
   async function startSolo() {
     let G;
-    try { G = await import('./shared/game.js'); }
+    const ruthless = currentGame === 'ruthless';
+    try { G = await import(ruthless ? './shared/ruthless.js' : './shared/game.js'); }
     catch { return toast("Couldn't load the game. Check your connection and try again"); }
     const s = G.newRoom();
-    s.settings.stacking = $('soloStacking').checked;
+    s.settings.stacking = ruthless || $('soloStacking').checked;
     s.settings.handSize = Number($('soloHand').value);
     s.settings.botLevel = $('soloLevel').value;
     s.settings.turnTime = Number($('soloTime').value);
     s.settings.roundTime = Number($('soloRoundTime').value);
-    s.settings.wd4Fx = !!FX.enabled && $('soloWd4Fx').checked;
+    s.settings.wd4Fx = !ruthless && !!FX.enabled && $('soloWd4Fx').checked;
     s.settings.reactions = $('soloReactions').checked;
     const me = G.addPlayer(s, $('nameInput').value.trim() || 'You');
     for (let i = 0; i < Number($('soloCount').value); i++) G.addPlayer(s, G.botName(s), { bot: true, level: s.settings.botLevel });
@@ -2051,6 +2078,8 @@
     if (needName()) return;
     if (currentGame === 'poker') return window.KOPoker.soloOpen();
     if (currentGame === 'carrom') return window.KOCarrom.soloOpen();
+    // the same set-up serves Ondu Ruthless, without the two options that do not apply there
+    for (const id of ['soloStacking', 'soloWd4Fx']) $(id).closest('label')?.classList.toggle('solo-na', currentGame === 'ruthless');
     $(currentGame === 'ludo' ? 'ludoSoloModal' : 'soloModal').classList.remove('hidden');
   };
   $('soloCancel').onclick = () => $('soloModal').classList.add('hidden');
@@ -2081,6 +2110,21 @@
     }
   };
   $('closeIos').onclick = () => $('iosInstall').classList.add('hidden');
+
+  // ── Ondu Ruthless: the card guide ──
+  function showRuthlessRules() {
+    const ul = $('ruthlessCards');
+    if (!ul.children.length) for (const [c, v, text] of [
+      ['r', 'd4', 'Draw 4. Like +2 but bigger.'], ['w', 'wd6', 'Wild +6: pick the colour, the next player picks up 6.'], ['w', 'wd10', 'Wild +10: the biggest hit in the deck.'],
+      ['w', 'wrd4', 'Wild Reverse +4: play turns round and the player now next picks up 4.'], ['g', 'skipall', 'Skip All: everyone else misses a turn. You go again.'],
+      ['b', 'dump', 'Dump: every card of this colour leaves your hand with it.'], ['w', 'roul', 'Roulette: you name a colour. The next player draws until that colour turns up, and misses the turn.'],
+      ['y', '7', 'Seven: swap hands with a player you choose.'], ['y', '0', 'Zero: everyone passes their hand to the next player.'],
+    ]) { const li = el('li'); li.append(makeCard({ c, v }), el('span', '', text)); ul.append(li); }
+    $('ruthlessRules').classList.remove('hidden');
+  }
+  document.querySelectorAll('.ruthless-rules-btn').forEach(b => { b.onclick = showRuthlessRules; });
+  $('ruthlessRulesClose').onclick = () => $('ruthlessRules').classList.add('hidden');
+  $('swapCancel').onclick = () => $('swapPicker').classList.add('hidden');
 
   // ── The phone's Back button ──
   // The app is one page, so without this Back has nowhere to go and closes the app.

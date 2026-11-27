@@ -3,11 +3,16 @@
 import asyncio
 from playwright.async_api import async_playwright
 BASE='http://localhost:8788/'
+async def with_soon_tab(pg):   # every game is live now: add a pretend "not ready" tab so the Brewing notice can still be tested
+    async def handle(route):
+        r = await route.fetch(); body = await r.text()
+        await route.fulfill(response=r, body=body + "\n;window.GAME_CONFIG.games.push({ id: 'soonx', label: 'Coming Up', ready: false });")
+    await pg.route('**/config.js', handle)
 async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch(); errs=[]; ask={'answer':True,'seen':[]}
-        ctx=await b.new_context(viewport={'width':390,'height':780}); a=await ctx.new_page()
-        a.on('pageerror', lambda e: errs.append(str(e)))
+        ctx=await b.new_context(viewport={'width':390,'height':780}, service_workers='block'); a=await ctx.new_page()
+        a.on('pageerror', lambda e: errs.append(str(e))); await with_soon_tab(a)
         async def dlg(d):
             ask['seen'].append(d.message)
             await (d.accept() if ask['answer'] else d.dismiss())
@@ -28,7 +33,7 @@ async def main():
         await a.go_forward(); await a.wait_for_timeout(600)
         if not await vis('#home'): await a.goto(BASE); await a.wait_for_timeout(500)
         # brewing tab
-        await a.click('.game-tab[data-game="ruthless"]'); await a.wait_for_timeout(300); await back()
+        await a.click('.game-tab[data-game="soonx"]'); await a.wait_for_timeout(300); await back()
         print('brewing tab: back to first game', await a.get_attribute('.game-tab >> nth=0','aria-selected'), '|', await here())
         # lesson
         await a.click('.game-tab[data-game="poker"]'); await a.wait_for_timeout(300); await a.click('#pkLessons li button'); await a.wait_for_selector('#school:not(.hidden)'); await a.wait_for_timeout(200)

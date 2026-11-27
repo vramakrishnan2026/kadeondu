@@ -27,7 +27,33 @@ export function randomId(len = 16) {
   return s;
 }
 
+// ── Ondu Ruthless ──────────────────────────────────────────
+// The tougher game on its own tab: a room with game === 'ruthless' (made by shared/ruthless.js). Same engine, harder rules:
+//   · a bigger deck with heavier cards (colour +4, wild +6 and +10, wild reverse +4, Skip All, Dump, Roulette)
+//   · draw cards always stack: answer with a draw card of the same size or bigger, and the total moves on
+//   · if you can play you must; if you cannot, you draw until you can, and then you must play that card
+//   · a 7 swaps hands with a player you choose; a 0 makes everyone pass their hand along
+//   · 25 cards in your hand and you are out of the round (KO_AT)
+export const KO_AT = 25;
+const R = s => s.game === 'ruthless';
+const DRAW_SIZE = { d2: 2, d4: 4, wd4: 4, wrd4: 4, wd6: 6, wd10: 10 }; // how many cards each draw card adds
+function buildRuthlessDeck(s) {
+  const cards = [];
+  const add = (c, v, n = 1) => { for (let i = 0; i < n; i++) cards.push({ id: s.nextCardId++, c, v }); };
+  for (const c of COLORS) {
+    for (let n = 0; n <= 9; n++) add(c, String(n), 2);
+    add(c, 'skip', 3); add(c, 'rev', 3); add(c, 'd2', 2); add(c, 'd4', 2);
+    add(c, 'skipall', 2);  // Skip All: everyone else misses a turn, you go again
+    add(c, 'dump', 3);     // Dump: every card of this colour leaves your hand with it
+  }
+  add('w', 'wrd4', 8);     // Wild Reverse +4: play turns round, and the player now next picks up 4
+  add('w', 'wd6', 4); add('w', 'wd10', 4);
+  add('w', 'roul', 8);     // Roulette: you name a colour; the next player draws until that colour turns up
+  return shuffle(cards);
+}
+
 function buildDeck(s) {
+  if (R(s)) return buildRuthlessDeck(s);
   const cards = [];
   const add = (c, v) => cards.push({ id: s.nextCardId++, c, v });
   for (const c of COLORS) {
@@ -154,11 +180,12 @@ function autoMove(s, p) {
   if (s.pendingDraw > 0) return { t: 'draw' };
   if (s.drawnCardId !== null) {
     const c = p.hand.find(x => x.id === s.drawnCardId);
-    return c && canPlay(s, c) ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c) } : { t: 'pass' };
+    return c && canPlay(s, c) ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c), target: fewestCards(s, p)?.id } : { t: 'pass' };
   }
   const c = p.hand.find(x => canPlay(s, x));
-  return c ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c) } : { t: 'draw' };
+  return c ? { t: 'play', cardId: c.id, color: firstColor(p.hand, c), target: fewestCards(s, p)?.id } : { t: 'draw' };
 }
+const fewestCards = (s, me) => s.players.filter(x => x !== me).sort((a, b) => a.hand.length - b.hand.length)[0];
 function firstColor(hand, played) {
   if (played.c !== 'w') return undefined;
   return hand.find(x => x !== played && x.c !== 'w')?.c || COLORS[randInt(4)];
@@ -200,6 +227,7 @@ export function roundTimeUp(s, now = Date.now()) {
 export function canPlay(s, card) {
   if (s.drawnCardId !== null && card.id !== s.drawnCardId) return false;
   if (s.pendingDraw > 0) {
+    if (R(s)) return DRAW_SIZE[card.v] >= DRAW_SIZE[s.pendingType]; // same size or bigger, any colour
     if (card.v === 'wd4') return true;
     return card.v === 'd2' && s.pendingType === 'd2';
   }
@@ -289,6 +317,7 @@ export function startRound(s, now = Date.now()) {
   s.drawnCardId = null;
   s.vulnerable = null;
   s.winnerId = null;
+  s.koCount = 0;
   s.phase = 'playing';
   s.turnNo = (s.turnNo || 0) + 1;
   s.roundEndsAt = s.settings.roundTime ? now + s.settings.roundTime * 60000 : null;
@@ -299,6 +328,7 @@ export function startRound(s, now = Date.now()) {
 function endRound(s, winner, timeUp = false) {
   let points = 0;
   for (const p of s.players) if (p !== winner) for (const c of p.hand) points += cardPoints(c);
+  if (R(s)) points += 50 * (s.koCount || 0); // a bonus for every player knocked out this round
   winner.score += points;
   s.phase = 'ended';
   s.winnerId = winner.id;
@@ -310,12 +340,78 @@ function endRound(s, winner, timeUp = false) {
   mergeSpectators(s);
 }
 
-function play(s, p, cardId, chosen) {
+// Ruthless: anyone holding KO_AT cards or more is out of the round. They watch until it ends (score kept),
+// their cards go under the draw pile, and the last player left wins.
+function mercy(s) {
+  if (!R(s) || s.phase !== 'playing') return;
+  for (let i = s.players.length - 1; i >= 0; i--) {
+    const p = s.players[i];
+    if (p.hand.length < KO_AT) continue;
+    s.players.splice(i, 1);
+    s.deck.unshift(...p.hand);
+    p.hand = []; p.saidOndu = false; p.koRound = s.round;
+    (s.spectators ||= []).push(p);
+    s.koCount = (s.koCount || 0) + 1;
+    if (s.vulnerable === p.id) s.vulnerable = null;
+    log(s, { k: 'ko', p: p.name, id: p.id });
+    if (i < s.turn) s.turn--;
+    else if (i === s.turn) { s.drawnCardId = null; s.turnNo = (s.turnNo || 0) + 1; if (s.dir === -1) s.turn--; }
+    s.turn = mod(s.turn, Math.max(1, s.players.length));
+  }
+  if (s.players.length === 1) endRound(s, s.players[0]);
+}
+
+// What a Ruthless card does once it is on the pile. Returns an error text, or null.
+function playRuthless(s, p, card, msg) {
+  const n = s.players.length;
+  const out = p.hand.length === 0; // the last card wins before any hand-swapping happens
+  const size = DRAW_SIZE[card.v];
+  if (size) {
+    if (card.v === 'wrd4' && n > 2) s.dir *= -1;
+    s.pendingDraw += size;
+    s.pendingType = card.v;
+    advance(s, 1);
+  } else if (card.v === 'skip') advance(s, 2);
+  else if (card.v === 'rev') { if (n === 2) advance(s, 2); else { s.dir *= -1; advance(s, 1); } }
+  else if (card.v === 'skipall') { s.turnNo = (s.turnNo || 0) + 1; }            // everyone else is skipped: same player again
+  else if (card.v === 'dump') {
+    const gone = p.hand.filter(c => c.c === card.c);
+    if (gone.length) {
+      p.hand = p.hand.filter(c => c.c !== card.c);
+      s.discard.splice(s.discard.length - 1, 0, ...gone);                        // under the Dump card, which stays on top
+      log(s, { k: 'dump', p: p.name, x: gone.length, col: card.c });
+      if (p.hand.length === 1) { if (!p.saidOndu) s.vulnerable = p.id; p.saidOndu = false; }
+    }
+    advance(s, 1);
+  } else if (card.v === 'roul') {
+    const victim = s.players[mod(s.turn + s.dir, n)];
+    let x = 0;
+    for (; victim.hand.length < KO_AT;) { const [c] = drawCards(s, 1); victim.hand.push(c); x++; if (c.c === s.color) break; }
+    victim.saidOndu = false;
+    log(s, { k: 'roul', p: victim.name, x, col: s.color });
+    advance(s, 2);
+  } else if (card.v === '7' && !out) {
+    const q = n === 2 ? s.players.find(x => x !== p) : s.players.find(x => x.id === msg.target && x !== p);
+    [p.hand, q.hand] = [q.hand, p.hand];
+    p.saidOndu = false; q.saidOndu = false; s.vulnerable = null;
+    log(s, { k: 'swap', p: p.name, q: q.name });
+    advance(s, 1);
+  } else if (card.v === '0' && !out) {
+    const hands = s.players.map(x => x.hand);
+    s.players.forEach((x, i) => { x.hand = hands[mod(i - s.dir, n)]; x.saidOndu = false; }); // each hand moves one seat the way play is going
+    s.vulnerable = null;
+    log(s, { k: 'passhands' });
+    advance(s, 1);
+  } else advance(s, 1);
+}
+
+function play(s, p, cardId, chosen, msg = {}) {
   const idx = p.hand.findIndex(c => c.id === cardId);
   if (idx < 0) return 'You do not have that card';
   const card = p.hand[idx];
   if (!canPlay(s, card)) return 'That card cannot be played now';
   if (card.c === 'w' && !COLORS.includes(chosen)) return 'Pick a colour';
+  if (R(s) && card.v === '7' && p.hand.length > 1 && s.players.length > 2 && !s.players.some(x => x.id === msg.target && x !== p)) return 'Pick a player to swap hands with';
   p.hand.splice(idx, 1);
   s.discard.push(card);
   s.color = card.c === 'w' ? chosen : card.c;
@@ -325,6 +421,13 @@ function play(s, p, cardId, chosen) {
   if (p.hand.length === 1) {
     if (!p.saidOndu) s.vulnerable = p.id;
     p.saidOndu = false;
+  }
+
+  if (R(s)) {
+    playRuthless(s, p, card, msg);
+    if (p.hand.length === 0 && s.players.includes(p)) endRound(s, p);
+    mercy(s);
+    return null;
   }
 
   const n = s.players.length;
@@ -361,9 +464,21 @@ function draw(s, p) {
     s.pendingDraw = 0;
     s.pendingType = null;
     advance(s, 1);
+    mercy(s);
     return null;
   }
-  if (s.drawnCardId !== null) return 'You already drew. Play that card or pass';
+  if (s.drawnCardId !== null) return R(s) ? 'Play the card you drew' : 'You already drew. Play that card or pass';
+  if (R(s)) {
+    // Ruthless: no drawing while you hold a card that fits; otherwise draw until one fits, and that one must be played
+    if (p.hand.some(c => canPlay(s, c))) return 'You have a card you can play: in Ruthless you must play it';
+    let x = 0, got = null;
+    while (p.hand.length < KO_AT) { const [c] = drawCards(s, 1); p.hand.push(c); x++; if (canPlay(s, c)) { got = c; break; } }
+    p.saidOndu = false;
+    log(s, { k: 'draw', p: p.name, x });
+    if (got) s.drawnCardId = got.id;
+    mercy(s);
+    return null;
+  }
   const [card] = drawCards(s, 1);
   p.hand.push(card);
   p.saidOndu = false;
@@ -393,7 +508,7 @@ function handleInner(s, pid, msg) {
   if (t === 'settings') {
     if (!isHost) return { error: 'Only the host can change settings' };
     if (s.phase === 'playing') return { error: 'Change settings between rounds' };
-    if (typeof msg.stacking === 'boolean') s.settings.stacking = msg.stacking;
+    if (typeof msg.stacking === 'boolean' && !R(s)) s.settings.stacking = msg.stacking; // (always on in Ruthless)
     if (['easy', 'normal'].includes(msg.botLevel)) s.settings.botLevel = msg.botLevel;
     if (TURN_TIMES.includes(msg.turnTime)) s.settings.turnTime = msg.turnTime;
     if (ROUND_TIMES.includes(msg.roundTime)) s.settings.roundTime = msg.roundTime;
@@ -476,6 +591,7 @@ function handleInner(s, pid, msg) {
     s.drawnCardId = null;
     log(s, { k: 'skipped', p: c.name });
     advance(s, 1);
+    mercy(s);
     return {};
   }
 
@@ -484,10 +600,11 @@ function handleInner(s, pid, msg) {
   if (s.vulnerable && s.vulnerable !== pid) s.vulnerable = null;
 
   let e = null;
-  if (t === 'play') e = play(s, p, msg.cardId, msg.color);
+  if (t === 'play') e = play(s, p, msg.cardId, msg.color, msg);
   else if (t === 'draw') e = draw(s, p);
   else if (t === 'pass') {
     if (s.drawnCardId === null) e = 'Draw a card first';
+    else if (R(s)) e = 'In Ruthless you must play the card you drew';
     else { s.drawnCardId = null; log(s, { k: 'pass', p: p.name }); advance(s, 1); }
   } else e = 'Unknown action';
   return e ? { error: e } : {};
@@ -502,6 +619,8 @@ export function viewFor(s, pid, online) {
   const myTurn = playing && turnId === pid;
   return {
     t: 'state',
+    game: s.game,           // undefined for the standard game, 'ruthless' for Ondu Ruthless
+    koAt: R(s) ? KO_AT : null,
     you: pid,
     phase: s.phase,
     round: s.round,
@@ -523,6 +642,8 @@ export function viewFor(s, pid, online) {
     dir: s.dir,
     turnId,
     pendingDraw: s.pendingDraw,
+    mustPlay: R(s) && myTurn && s.pendingDraw === 0 && me.hand.some(c => canPlay(s, c)), // Ruthless: no drawing while a card fits
+    knockedOut: R(s) && playing && spectating && spectatorById(s, pid)?.koRound === s.round,
     drawnCardId: myTurn ? s.drawnCardId : null,
     vulnerable: s.vulnerable,
     canCall: !!me && playing && ((me.hand.length === 1 && s.vulnerable === pid) ||
@@ -543,6 +664,7 @@ export function summary(s, code, onlineCount) {
   const host = playerById(s, s.hostId);
   return {
     code,
+    game: s.game,
     host: host ? host.name : '',
     players: s.players.length,
     watching: (s.spectators || []).length,
@@ -580,6 +702,9 @@ export function botMove(s, bot) {
   const hand = bot.hand;
   const playable = hand.filter(c => canPlay(s, c));
   if (!playable.length) return s.drawnCardId !== null ? { t: 'pass' } : { t: 'draw' };
+  const ruthless = R(s);
+  const others = s.players.filter(x => x !== bot);
+  const smallest = others.slice().sort((a, b) => a.hand.length - b.hand.length)[0];
 
   // Second-last card: Normal always calls, Easy sometimes forgets
   if (hand.length === 2 && !bot.saidOndu && chance(bot.level === 'easy' ? 0.55 : 1)) return { t: 'ondu' };
@@ -601,6 +726,14 @@ export function botMove(s, bot) {
       else if (c.c !== 'w') v += threat ? 40 : 12;    // actions hurt more when someone is close
       if (threat && c.c === 'w' && c.v === 'wd4') v += 60;
       if (s.pendingDraw > 0) v += 100;                // stacking beats picking up
+      if (ruthless) {
+        if (DRAW_SIZE[c.v]) v += s.pendingDraw > 0 ? -DRAW_SIZE[c.v] : threat ? 30 + DRAW_SIZE[c.v] : 0; // answer a stack with the smallest card that works
+        if (c.v === 'dump') v += 7 * hand.filter(x => x.c === c.c).length;
+        if (c.v === 'skipall') v += 14;
+        if (c.v === 'roul') v += threat ? 45 : 5;
+        if (c.v === '7') v += smallest && smallest.hand.length < hand.length - 1 ? 60 : -60;           // swap only for a smaller hand
+        if (c.v === '0') { const from = s.players[mod(s.turn - s.dir, n)]; v += from.hand.length < hand.length - 1 ? 50 : -50; }
+      }
       return v;
     };
     playable.sort((a, b) => score(b) - score(a));
@@ -610,7 +743,8 @@ export function botMove(s, bot) {
   const color = card.c === 'w'
     ? (bot.level === 'easy' ? COLORS[randInt(4)] : favouriteColor(rest) || COLORS[randInt(4)])
     : undefined;
-  return { t: 'play', cardId: card.id, color };
+  const target = ruthless && card.v === '7' ? (bot.level === 'easy' ? others[randInt(others.length)] : smallest)?.id : undefined;
+  return { t: 'play', cardId: card.id, color, target };
 }
 
 // What should happen next on the computer players' side, if anything.

@@ -14,6 +14,7 @@ The game supports any number of players: an extra deck is added for every 10 pla
 |---|---|
 | [docs/FEATURES.md](docs/FEATURES.md) | Everything the card game does, every setting and its default |
 | [docs/LUDO.md](docs/LUDO.md) | Ludo: rules, house-rule settings, how it is built and tested |
+| [docs/RUTHLESS.md](docs/RUTHLESS.md) | Ondu Ruthless: the tougher rules, the deck, how it is built |
 | [docs/CARROM.md](docs/CARROM.md) | Carrom: rules, physics, how a shot is replayed |
 | [docs/POKER.md](docs/POKER.md) | Poker School: levels, lessons, drills, the table and the coach |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: Cloudflare Worker, room servers, message protocol, files |
@@ -41,6 +42,7 @@ public/            the game page (served as static files)
   config.js        name, call word, colours, Wild +4 effect, sticker captions  ← rename / tweak here
   shared/game.js   the card game's rules engine and computer players (used by the server AND by Play vs computer)
   shared/ludo.js   the same for Ludo
+  shared/ruthless.js makes Ondu Ruthless rooms (rules are in game.js)
   shared/carrom.js Carrom rules and physics
   carrom.js        Carrom board on screen
   shared/poker.js  Texas Hold'em rules, hand reading and the coach
