@@ -64,3 +64,4 @@
 - **Carrom: see the other player aim.** Their striker position, aim line and power show live on the other phones (relayed, never stored), and every shot that is not yours opens with a half-second look at its aim. Cache v16.
 - **Carrom and Ludo: three real players can start.** A computer player takes the fourth seat when the host starts (Carrom: any three; Ludo: three real players). Cache v17.
 - **No watching computers finish.** Ondu Ruthless: when every real player is knocked out, the round ends at once (lowest points in hand wins). Ludo: when every real player has finished, the game ends and the computer players are placed as they stand. Cache v18.
+- **Carrom board sounds** with a switch beside the striker slider: coin, striker, cushion and pocket sounds made with Web Audio, off by default. Cache v19.

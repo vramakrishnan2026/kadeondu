@@ -933,3 +933,7 @@ body.lefty .cr-actions.with-chat .act-main { padding-right: 0; padding-left: 44p
 .ruthless-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; text-align: left; }
 .ruthless-cards li { display: flex; align-items: center; gap: .7rem; font-size: .9rem; line-height: 1.35; }
 .ruthless-cards .card { --cw: 46px; flex: none; }
+
+/* Carrom: the board-sounds switch, beside the striker slider */
+.cr-actions .act-main > button.cr-sound { flex: 0 0 52px; width: 52px; min-height: 52px; padding: 0; border-radius: 14px; background: #1d1b26; border: 2px solid #3b3748; font-size: 1.25rem; }
+.cr-actions .act-main > button.cr-sound.on { border-color: #ffd66b; background: rgba(255,214,107,.14); }

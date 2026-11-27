@@ -50,8 +50,19 @@ The owner asked to see how the opponent places the striker and the angle they ai
 - Before any shot that is not yours is replayed, the board holds for about half a second on the striker and its aim line. This is what shows a computer player's aim, since it has no phone to send updates from.
 - Not shown vs computer on your own phone beyond that half-second look (the computer decides in one go).
 
+## Board sounds (added 28 Nov 2026)
+The owner asked for premium-sounding coin sounds with a switch on the board screen.
+
+- Four sounds, made in the browser with the Web Audio API (no sound files, so nothing to license or download): coin on coin, striker on coin, a cushion knock, and the drop into a pocket. Harder hits are louder, each knock is pitched very slightly differently, and a short room echo is mixed in. See "Sound" at the top of `public/carrom.js`; the pitches, lengths and levels are in `play()`.
+- The physics notes each knock in `sim.events` when the caller asks for it (the phone does, the server does not), so sounds follow the replay exactly.
+- The 🔇 / 🔊 button beside the striker slider turns them on and off. The choice is kept on the phone (`ko-carrom-sound`).
+- **Off by default** (rule 2 in `CLAUDE.md`). Turning it on plays one knock so you hear it.
+- Browsers only start sound after a tap, so with sound on from an earlier visit the first shot may be silent until the board or slider has been touched.
+- **Nobody has listened to these yet:** they were written and tested for timing, not by ear. The owner should judge them on a phone.
+
 ## Tests
 - `node tests/carromsim.mjs`: physics (repeatable, stays on the board), every rule as a set piece, 96 whole games between computer players.
+- `python3 tests/ui_carrom_sound.py`: the sound switch (default off, on, remembered, off) and that knocks are scheduled during a shot. It cannot judge how they sound.
 - `python3 tests/ui_carrom.py`: tab, vs computer with real pull-back aiming, a room (replay on both phones, queen, cover, win), doubles with points rules, fit at five screen sizes.
 - Stand-in shortcut: `/__test/carrom?room=CODE&coins=id:x:y,…&queen=covered:w`.
 

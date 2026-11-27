@@ -18,6 +18,72 @@
     for (const id of ['crEnd']) $(id)?.classList.add('hidden');
   }
 
+  // ── Sound: the knock of coins, the striker, the cushions and the drop into a pocket ──
+  // Made in the browser with the Web Audio API (no sound files). Each knock is two short ringing tones plus a
+  // click of noise, louder for harder hits, with a touch of room echo. Switched on and off by the button beside
+  // the striker slider; the choice is remembered on the phone. Off until someone turns it on.
+  const SOUND_KEY = 'ko-carrom-sound';
+  const snd = { on: false, ctx: null, out: null, wet: null, last: 0, count: 0 };
+  function sndStart() { // needs a tap first: browsers only start sound after the user touches the page
+    if (!snd.on) return null;
+    try {
+      if (!snd.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        const c = snd.ctx = new AC();
+        const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.12;
+        const master = c.createGain(); master.gain.value = 0.9;
+        master.connect(comp); comp.connect(c.destination);
+        // a small room: a quarter of a second of fading noise as the echo
+        const len = Math.floor(c.sampleRate * 0.28), buf = c.createBuffer(2, len, c.sampleRate);
+        for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+        const room = c.createConvolver(); room.buffer = buf;
+        const wet = c.createGain(); wet.gain.value = 0.16;
+        wet.connect(room); room.connect(master);
+        snd.out = master; snd.wet = wet;
+        const nlen = Math.floor(c.sampleRate * 0.2); snd.noise = c.createBuffer(1, nlen, c.sampleRate);
+        const nd = snd.noise.getChannelData(0); for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+      }
+      if (snd.ctx.state === 'suspended') snd.ctx.resume().catch(() => {});
+      return snd.ctx;
+    } catch { return null; }
+  }
+  function tone(c, t, freq, to, dur, gain, type = 'sine') {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(snd.out); g.connect(snd.wet);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function hiss(c, t, dur, gain, filter, freq, q = 0.8) {
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = snd.noise; f.type = filter; f.frequency.value = freq; f.Q.value = q;
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(f); f.connect(g); g.connect(snd.out); g.connect(snd.wet);
+    n.start(t, Math.random() * 0.1, dur + 0.02);
+  }
+  // kind: 'hit' (coin on coin), 'strike' (striker on coin), 'wall' (cushion), 'drop' (into a pocket). v = how hard.
+  function play(kind, v = 120) {
+    const c = snd.on && snd.ctx && snd.ctx.state === 'running' ? snd.ctx : null;
+    if (!c) return;
+    const now = c.currentTime;
+    if (kind !== 'drop' && (v < 5 || now - snd.last < 0.014)) return; // too soft to hear, or a pile-up of knocks in one instant
+    snd.last = now; snd.count++;
+    const loud = Math.min(1, Math.pow(v / 170, 0.75));
+    const wob = 1 + (Math.random() - 0.5) * 0.07; // no two knocks quite alike
+    if (kind === 'hit') { tone(c, now, 2350 * wob, 0, 0.055, 0.30 * loud); tone(c, now, 3900 * wob, 0, 0.032, 0.16 * loud); hiss(c, now, 0.018, 0.40 * loud, 'highpass', 2600); }
+    else if (kind === 'strike') { tone(c, now, 1500 * wob, 0, 0.075, 0.36 * loud); tone(c, now, 2700 * wob, 0, 0.045, 0.2 * loud); tone(c, now, 520, 300, 0.05, 0.16 * loud); hiss(c, now, 0.022, 0.5 * loud, 'highpass', 1800); }
+    else if (kind === 'wall') { tone(c, now, 230 * wob, 120, 0.085, 0.42 * loud); tone(c, now, 760 * wob, 0, 0.035, 0.12 * loud); hiss(c, now, 0.03, 0.3 * loud, 'lowpass', 900); }
+    else { tone(c, now, 420, 130, 0.16, 0.5); tone(c, now + 0.05, 300, 110, 0.12, 0.25); hiss(c, now, 0.09, 0.22, 'bandpass', 1400, 1.2); hiss(c, now + 0.07, 0.07, 0.14, 'bandpass', 900, 1.5); }
+  }
+  function soundBtn() {
+    const b = $('crSound');
+    b.textContent = snd.on ? '🔊' : '🔇';
+    b.setAttribute('aria-pressed', snd.on ? 'true' : 'false');
+    b.setAttribute('aria-label', snd.on ? 'Board sounds are on. Tap to turn them off' : 'Board sounds are off. Tap to turn them on');
+    b.classList.toggle('on', snd.on);
+  }
+
   // ── turning the board so that you sit at the bottom ──
   const turnPt = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [100 - y, x]; return [x, y]; };
   const backVec = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [y, -x]; return [x, y]; };
@@ -112,7 +178,8 @@
       const want = Math.min(T.simSteps, Math.floor((now - T.simT) / 1000 * G.HZ * (calm ? 3 : 1)));
       let n = T.sim.step;
       while (T.sim.step < want && G.simStep(T.sim)) {
-        for (const p of T.sim.pocketed) if (!p.seen) { p.seen = true; const b = T.sim.bodies.find(x => x.id === p.id); T.fade.push({ id: p.id, x: G.POCKETS[p.pocket][0], y: G.POCKETS[p.pocket][1], r: b.r, a: 1 }); try { navigator.vibrate?.(25); } catch {} }
+        if (T.sim.events.length) { for (const ev of T.sim.events) play(ev.k === 'wall' ? 'wall' : ev.s ? 'strike' : 'hit', ev.v); T.sim.events.length = 0; }
+        for (const p of T.sim.pocketed) if (!p.seen) { p.seen = true; const b = T.sim.bodies.find(x => x.id === p.id); T.fade.push({ id: p.id, x: G.POCKETS[p.pocket][0], y: G.POCKETS[p.pocket][1], r: b.r, a: 1 }); play('drop'); try { navigator.vibrate?.(25); } catch {} }
       }
       for (const f of T.fade) f.a -= 0.07;
       draw();
@@ -130,6 +197,8 @@
       if (e.k === 'shot') {
         const coins = e.before.map(([id, x, y]) => ({ id, x, y, on: true }));
         T.sim = G.newSim(coins, e.sx, e.sy, e.vx, e.vy);
+        T.sim.events = []; // collect the knocks, for sound
+        sndStart();
         // not my shot: hold for a moment on where the striker was and where it is aimed, then let it go
         const hold = e.id !== s?.you && !calm ? 450 : 0;
         const sp = Math.hypot(e.vx, e.vy) || 1;
@@ -369,6 +438,16 @@
   function init(bridge) {
     KO = bridge; el = KO.el;
     const cv = $('crCanvas');
+    snd.on = KO.store.get(SOUND_KEY) === true;
+    soundBtn();
+    $('crSound').onclick = () => {
+      snd.on = !snd.on;
+      KO.store.set(SOUND_KEY, snd.on);
+      soundBtn();
+      if (snd.on) { sndStart(); setTimeout(() => play('strike', 150), 60); } // a knock, so you hear what you switched on
+    };
+    cv.addEventListener('pointerdown', sndStart);
+    $('crSlide').addEventListener('pointerdown', sndStart);
     cv.addEventListener('pointerdown', onDown);
     cv.addEventListener('pointermove', onMove);
     cv.addEventListener('pointerup', onUp);
@@ -387,6 +466,7 @@
     init, render, lobby, tick, reset, controls, onAim,
     onTab(id) { if (id === 'carrom') engine().catch(() => {}); },
     soloOpen: () => $('carromSoloModal').classList.remove('hidden'),
+    _sound: () => ({ on: snd.on, played: snd.count, state: snd.ctx?.state || 'none' }), // test hook
     _opp: () => (T?.opp ? { ...T.opp } : null), // test hook: the other player's aim as last received
     // test hook: take a shot without dragging (view direction: dx, dy with dy < 0 = forward; power 0..1)
     _shoot(pos, dx, dy, power) {

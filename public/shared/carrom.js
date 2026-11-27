@@ -81,10 +81,11 @@ export function simStep(sim) {
     }
     if (b.out) continue;
     // cushions
-    if (b.x < b.r) { b.x = b.r; if (b.vx < 0) b.vx = -b.vx * WALL_BOUNCE; }
-    else if (b.x > 100 - b.r) { b.x = 100 - b.r; if (b.vx > 0) b.vx = -b.vx * WALL_BOUNCE; }
-    if (b.y < b.r) { b.y = b.r; if (b.vy < 0) b.vy = -b.vy * WALL_BOUNCE; }
-    else if (b.y > 100 - b.r) { b.y = 100 - b.r; if (b.vy > 0) b.vy = -b.vy * WALL_BOUNCE; }
+    // (sim.events, when the caller has set it to a list, collects knocks for the sound effects; it never changes the physics)
+    if (b.x < b.r) { b.x = b.r; if (b.vx < 0) { if (sim.events) sim.events.push({ k: 'wall', v: -b.vx, s: b.id === 's' }); b.vx = -b.vx * WALL_BOUNCE; } }
+    else if (b.x > 100 - b.r) { b.x = 100 - b.r; if (b.vx > 0) { if (sim.events) sim.events.push({ k: 'wall', v: b.vx, s: b.id === 's' }); b.vx = -b.vx * WALL_BOUNCE; } }
+    if (b.y < b.r) { b.y = b.r; if (b.vy < 0) { if (sim.events) sim.events.push({ k: 'wall', v: -b.vy, s: b.id === 's' }); b.vy = -b.vy * WALL_BOUNCE; } }
+    else if (b.y > 100 - b.r) { b.y = 100 - b.r; if (b.vy > 0) { if (sim.events) sim.events.push({ k: 'wall', v: b.vy, s: b.id === 's' }); b.vy = -b.vy * WALL_BOUNCE; } }
   }
   // pieces hitting each other
   for (let i = 0; i < B.length; i++) {
@@ -106,6 +107,7 @@ export function simStep(sim) {
         a.vx -= jimp * ia * nx; a.vy -= jimp * ia * ny;
         b.vx += jimp * ib * nx; b.vy += jimp * ib * ny;
         sim.hits++;
+        if (sim.events) sim.events.push({ k: 'hit', v: -rel, s: a.id === 's' || b.id === 's' });
         moving = true;
       }
     }
