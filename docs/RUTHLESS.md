@@ -11,6 +11,7 @@ Everything works as in Kade Ondu (match colour or symbol, call Ondu on your last
 - **No match: draw until a card fits,** then you must play that card. There is no "keep it".
 - **Draw cards always stack.** Answer a draw card with one of the same size or bigger (2, 4, 6, 10), any colour, and the total moves to the next player. No answer: pick up the lot.
 - **25 cards and you are out** of the round (`KO_AT` in `shared/game.js`). You watch until it ends and keep your score. The last player in wins.
+- **Only computer players left:** if every real player has been knocked out, the round ends at once (nobody wants to watch computers finish). The lowest card points in hand wins, as when the round timer runs out. Added 27 Nov 2026 at the owner's request. If another real player is still in, the round carries on.
 - **Seven:** swap hands with a player you choose (with two players, the other one). **Zero:** everyone passes their hand to the next player in the direction of play. Neither happens if it was your last card: you win.
 - **Scoring:** the winner gets the points left in the other hands, plus 50 for every player knocked out.
 

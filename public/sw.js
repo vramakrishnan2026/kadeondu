@@ -1,6 +1,6 @@
 // Offline helper: always tries the network first (so updates show up straight away)
 // and falls back to the last copy only when there's no connection.
-const CACHE = 'kade-ondu-v17';
+const CACHE = 'kade-ondu-v18';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/shared/game.js', '/shared/ludo.js', '/shared/poker.js', '/shared/carrom.js', '/shared/ruthless.js', '/carrom.js', '/poker.js', '/poker-learn.js',
   '/fonts/inter-black-italic.woff', '/icons/icon-192.png', '/fx/rangoli.svg'];
 

@@ -87,5 +87,14 @@ async def main():
         # the standard game still has its own rules
         s=await page('Sita'); await s.click('#soloBtn'); print('standard set-up keeps stacking option', await s.is_visible('#soloStacking')); await s.click('#soloStart'); await s.wait_for_selector('#game:not(.hidden)'); await s.wait_for_timeout(500)
         print('standard game:', await s.text_content('#myInfo'), '| deck', await s.text_content('#deckCount'))
+        # the only real player is knocked out with computer players still in: the round ends at once
+        await s.click('#leaveBtn'); await s.wait_for_selector('#home:not(.hidden)'); await s.click(TAB); await s.click('#createBtn'); await s.wait_for_selector('#lobby:not(.hidden)'); c2=(await s.text_content('#lobbyCode')).strip()
+        for _ in range(3): await s.click('#addBotBtn'); await s.wait_for_timeout(200)
+        await s.select_option('#turnTimeInput','0'); await s.click('#startBtn'); await s.wait_for_selector('#game:not(.hidden)'); await s.wait_for_timeout(400)
+        hit(f'__test/hand?room={c2}&name=Sita&cards=y:1&count=24&top=b:9&turn=1'); await s.wait_for_timeout(400)
+        await s.click('#drawBtn'); await s.wait_for_selector('#endOverlay:not(.hidden)', timeout=8000)
+        print('out with 3 computers left: round over straight away |', await s.text_content('#endTitle'), '|', (await s.text_content('#endPoints'))[:95], '| next round button', await s.is_visible('#nextRoundBtn'))
+        await s.screenshot(path='ruthless6_botsonly.png')
+        await s.click('#nextRoundBtn'); await s.wait_for_timeout(700); print('next round: dealt back in', await s.text_content('#myInfo'))
         print('errors', errs); await b.close()
 asyncio.run(main())

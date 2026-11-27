@@ -64,3 +64,7 @@ The defaults are the owner's "Classic" choice, which is why some are on (the usu
 ## Three real players (added 27 Nov 2026)
 
 When the host starts with exactly three real players, a computer player takes the fourth seat (the owner asked for this, as in Carrom). The Start button says "3 players + 1 computer". If a computer player is already one of the three, the host chose a three-player game and nothing is added. Three people without a computer player is currently not possible in a room: a switch can be added if the owner wants one (`settings.noFill` exists in the engine but has no control on screen).
+
+## Only computer players left (added 27 Nov 2026)
+
+When every real player has finished and only computer players are still racing, the game ends at once and they take the remaining places as they stand (furthest along first). The owner asked for this in Ondu Ruthless; it was applied here too because the same wait happens. If a real player is still racing, play goes on.

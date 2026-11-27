@@ -358,7 +358,19 @@ function mercy(s) {
     else if (i === s.turn) { s.drawnCardId = null; s.turnNo = (s.turnNo || 0) + 1; if (s.dir === -1) s.turn--; }
     s.turn = mod(s.turn, Math.max(1, s.players.length));
   }
-  if (s.players.length === 1) endRound(s, s.players[0]);
+  if (s.phase !== 'playing') return;
+  if (s.players.length === 1) return endRound(s, s.players[0]);
+  // Every real player has been knocked out and only computer players are left: nobody wants to sit and watch them.
+  // The round ends now, and the lowest card points in hand wins (the same rule as when the round's time runs out).
+  const humanOut = (s.spectators || []).some(p => !p.bot && p.koRound === s.round);
+  if (humanOut && s.players.every(p => p.bot)) {
+    const n = s.players.length;
+    const order = p => mod((s.players.indexOf(p) - s.turn) * s.dir, n);
+    const winner = [...s.players].sort((a, b) => handPoints(a) - handPoints(b) || a.hand.length - b.hand.length || order(a) - order(b))[0];
+    log(s, { k: 'botsonly' });
+    endRound(s, winner);
+    s.lastRound.botsOnly = true; s.lastRound.left = handPoints(winner);
+  }
 }
 
 // What a Ruthless card does once it is on the pile. Returns an error text, or null.

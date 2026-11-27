@@ -94,6 +94,19 @@ for (const n of [2, 3, 4]) {
   L.handle(t, h.id, { t: 'start' });
   assert.equal(t.players.length, 3, 'a chosen three-player game stays three');
 }
+{ // the only real player finishes with computer players still racing: the game ends, they are placed as they stand
+  const s = L.newRoom(); s.settings.turnTime = 0; const me = L.addPlayer(s, 'Me'); const b1 = L.addPlayer(s, 'B1', { bot: true }), b2 = L.addPlayer(s, 'B2', { bot: true });
+  L.handle(s, me.id, { t: 'start' });
+  me.tokens = [55, 56, 56, 56]; b1.tokens = [10, -1, -1, -1]; b2.tokens = [40, 30, -1, -1]; s.turn = s.players.indexOf(me); s.step = 'roll';
+  L._test.die = () => 1; L.handle(s, me.id, { t: 'roll' }); L._test.die = null;
+  assert.ok(s.phase === 'ended' && s.lastRound.botsOnly && s.lastRound.places.join() === [me.id, b2.id, b1.id].join(), 'human home first: game over, computers placed by progress ' + JSON.stringify(s.lastRound));
+  // two real players: the first finishes, the second is still racing → play goes on
+  const t = L.newRoom(); t.settings.turnTime = 0; t.settings.noFill = true; const h1 = L.addPlayer(t, 'H1'), h2 = L.addPlayer(t, 'H2'); L.addPlayer(t, 'B', { bot: true });
+  L.handle(t, h1.id, { t: 'start' });
+  h1.tokens = [55, 56, 56, 56]; t.turn = t.players.indexOf(h1); t.step = 'roll';
+  L._test.die = () => 1; L.handle(t, h1.id, { t: 'roll' }); L._test.die = null;
+  assert.ok(t.phase === 'playing' && h1.place === 1 && !h2.place, 'a real player still racing: the game goes on');
+}
 console.log(`${games} games finished: average ${Math.round(total.steps / games)} actions, ${(total.caps / games).toFixed(1)} captures, ${total.three6} triple sixes, ${total.nomove} rolls with no move`);
 
 // ── Set pieces ──

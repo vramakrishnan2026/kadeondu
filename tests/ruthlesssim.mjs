@@ -91,6 +91,22 @@ const turnOf = s => s.players[s.turn];
   ok('everyone is back for the next round', s.players.length === 3 && s.spectators.length === 0);
   ok('next round starts', !RU.handle(s, s.hostId, { t: 'start' }).error && s.players.every(p => p.hand.length === 7));
 }
+// the only real player is knocked out with computer players still in: the round ends at once, fewest points wins
+{
+  const s = RU.newRoom(); const me = RU.addPlayer(s, 'Me'); const b1 = RU.addPlayer(s, 'B1', { bot: true }), b2 = RU.addPlayer(s, 'B2', { bot: true }), b3 = RU.addPlayer(s, 'B3', { bot: true });
+  s.settings.turnTime = 0; s.settings.roundTime = 0; RU.handle(s, me.id, { t: 'start' });
+  s.turn = s.players.indexOf(me); s.dir = 1; s.pendingDraw = 10; s.pendingType = 'wd10'; s.drawnCardId = null;
+  me.hand = Array.from({ length: 20 }, () => C('y', '9')); b1.hand = [C('r', '9'), C('r', '8')]; b2.hand = [C('g', '1')]; b3.hand = [C('b', '5'), C('b', '6'), C('b', '7')];
+  RU.handle(s, me.id, { t: 'draw' });
+  ok('human out with 3 computers left: round over', s.phase === 'ended' && s.winnerId === b2.id && s.lastRound.botsOnly === true, s.phase + ' ' + JSON.stringify(s.lastRound));
+  ok('everyone back, next round can start', s.players.length === 4 && !RU.handle(s, me.id, { t: 'start' }).error && s.phase === 'playing');
+  // two real players: one is out, the other is still in → the round carries on
+  const t = RU.newRoom(); const h1 = RU.addPlayer(t, 'H1'), h2 = RU.addPlayer(t, 'H2'); RU.addPlayer(t, 'B', { bot: true });
+  t.settings.turnTime = 0; t.settings.roundTime = 0; RU.handle(t, h1.id, { t: 'start' });
+  t.turn = t.players.indexOf(h1); t.pendingDraw = 10; t.pendingType = 'wd10'; t.drawnCardId = null; h1.hand = Array.from({ length: 20 }, () => C('y', '9'));
+  RU.handle(t, h1.id, { t: 'draw' });
+  ok('a real player still in: round continues', t.phase === 'playing' && t.players.length === 2 && t.players.includes(h2));
+}
 // whole games between computer players: the number of cards never changes, rounds end
 let rounds = 0, kos = 0, longest = 0, stuck = 0;
 for (let g = 0; g < 160; g++) {

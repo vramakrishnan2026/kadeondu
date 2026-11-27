@@ -296,6 +296,9 @@ function move(s, p, i, afterRoll = false) {
     log(s, { k: 'done', p: p.name, x: p.place });
     s.animMs += 600;
     if (s.players.filter(inPlay).length < 2) { endGame(s); return null; }
+    // every real player has finished and only computer players are still racing: nobody wants to sit and watch them.
+    // The game ends now and they take the remaining places in the order they stand (furthest along first).
+    if (s.players.some(q => !q.bot) && s.players.filter(inPlay).every(q => q.bot)) { endGame(s); s.lastRound.botsOnly = true; return null; }
     nextPlayer(s);
     return null;
   }

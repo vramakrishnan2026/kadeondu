@@ -245,6 +245,7 @@
       case 'start': return `Round ${e.r} started` + (e.decks > 1 ? ` (${e.decks} decks)` : '');
       case 'play': return `${e.p} played ${cardName(e.card)}` + (e.card.c === 'w' ? ` → ${COLOR_NAMES[e.col]}` : '');
       case 'draw': return e.forced ? `${e.p} picked up ${e.x}` : e.x > 1 ? `${e.p} drew ${e.x} cards` : `${e.p} drew a card`;
+      case 'botsonly': return 'Only computer players left: round over';
       case 'ko': return `${e.p} is out: ${S?.koAt || 25} cards!`;
       case 'swap': return `${e.p} swapped hands with ${e.q}`;
       case 'passhands': return 'Everyone passed their hand along';
@@ -699,7 +700,7 @@
       $('endOverlay').classList.toggle('hidden', endClosed);
       const w = s.lastRound.winnerId;
       $('endTitle').textContent = w === s.you ? 'You win! 🎉' : `${name(w)} wins!`;
-      $('endPoints').textContent = (s.lastRound.timeUp ? `⏳ Time's up. Lowest card points in hand wins (${s.lastRound.left}). ` : '') +
+      $('endPoints').textContent = (s.lastRound.botsOnly ? `Only computer players were left, so the round ended. Lowest card points in hand wins (${s.lastRound.left}). ` : '') + (s.lastRound.timeUp ? `⏳ Time's up. Lowest card points in hand wins (${s.lastRound.left}). ` : '') +
         `+${s.lastRound.points} points from everyone's leftover cards`;
       const ol = $('scoreList');
       ol.replaceChildren();
@@ -1074,7 +1075,7 @@
       const name = id => s.players.find(p => p.id === id)?.name ?? '?';
       const w = s.lastRound.winnerId;
       $('endTitle').textContent = w === s.you ? 'You win! 🎉' : `${name(w)} wins!`;
-      $('endPoints').textContent = 'Final places';
+      $('endPoints').textContent = s.lastRound.botsOnly ? 'Final places. Only computer players were still racing, so they are placed as they stood.' : 'Final places';
       const ol = $('scoreList');
       ol.replaceChildren();
       s.lastRound.places.filter(id => s.players.some(p => p.id === id)).forEach((id, k) => {
