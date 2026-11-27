@@ -69,3 +69,7 @@ The owner asked for premium-sounding coin sounds with a switch on the board scre
 
 ## To check on real phones
 The feel of the pull-back aiming and the power range, on the Android phone and the friends' iPhones. This has only been run in desktop Chromium.
+
+## Looks
+- Coins, striker and pockets are drawn on the canvas with gradients (`LOOK` and `disc` in `public/carrom.js`); the light always comes from the top left of the screen, whichever side you sit on. The striker keeps a white edge so it is easy to find, and turns red where it may not sit.
+- The frame's corner design (brass inlay lines, orange dots, the four-colour star from the Kade Ondu wild card) is an inline SVG in the `.cr-board` background in `style.css`. The owner asked for a *mild* design derived from Kade Ondu; the reference picture they linked (a share.google link) could not be opened by the builder.

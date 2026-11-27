@@ -107,7 +107,14 @@
   const turnVec = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [-y, x]; return [x, y]; }; // a direction on the board, as it looks on this screen
 
   // ── drawing ──
-  const COL = { w: ['#f7f1e1', '#cfc4a6'], b: ['#2b2a30', '#101014'], q: ['#e0344d', '#9d1830'] };
+  // Each disc: [highlight, face, face in shade, rim lit, rim in shade, groove]. The light comes from the top left.
+  const LOOK = {
+    w: ['#fffdf4', '#f1e7cd', '#d3c49c', '#fbf4e0', '#a3946c', 'rgba(110,90,50,.55)'],
+    b: ['#6a6872', '#2e2d34', '#131217', '#55535c', '#060608', 'rgba(0,0,0,.7)'],
+    q: ['#ff8a98', '#de3550', '#a31a33', '#f2607a', '#6e0f22', 'rgba(90,10,25,.6)'],
+    s: ['#9fd0ff', '#2f7fe0', '#1757ad', '#e9f3ff', '#0f3f85', 'rgba(8,40,95,.6)'],
+    x: ['#ffb0b3', '#e5484d', '#a8272b', '#ffe9ea', '#7a1518', 'rgba(90,10,15,.6)'], // the striker where it may not sit
+  };
   function draw() {
     const cv = $('crCanvas'), box = $('crBoard');
     const css = box.clientWidth;
@@ -124,7 +131,13 @@
     grain.addColorStop(0, 'rgba(255,255,255,.16)'); grain.addColorStop(1, 'rgba(120,70,20,.14)');
     g.fillStyle = grain; g.fillRect(0, 0, 100, 100);
     // pockets
-    for (const [x, y] of G.POCKETS) { g.beginPath(); g.arc(x, y, G.POCKET_R, 0, 7); g.fillStyle = '#17120d'; g.fill(); }
+    for (const [x, y] of G.POCKETS) {
+      const R = G.POCKET_R, hole = g.createRadialGradient(x + R * 0.25, y + R * 0.3, R * 0.1, x, y, R);
+      hole.addColorStop(0, '#050403'); hole.addColorStop(0.7, '#120d08'); hole.addColorStop(1, '#2c1d10');
+      g.beginPath(); g.arc(x, y, R, 0, 7); g.fillStyle = hole; g.fill();
+      g.lineWidth = 0.45; g.strokeStyle = 'rgba(70,38,14,.9)'; g.stroke();                                       // the cut edge of the wood
+      g.beginPath(); g.arc(x, y, R - 0.45, 0.15, 1.45); g.lineWidth = 0.3; g.strokeStyle = 'rgba(255,225,170,.28)'; g.stroke(); // far wall catches the light
+    }
     // lines (the same on all four sides, so no turning needed)
     g.strokeStyle = '#7a4a22'; g.lineWidth = 0.35; g.lineCap = 'round';
     for (let k = 0; k < 4; k++) {
@@ -140,10 +153,23 @@
     const disc = (x, y, r, kind, alpha = 1) => {
       const [vx, vy] = turnPt(x, y, T.side);
       g.globalAlpha = alpha;
-      g.beginPath(); g.arc(vx + 0.25, vy + 0.4, r, 0, 7); g.fillStyle = 'rgba(0,0,0,.28)'; g.fill();
-      g.beginPath(); g.arc(vx, vy, r, 0, 7);
-      if (kind === 's') { g.fillStyle = T.strikerBad ? '#e5484d' : '#2f7fe0'; g.fill(); g.lineWidth = 0.45; g.strokeStyle = '#fff'; g.stroke(); g.beginPath(); g.arc(vx, vy, r * 0.45, 0, 7); g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 0.3; g.stroke(); }
-      else { g.fillStyle = COL[kind][0]; g.fill(); g.lineWidth = 0.3; g.strokeStyle = COL[kind][1]; g.stroke(); g.beginPath(); g.arc(vx, vy, r * 0.58, 0, 7); g.stroke(); }
+      const L = LOOK[kind === 's' && T.strikerBad ? 'x' : kind], ring = (rr, w, col, dx = 0, dy = 0, a0 = 0, a1 = 7) => { g.beginPath(); g.arc(vx + dx, vy + dy, rr, a0, a1); g.lineWidth = w; g.strokeStyle = col; g.stroke(); };
+      // shadow on the board: a wide soft one and a tight dark one, both away from the light
+      g.beginPath(); g.arc(vx + r * 0.2, vy + r * 0.3, r * 1.04, 0, 7); g.fillStyle = 'rgba(40,20,5,.16)'; g.fill();
+      g.beginPath(); g.arc(vx + r * 0.1, vy + r * 0.16, r * 1.01, 0, 7); g.fillStyle = 'rgba(20,10,0,.32)'; g.fill();
+      // the rounded rim: lit at the top left, dark at the bottom right
+      const rim = g.createLinearGradient(vx - r * 0.7, vy - r * 0.7, vx + r * 0.7, vy + r * 0.7);
+      rim.addColorStop(0, L[3]); rim.addColorStop(1, L[4]);
+      g.beginPath(); g.arc(vx, vy, r, 0, 7); g.fillStyle = rim; g.fill();
+      // the flat top, a little inside the rim
+      const top = g.createRadialGradient(vx - r * 0.35, vy - r * 0.4, r * 0.05, vx, vy, r * 0.95);
+      top.addColorStop(0, L[0]); top.addColorStop(0.45, L[1]); top.addColorStop(1, L[2]);
+      g.beginPath(); g.arc(vx, vy, r * 0.86, 0, 7); g.fillStyle = top; g.fill();
+      // turned grooves: a dark cut with a thin lit edge just beyond it
+      const w = Math.max(0.12, r * 0.055);
+      for (const k of kind === 's' ? [0.66, 0.5, 0.2] : [0.62, 0.3]) { ring(r * k, w, L[5]); ring(r * k, w * 0.7, 'rgba(255,255,255,.22)', w * 0.55, w * 0.55); }
+      ring(r * 0.76, w * 0.9, 'rgba(255,255,255,.42)', 0, 0, Math.PI * 1.08, Math.PI * 1.45);                       // a glint on the shoulder
+      if (kind === 's') ring(r - 0.12, 0.24, 'rgba(255,255,255,.75)');                                          // the striker keeps its white edge, so it is easy to find
       g.globalAlpha = 1;
     };
     const s = KO.getS();
