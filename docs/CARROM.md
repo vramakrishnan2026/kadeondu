@@ -40,6 +40,15 @@ Not included: dues carried over when you have no coin to return, playing several
 - **A shot:** the phone sends `{ t: 'shot', pos, vx, vy }`. The server simulates it to the end, applies the rules, and logs the shot with the board before it. Every phone replays that shot, then shows the server's board. The server's result always wins.
 - **Computer players** line up striker, coin and pocket, pick the straightest clear line, and use just enough pace so the striker does not follow the coin in. Easy wobbles a lot, Normal a little. They do not simulate shots ahead (kept light for the server).
 
+## Watching the other player aim (added 27 Nov 2026)
+The owner asked to see how the opponent places the striker and the angle they aim.
+
+- While someone takes their turn, their phone sends the striker position, aim direction and power a few times a second (`shareAim` in `public/carrom.js`, message `aim`). The server passes it to the other phones in the room (`relayAim` in `src/worker.js`) and stores nothing, like reactions.
+- The other phones draw the striker where it is, with a yellow dotted aim line and the power bar. The update goes stale after 6 seconds and is cleared on a new turn.
+- Only the player whose turn it is can send it, and at most about a dozen updates a second are passed on.
+- Before any shot that is not yours is replayed, the board holds for about half a second on the striker and its aim line. This is what shows a computer player's aim, since it has no phone to send updates from.
+- Not shown vs computer on your own phone beyond that half-second look (the computer decides in one go).
+
 ## Tests
 - `node tests/carromsim.mjs`: physics (repeatable, stays on the board), every rule as a set piece, 96 whole games between computer players.
 - `python3 tests/ui_carrom.py`: tab, vs computer with real pull-back aiming, a room (replay on both phones, queen, cover, win), doubles with points rules, fit at five screen sizes.

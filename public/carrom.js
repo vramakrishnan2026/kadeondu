@@ -21,6 +21,7 @@
   // ── turning the board so that you sit at the bottom ──
   const turnPt = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [100 - y, x]; return [x, y]; };
   const backVec = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [y, -x]; return [x, y]; };
+  const turnVec = (x, y, k) => { for (let i = 0; i < k; i++) [x, y] = [-y, x]; return [x, y]; }; // a direction on the board, as it looks on this screen
 
   // ── drawing ──
   const COL = { w: ['#f7f1e1', '#cfc4a6'], b: ['#2b2a30', '#101014'], q: ['#e0344d', '#9d1830'] };
@@ -66,6 +67,12 @@
     const kindOf = id => (id === 's' ? 's' : T.kinds[id]);
     if (T.sim) {
       for (const b of T.sim.bodies) if (!b.out) disc(b.x, b.y, b.r, kindOf(b.id));
+      if (T.pre) { // aim line from the striker, as the shooter set it
+        const st = T.sim.bodies.find(b => b.id === 's');
+        const [vx, vy] = turnPt(st.x, st.y, T.side), [dx, dy] = turnVec(T.pre.dx, T.pre.dy, T.side);
+        g.strokeStyle = 'rgba(255,214,107,.95)'; g.lineWidth = 0.7; g.setLineDash([1.6, 1.6]);
+        g.beginPath(); g.moveTo(vx, vy); g.lineTo(vx + dx * (14 + 52 * T.pre.power), vy + dy * (14 + 52 * T.pre.power)); g.stroke(); g.setLineDash([]);
+      }
       for (const f of T.fade) if (f.a > 0) disc(f.x, f.y, f.r * (0.4 + 0.6 * f.a), kindOf(f.id), f.a);
     } else if (T.view) {
       for (const c of T.view) if (c.on) disc(c.x, c.y, G.COIN_R, c.c);
@@ -73,13 +80,17 @@
       const cur = s?.phase === 'playing' ? s.players.find(p => p.id === s.turnId) : null;
       if (cur && !T.waiting) {
         const mine = cur.id === s.you;
-        const [sx, sy] = G.strikerSpot(cur.side, mine ? T.pos : 0.5);
+        // someone else's turn: their striker and aim, as they move them (the last update goes stale after a few seconds)
+        const live = !mine && T.opp && T.opp.from === cur.id && Date.now() - T.opp.at < 6000 ? T.opp : null;
+        const [sx, sy] = G.strikerSpot(cur.side, mine ? T.pos : live ? live.pos : 0.5);
         T.strikerBad = mine && T.view.some(c => c.on && (c.x - sx) ** 2 + (c.y - sy) ** 2 < (G.COIN_R + G.STRIKER_R) ** 2);
-        disc(sx, sy, G.STRIKER_R, 's', mine ? 1 : 0.55);
-        if (mine && T.aim) { // aim line and power
+        disc(sx, sy, G.STRIKER_R, 's', mine ? 1 : live ? 0.9 : 0.55);
+        let shown = mine ? T.aim : null;
+        if (live && live.pw > 0.02) { const [dx, dy] = turnVec(live.dx, live.dy, T.side); shown = { dx, dy, power: live.pw, ok: true, theirs: true }; }
+        if (shown) { // aim line and power
           const [vx, vy] = turnPt(sx, sy, T.side);
-          const { dx, dy, power, ok } = T.aim;
-          g.strokeStyle = ok ? 'rgba(255,255,255,.95)' : 'rgba(229,72,77,.9)'; g.lineWidth = 0.7; g.setLineDash([1.6, 1.6]);
+          const { dx, dy, power, ok } = shown;
+          g.strokeStyle = shown.theirs ? 'rgba(255,214,107,.95)' : ok ? 'rgba(255,255,255,.95)' : 'rgba(229,72,77,.9)'; g.lineWidth = 0.7; g.setLineDash([1.6, 1.6]);
           g.beginPath(); g.moveTo(vx, vy); g.lineTo(vx + dx * (14 + 52 * power), vy + dy * (14 + 52 * power)); g.stroke(); g.setLineDash([]);
           g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(vx, vy); g.lineTo(vx - dx * 22 * power, vy - dy * 22 * power); g.stroke(); // the pull
           g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(4, 96.2, 92, 1.8);
@@ -93,6 +104,10 @@
   function frame(now) {
     if (!T) return;
     T.raf = 0;
+    if (T.sim && T.pre) { // the look at the aim before the shot goes
+      if (now < T.pre.until) { draw(); T.raf = requestAnimationFrame(frame); return; }
+      T.pre = null;
+    }
     if (T.sim) {
       const want = Math.min(T.simSteps, Math.floor((now - T.simT) / 1000 * G.HZ * (calm ? 3 : 1)));
       let n = T.sim.step;
@@ -115,7 +130,12 @@
       if (e.k === 'shot') {
         const coins = e.before.map(([id, x, y]) => ({ id, x, y, on: true }));
         T.sim = G.newSim(coins, e.sx, e.sy, e.vx, e.vy);
-        T.simSteps = e.steps; T.simT = performance.now(); T.fade = []; T.simEnd = 0;
+        // not my shot: hold for a moment on where the striker was and where it is aimed, then let it go
+        const hold = e.id !== s?.you && !calm ? 450 : 0;
+        const sp = Math.hypot(e.vx, e.vy) || 1;
+        T.pre = hold ? { until: performance.now() + hold, dx: e.vx / sp, dy: e.vy / sp, power: Math.min(1, Math.max(0, (sp - G.V_MIN) / (G.V_MAX - G.V_MIN))) } : null;
+        T.opp = null;
+        T.simSteps = e.steps; T.simT = performance.now() + hold; T.fade = []; T.simEnd = 0;
         T.after = e.after;
         T.raf = requestAnimationFrame(frame);
         return;
@@ -185,6 +205,7 @@
     if (firstState || !T.view) T.view = s.coins;
     const myTurn = s.phase === 'playing' && s.turnId === s.you && seated;
     if (myTurn && T.prevTurn !== s.you && !firstState) { try { navigator.vibrate?.(120); } catch {} }
+    if (T.prevTurn !== s.turnId) T.opp = null; // a new turn: forget the last player's aim
     T.prevTurn = s.turnId;
     const at = s._at ?? (s._at = Date.now());
     T.deadlineAt = s.phase === 'playing' && s.deadlineIn != null ? at + s.deadlineIn : null;
@@ -276,6 +297,25 @@
   }
 
   // ── aiming: pull back anywhere on the board, like a catapult, and let go ──
+  // Tell the other phones where my striker is and where I am aiming (a few times a second; nothing is stored)
+  let aimSent = 0, aimLater = null;
+  function shareAim(force = false) {
+    if (KO.isSolo() || !T || !canShoot()) return;
+    const now = Date.now();
+    if (!force && now - aimSent < 90) { clearTimeout(aimLater); aimLater = setTimeout(() => shareAim(true), 100); return; }
+    clearTimeout(aimLater);
+    aimSent = now;
+    const a = T.aim;
+    const [dx, dy] = a ? backVec(a.dx, a.dy, T.side) : [0, 0];
+    KO.send({ t: 'aim', pos: T.pos, dx, dy, pw: a && a.ok ? a.power : 0 });
+  }
+  function onAim(m) { // from the player whose turn it is
+    const s = KO.getS();
+    if (!T || !s || s.game !== 'carrom' || m.from !== s.turnId || m.from === s.you) return;
+    T.opp = { from: m.from, pos: m.pos, dx: m.dx, dy: m.dy, pw: m.pw, at: Date.now() };
+    if (!T.running) draw();
+  }
+
   function boardPt(ev) { const r = $('crCanvas').getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * 100, (ev.clientY - r.top) / r.height * 100]; }
   let drag = null;
   function canShoot() { const s = KO.getS(); return !!(s && T && s.game === 'carrom' && s.phase === 'playing' && s.turnId === s.you && !s.spectating && !T.running && !T.waiting); }
@@ -291,10 +331,11 @@
     const [x, y] = boardPt(ev);
     const px = drag.from[0] - x, py = drag.from[1] - y; // pull: the shot goes the opposite way to the drag
     const len = Math.hypot(px, py);
-    if (len < 1.5) { T.aim = null; draw(); return; }
+    if (len < 1.5) { T.aim = null; draw(); shareAim(); return; }
     const dx = px / len, dy = py / len;
     T.aim = { dx, dy, power: Math.min(1, len / 38), ok: dy < -0.1 && !T.strikerBad };
     draw();
+    shareAim();
   }
   function onUp(ev) {
     if (!drag || ev.pointerId !== drag.id) return;
@@ -302,7 +343,7 @@
     const a = T?.aim;
     if (!T) return;
     T.aim = null;
-    if (!a || a.power < 0.1 || !canShoot()) return draw();
+    if (!a || a.power < 0.1 || !canShoot()) { shareAim(true); return draw(); } // (aim dropped: the others see the line go)
     if (!a.ok) { KO.toast(T.strikerBad ? 'The striker is touching a coin: slide it along first' : 'Shoot forward: pull back towards yourself'); return draw(); }
     const sp = G.V_MIN + (G.V_MAX - G.V_MIN) * a.power;
     const [vx, vy] = backVec(a.dx * sp, a.dy * sp, T.side);
@@ -332,7 +373,7 @@
     cv.addEventListener('pointermove', onMove);
     cv.addEventListener('pointerup', onUp);
     cv.addEventListener('pointercancel', () => { drag = null; if (T) { T.aim = null; draw(); } });
-    $('crSlide').addEventListener('input', e => { if (!T) return; T.pos = Number(e.target.value) / 1000; draw(); controls(); });
+    $('crSlide').addEventListener('input', e => { if (!T) return; T.pos = Number(e.target.value) / 1000; draw(); controls(); shareAim(); });
     $('crAgain').onclick = () => KO.send({ t: 'start' });
     $('crEndAgain').onclick = () => KO.send({ t: 'start' });
     $('crEndClose').onclick = () => { const s = KO.getS(); if (T && s) { T.endClosed = s.round; $('crEnd').classList.add('hidden'); controls(); } };
@@ -343,9 +384,10 @@
   }
 
   window.KOCarrom = {
-    init, render, lobby, tick, reset, controls,
+    init, render, lobby, tick, reset, controls, onAim,
     onTab(id) { if (id === 'carrom') engine().catch(() => {}); },
     soloOpen: () => $('carromSoloModal').classList.remove('hidden'),
+    _opp: () => (T?.opp ? { ...T.opp } : null), // test hook: the other player's aim as last received
     // test hook: take a shot without dragging (view direction: dx, dy with dy < 0 = forward; power 0..1)
     _shoot(pos, dx, dy, power) {
       if (!canShoot()) return false;

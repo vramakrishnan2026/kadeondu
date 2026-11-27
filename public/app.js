@@ -391,6 +391,8 @@
     } else if (m.t === 'kicked') {
       goHome(leaving ? 'You left the room' : 'You were removed');
       leaving = false;
+    } else if (m.t === 'aim') {
+      window.KOCarrom?.onAim(m);
     } else if (m.t === 'react') {
       showReaction(m.name, m.id);
     } else if (m.t === 'voice') {

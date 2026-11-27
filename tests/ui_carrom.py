@@ -57,6 +57,17 @@ async def main():
         print('back to', await a.locator('#lobbyPlayers li').count(), 'players')
         await a.click('#startBtn'); await a.wait_for_selector('#carrom:not(.hidden)'); await k.wait_for_selector('#carrom:not(.hidden)'); await a.wait_for_timeout(500)
         print('Arun:', await status(a), '|', await a.text_content('#myInfo'), '| Kiran:', await status(k), '|', await k.text_content('#myInfo'), '| Kiran slider off', await k.is_disabled('#crSlide'))
+        # Kiran sees Arun place the striker and aim, live
+        k0=await board(k)
+        await a.fill('#crSlide','820'); await k.wait_for_timeout(350); o1=await k.evaluate("KOCarrom._opp()")
+        print('Kiran sees the striker move:', o1 and round(o1['pos'],2), '| board redrawn', await board(k)!=k0)
+        await pull(a, -0.08, 0.2); await k.wait_for_timeout(350); o2=await k.evaluate("KOCarrom._opp()"); k1=await board(k)
+        print('Kiran sees the aim: power', o2 and round(o2['pw'],2), '| direction (board)', o2 and [round(o2['dx'],2), round(o2['dy'],2)], '| line drawn', k1!=k0)
+        await k.screenshot(path='carrom9_oppaim.png')
+        print('Arun gets no echo of his own aim:', await a.evaluate("KOCarrom._opp()") is None)
+        r0=await a.locator('#crCanvas').bounding_box(); await a.mouse.move(r0['x']+r0['width']*0.5, r0['y']+r0['height']*0.45); await a.mouse.up(); await k.wait_for_timeout(350)   # dragged back to the start: aim dropped
+        o3=await k.evaluate("KOCarrom._opp()"); print('aim dropped: line gone for Kiran', o3 and o3['pw']==0)
+        await a.fill('#crSlide','500'); await a.wait_for_timeout(200)
         ka=await board(k)
         ok=await a.evaluate("KOCarrom._shoot(0.5, 0.02, -1, 0.8)"); await k.wait_for_timeout(300)
         print('shot sent', ok, '| replaying on Kiran\'s phone', await k.evaluate("document.getElementById('carrom').classList.contains('busy')"))

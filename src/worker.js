@@ -310,6 +310,7 @@ export class GameRoom extends DurableObject {
     const att = ws.deserializeAttachment() || {};
     if (msg.t === 'voice') return this.relayVoice(ws, att, msg);
     if (msg.t === 'react') return this.relayReaction(ws, att, msg);
+    if (msg.t === 'aim') return this.relayAim(ws, att, msg);
     if (msg.t === 'chat') return this.onChat(ws, att, msg);
     if (raw.length > 2000) return;
     const now = Date.now();
@@ -439,6 +440,21 @@ export class GameRoom extends DurableObject {
   }
 
   // Emoji reactions: shown to everyone (sender included), never stored.
+  // Carrom: where the player whose turn it is has put the striker and where they are aiming, shown live on the
+  // other phones. Passed straight on, never stored, and only from the player whose turn it is.
+  relayAim(ws, att, msg) {
+    const s = this.room;
+    if (s?.game !== 'carrom' || s.phase !== 'playing' || !att.pid || s.players[s.turn]?.id !== att.pid) return;
+    const num = (v, lo, hi) => (Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Number(v))) : 0);
+    const now = Date.now();
+    if (now - (this.aimAt || 0) < 60) return; // a dozen updates a second is plenty
+    this.aimAt = now;
+    const out = JSON.stringify({ t: 'aim', from: att.pid, pos: num(msg.pos, 0, 1), dx: num(msg.dx, -1, 1), dy: num(msg.dy, -1, 1), pw: num(msg.pw, 0, 1) });
+    for (const other of this.ctx.getWebSockets()) {
+      if (other !== ws && other.deserializeAttachment()?.pid) { try { other.send(out); } catch {} }
+    }
+  }
+
   relayReaction(ws, att, msg) {
     const s = this.room;
     if (!att.pid || !s.settings.reactions || !REACTIONS.includes(msg.id)) return;

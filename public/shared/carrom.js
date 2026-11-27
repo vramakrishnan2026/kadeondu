@@ -373,7 +373,7 @@ function shoot(s, p, msg) {
   const sim = runSim(newSim(s.coins, sx, sy, ux, uy));
   s.shots++;
   log(s, { k: 'shot', p: p.name, id: p.id, side: p.side, sx, sy, vx: ux, vy: uy, before, steps: sim.step, sunk: sim.pocketed.map(x => [x.id, x.pocket, x.step]) });
-  s.animMs = Math.round(sim.step / HZ * 1000) + 500;
+  s.animMs = Math.round(sim.step / HZ * 1000) + 1000; // the replay, plus the short look at the aim that the other phones show first
   s.actNo++;
   settle(s, p, sim);
   return {};
