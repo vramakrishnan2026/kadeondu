@@ -65,3 +65,4 @@
 - **Carrom and Ludo: three real players can start.** A computer player takes the fourth seat when the host starts (Carrom: any three; Ludo: three real players). Cache v17.
 - **No watching computers finish.** Ondu Ruthless: when every real player is knocked out, the round ends at once (lowest points in hand wins). Ludo: when every real player has finished, the game ends and the computer players are placed as they stand. Cache v18.
 - **Carrom board sounds** with a switch beside the striker slider: coin, striker, cushion and pocket sounds made with Web Audio, off by default. Cache v19.
+- **Carrom sounds remade** after the owner said they sounded like bamboo pipes: noise-based wooden clacks instead of ringing tones, less echo. Cache v20.

@@ -19,8 +19,8 @@
   }
 
   // ── Sound: the knock of coins, the striker, the cushions and the drop into a pocket ──
-  // Made in the browser with the Web Audio API (no sound files). Each knock is two short ringing tones plus a
-  // click of noise, louder for harder hits, with a touch of room echo. Switched on and off by the button beside
+  // Made in the browser with the Web Audio API (no sound files). Each knock is a few very short bursts of
+  // shaped noise (a crack, then a dull wooden body), louder for harder hits, with only a hint of room echo. Switched on and off by the button beside
   // the striker slider; the choice is remembered on the phone. Off until someone turns it on.
   const SOUND_KEY = 'ko-carrom-sound';
   const snd = { on: false, ctx: null, out: null, wet: null, last: 0, count: 0 };
@@ -35,10 +35,10 @@
         const master = c.createGain(); master.gain.value = 0.9;
         master.connect(comp); comp.connect(c.destination);
         // a small room: a quarter of a second of fading noise as the echo
-        const len = Math.floor(c.sampleRate * 0.28), buf = c.createBuffer(2, len, c.sampleRate);
+        const len = Math.floor(c.sampleRate * 0.16), buf = c.createBuffer(2, len, c.sampleRate);
         for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
         const room = c.createConvolver(); room.buffer = buf;
-        const wet = c.createGain(); wet.gain.value = 0.16;
+        const wet = c.createGain(); wet.gain.value = 0.07; // only a hint of room: more makes wood sound hollow
         wet.connect(room); room.connect(master);
         snd.out = master; snd.wet = wet;
         const nlen = Math.floor(c.sampleRate * 0.2); snd.noise = c.createBuffer(1, nlen, c.sampleRate);
@@ -58,7 +58,7 @@
   function hiss(c, t, dur, gain, filter, freq, q = 0.8) {
     const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     n.buffer = snd.noise; f.type = filter; f.frequency.value = freq; f.Q.value = q;
-    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.setValueAtTime(Math.max(0.0002, gain), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     n.connect(f); f.connect(g); g.connect(snd.out); g.connect(snd.wet);
     n.start(t, Math.random() * 0.1, dur + 0.02);
   }
@@ -71,10 +71,27 @@
     snd.last = now; snd.count++;
     const loud = Math.min(1, Math.pow(v / 170, 0.75));
     const wob = 1 + (Math.random() - 0.5) * 0.07; // no two knocks quite alike
-    if (kind === 'hit') { tone(c, now, 2350 * wob, 0, 0.055, 0.30 * loud); tone(c, now, 3900 * wob, 0, 0.032, 0.16 * loud); hiss(c, now, 0.018, 0.40 * loud, 'highpass', 2600); }
-    else if (kind === 'strike') { tone(c, now, 1500 * wob, 0, 0.075, 0.36 * loud); tone(c, now, 2700 * wob, 0, 0.045, 0.2 * loud); tone(c, now, 520, 300, 0.05, 0.16 * loud); hiss(c, now, 0.022, 0.5 * loud, 'highpass', 1800); }
-    else if (kind === 'wall') { tone(c, now, 230 * wob, 120, 0.085, 0.42 * loud); tone(c, now, 760 * wob, 0, 0.035, 0.12 * loud); hiss(c, now, 0.03, 0.3 * loud, 'lowpass', 900); }
-    else { tone(c, now, 420, 130, 0.16, 0.5); tone(c, now + 0.05, 300, 110, 0.12, 0.25); hiss(c, now, 0.09, 0.22, 'bandpass', 1400, 1.2); hiss(c, now + 0.07, 0.07, 0.14, 'bandpass', 900, 1.5); }
+    // Solid wood on wood has almost no pitch: a very short crack, then a dull body that dies at once. So these are
+    // made from shaped noise, not ringing tones. (The first version used tones and sounded like hollow bamboo.)
+    if (kind === 'hit') {            // coin on coin: a dry, bright clack
+      hiss(c, now, 0.006, 1.0 * loud, 'bandpass', 4300 * wob, 0.6);
+      hiss(c, now, 0.020, 0.80 * loud, 'bandpass', 1650 * wob, 1.8);
+      hiss(c, now, 0.030, 0.30 * loud, 'lowpass', 520);
+    } else if (kind === 'strike') {  // the heavier striker: the same clack with more weight under it
+      hiss(c, now, 0.007, 1.0 * loud, 'bandpass', 3300 * wob, 0.6);
+      hiss(c, now, 0.028, 0.90 * loud, 'bandpass', 1050 * wob, 1.6);
+      hiss(c, now, 0.045, 0.50 * loud, 'lowpass', 380);
+      tone(c, now, 150, 85, 0.045, 0.22 * loud);
+    } else if (kind === 'wall') {    // a cushion: a soft, low knock
+      hiss(c, now, 0.010, 0.45 * loud, 'bandpass', 2200 * wob, 0.7);
+      hiss(c, now, 0.040, 0.70 * loud, 'bandpass', 460 * wob, 1.2);
+      tone(c, now, 130, 75, 0.06, 0.25 * loud);
+    } else {                         // into the pocket: a drop into the net and a short rattle
+      hiss(c, now, 0.012, 0.6, 'bandpass', 2600, 0.7);
+      hiss(c, now + 0.03, 0.06, 0.5, 'bandpass', 620, 1.1);
+      hiss(c, now + 0.085, 0.05, 0.3, 'bandpass', 900, 1.3);
+      tone(c, now + 0.03, 170, 80, 0.09, 0.3);
+    }
   }
   function soundBtn() {
     const b = $('crSound');

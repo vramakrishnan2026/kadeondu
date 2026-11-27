@@ -58,7 +58,8 @@ The owner asked for premium-sounding coin sounds with a switch on the board scre
 - The 🔇 / 🔊 button beside the striker slider turns them on and off. The choice is kept on the phone (`ko-carrom-sound`).
 - **Off by default** (rule 2 in `CLAUDE.md`). Turning it on plays one knock so you hear it.
 - Browsers only start sound after a tap, so with sound on from an earlier visit the first shot may be silent until the board or slider has been touched.
-- **Nobody has listened to these yet:** they were written and tested for timing, not by ear. The owner should judge them on a phone.
+- **Owner's feedback, 28 Nov:** the first version "sounded like bamboo pipes". Cause: each knock was built from pure tones that rang on, and a clear lingering pitch is what a hollow tube sounds like. Solid wood has almost no pitch, so the knocks are now shaped noise only (a 6 ms crack and a 20 to 45 ms dull body), with a lower thud for the striker and much less echo. Keep tones out of the coin sounds.
+- **Still not judged by ear by the builder:** they were written and tested for timing, not by ear. The owner should judge them on a phone.
 
 ## Tests
 - `node tests/carromsim.mjs`: physics (repeatable, stays on the board), every rule as a set piece, 96 whole games between computer players.
